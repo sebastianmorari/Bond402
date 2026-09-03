@@ -24,21 +24,24 @@ Bond402 ist eine leicht verständliche Vertrauens- und Prüfplattform für masch
 
 - `artifacts/bond402/` — die lauffähige Web-App
 - `artifacts/bond402/src/pages/dashboard.tsx` — Startseite, Kennzahlen und Dienstansichten
-- `artifacts/bond402/src/lib/store.ts` — Testdaten, lokale Speicherung und Trust-Score-Berechnung
+- `artifacts/bond402/src/components/` — Dashboard, Registrierung, Live-Prüfung und Ergebnisansichten
+- `artifacts/api-server/src/lib/api-verifier.ts` — geschützte externe Abrufe und Strukturvergleich
+- `artifacts/api-server/src/routes/services.ts` — Dienste, Prüfungen, Historie, Kennzahlen und Demo-Dienste
+- `lib/db/src/schema/bond402.ts` — dauerhafte Speicherung der Dienste und Prüfergebnisse
 - `artifacts/bond402/src/index.css` — Farben, Schriften und visuelle Grundregeln
 - `artifacts/api-server/` — vorbereiteter gemeinsamer API-Server für spätere echte Backend-Funktionen
 
 ## Architecture decisions
 
-- Die erste MVP-Version führt Prüfungen bewusst als klar gekennzeichnete Simulationen im Browser aus.
-- Registrierte Dienste und Prüfverläufe werden lokal im Browser gespeichert; ein Serverkonto ist noch nicht erforderlich.
-- Der Trust Score wird transparent aus Erreichbarkeit, Antwortzeit und Strukturtreue berechnet.
+- Live-Prüfungen laufen serverseitig und dürfen nur öffentliche HTTP-/HTTPS-Ziele aufrufen; private Netze und interne Adressen werden blockiert.
+- Registrierte Dienste und Prüfverläufe werden dauerhaft in PostgreSQL gespeichert; ein Benutzerkonto ist noch nicht erforderlich.
+- Der Trust Score wird transparent aus echten Messwerten für Erreichbarkeit, Antwortzeit, Strukturtreue und bisherigen PASS-Ergebnissen berechnet.
 - Zahlungen, USDC, Bonds, Blockchain, Reputation und Token sind nur als spätere Ausbaustufen vorgesehen.
 
 ## Product
 
 - API-Dienste mit Name, URL, erwarteter Antwortstruktur und maximaler Antwortzeit registrieren
-- Simulierte Prüfungen starten und Ergebnisse als PASS, FAIL oder REVIEW verstehen
+- Echte, geschützte Prüfungen starten und Ergebnisse als PASS, FAIL oder REVIEW verstehen
 - Trust Score, Erreichbarkeit, Antwortzeit und Strukturtreue pro Dienst ansehen
 - Erwartete und tatsächliche Ergebnisse manuell vergleichen
 - Prüfverlauf und zusammengefasste Dashboard-Kennzahlen ansehen

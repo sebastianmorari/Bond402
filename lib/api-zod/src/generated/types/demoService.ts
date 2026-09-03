@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface DemoService {
+  name: string;
+  url: string;
+  expectedStructure: string;
+  maxResponseTime: number;
+  explanation: string;
 }

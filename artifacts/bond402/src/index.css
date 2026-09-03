@@ -1,8 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
-
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -43,27 +42,28 @@
 
 :root {
   /* Dark mode by default for that machine infrastructure vibe */
-  --background: 224 71% 4%;
+  /* Deep slate/navy background */
+  --background: 224 45% 6%;
   --foreground: 213 31% 91%;
   
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --ring: 212.7 26.8% 83.9%;
+  --border: 216 34% 15%;
+  --input: 216 34% 15%;
+  --ring: 210 100% 66%;
 
-  --card: 224 71% 6%;
+  --card: 224 45% 8%;
   --card-foreground: 213 31% 91%;
-  --card-border: 216 34% 17%;
+  --card-border: 216 34% 15%;
 
-  --primary: 210 100% 66%; /* Vivid blue for trust */
+  --primary: 210 100% 60%; /* Vivid tech blue for trust */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 216 34% 17%;
+  --secondary: 216 34% 15%;
   --secondary-foreground: 210 40% 98%;
 
-  --muted: 216 34% 15%;
+  --muted: 216 34% 12%;
   --muted-foreground: 215.4 16.3% 65%;
 
-  --success: 152 69% 31%; /* Cyber emerald */
+  --success: 152 75% 40%; /* Technical emerald */
   --success-foreground: 0 0% 100%;
 
   --warning: 38 92% 50%;

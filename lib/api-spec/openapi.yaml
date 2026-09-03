@@ -1,22 +1,21 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Bond402 API service verification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: services
+  - name: dashboard
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +23,293 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /services:
+    get:
+      operationId: listServices
+      tags: [services]
+      summary: List all registered API services with their checks
+      responses:
+        "200":
+          description: Registered services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiService"
+    post:
+      operationId: createService
+      tags: [services]
+      summary: Register an API service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiServiceInput"
+      responses:
+        "201":
+          description: Created service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiService"
+        "400":
+          description: Invalid service data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /services/{id}:
+    get:
+      operationId: getService
+      tags: [services]
+      summary: Get one service and its check history
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Service details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiService"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteService
+      tags: [services]
+      summary: Delete a registered service and its checks
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /services/{id}/checks:
+    post:
+      operationId: runServiceCheck
+      tags: [services]
+      summary: Run a safe external verification
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "201":
+          description: Completed check
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckResult"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /services/{id}/verify:
+    post:
+      operationId: verifyServiceResponse
+      tags: [services]
+      summary: Compare a supplied response with the expected structure
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationInput"
+      responses:
+        "201":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckResult"
+        "400":
+          description: Invalid actual response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get Bond402 dashboard metrics
+      responses:
+        "200":
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardMetrics"
+  /demo-services:
+    get:
+      operationId: listDemoServices
+      tags: [services]
+      summary: List safe public demo endpoints
+      responses:
+        "200":
+          description: Demo service templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DemoService"
 components:
+  parameters:
+    ServiceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required: [error, code]
+    ApiServiceInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        url:
+          type: string
+          maxLength: 2048
+          pattern: "^https?://"
+        expectedStructure:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        maxResponseTime:
+          type: number
+          minimum: 100
+          maximum: 15000
+      required: [name, url, expectedStructure, maxResponseTime]
+    ApiService:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+        expectedStructure:
+          type: string
+        maxResponseTime:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        trustScore:
+          type: ["number", "null"]
+        trustExplanation:
+          type: string
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckResult"
+      required: [id, name, url, expectedStructure, maxResponseTime, createdAt, trustScore, trustExplanation, checks]
+    CheckResult:
+      type: object
+      properties:
+        id:
+          type: string
+        serviceId:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PASS, FAIL, REVIEW]
+        checkType:
+          type: string
+          enum: [LIVE, MANUAL]
+        reachable:
+          type: boolean
+        responseTimeMs:
+          type: number
+        structureMatch:
+          type: boolean
+        httpStatus:
+          type: ["number", "null"]
+        errorCode:
+          type: ["string", "null"]
+        summary:
+          type: string
+        foundFields:
+          type: array
+          items:
+            type: string
+        missingFields:
+          type: array
+          items:
+            type: string
+      required: [id, serviceId, checkedAt, status, checkType, reachable, responseTimeMs, structureMatch, httpStatus, errorCode, summary, foundFields, missingFields]
+    VerificationInput:
+      type: object
+      properties:
+        actualResponse:
+          type: string
+          minLength: 1
+          maxLength: 100000
+      required: [actualResponse]
+    DashboardMetrics:
+      type: object
+      properties:
+        serviceCount:
+          type: number
+        checkCount:
+          type: number
+        passRate:
+          type: number
+        averageResponseTimeMs:
+          type: number
+      required: [serviceCount, checkCount, passRate, averageResponseTimeMs]
+    DemoService:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        expectedStructure:
+          type: string
+        maxResponseTime:
+          type: number
+        explanation:
+          type: string
+      required: [name, url, expectedStructure, maxResponseTime, explanation]
