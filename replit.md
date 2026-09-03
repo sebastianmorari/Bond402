@@ -1,6 +1,6 @@
-# [Project name]
+# Bond402
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Bond402 ist eine leicht verständliche Vertrauens- und Prüfplattform für maschinenlesbare API-Dienste.
 
 ## Run & Operate
 
@@ -22,15 +22,26 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/bond402/` — die lauffähige Web-App
+- `artifacts/bond402/src/pages/dashboard.tsx` — Startseite, Kennzahlen und Dienstansichten
+- `artifacts/bond402/src/lib/store.ts` — Testdaten, lokale Speicherung und Trust-Score-Berechnung
+- `artifacts/bond402/src/index.css` — Farben, Schriften und visuelle Grundregeln
+- `artifacts/api-server/` — vorbereiteter gemeinsamer API-Server für spätere echte Backend-Funktionen
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Die erste MVP-Version führt Prüfungen bewusst als klar gekennzeichnete Simulationen im Browser aus.
+- Registrierte Dienste und Prüfverläufe werden lokal im Browser gespeichert; ein Serverkonto ist noch nicht erforderlich.
+- Der Trust Score wird transparent aus Erreichbarkeit, Antwortzeit und Strukturtreue berechnet.
+- Zahlungen, USDC, Bonds, Blockchain, Reputation und Token sind nur als spätere Ausbaustufen vorgesehen.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- API-Dienste mit Name, URL, erwarteter Antwortstruktur und maximaler Antwortzeit registrieren
+- Simulierte Prüfungen starten und Ergebnisse als PASS, FAIL oder REVIEW verstehen
+- Trust Score, Erreichbarkeit, Antwortzeit und Strukturtreue pro Dienst ansehen
+- Erwartete und tatsächliche Ergebnisse manuell vergleichen
+- Prüfverlauf und zusammengefasste Dashboard-Kennzahlen ansehen
 
 ## User preferences
 

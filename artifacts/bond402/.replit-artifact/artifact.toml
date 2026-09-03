@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Bond402"
+description = "Ein anfängerfreundlicher Prototyp einer Vertrauens- und Prüfplattform für maschinenlesbare API-Dienste. Nutzer registrieren Dienste, starten simulierte Erreichbarkeits-, Geschwindigkeits- und Strukturprüfungen und sehen verständliche PASS-, FAIL- oder REVIEW-Ergebnisse."
+version = "1.0.0"
+id = "artifacts/bond402"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26251
+
+[services.development]
+run = "pnpm --filter @workspace/bond402 run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bond402", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/bond402/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26251"
+BASE_PATH = "/"
