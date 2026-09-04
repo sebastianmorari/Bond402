@@ -8,6 +8,7 @@ import Dashboard from '@/pages/dashboard';
 import { Landing } from '@/pages/landing';
 import { Profile } from '@/pages/profile';
 import { Developer } from '@/pages/developer';
+import { X402SandboxPage } from '@/pages/x402-sandbox';
 import { AuthPage } from '@/pages/auth';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import {
@@ -54,6 +55,12 @@ function DeveloperProtect() {
   return user ? <Developer /> : <Redirect to="/" />;
 }
 
+function X402SandboxProtect() {
+  const { user, isLoaded } = useAuth();
+  if (!isLoaded) return <AuthLoading />;
+  return user ? <X402SandboxPage /> : <Redirect to="/" />;
+}
+
 function Router() {
   return (
     <RoutedErrorBoundary>
@@ -61,6 +68,7 @@ function Router() {
         <Route path="/" component={HomeRedirect} />
         <Route path="/dashboard" component={DashboardProtect} />
         <Route path="/developer" component={DeveloperProtect} />
+        <Route path="/x402-sandbox" component={X402SandboxProtect} />
         <Route path="/profile" component={ProfileProtect} />
         <Route path="/sign-in/*?" component={() => <AuthPage mode="signIn" />} />
         <Route path="/sign-up/*?" component={() => <AuthPage mode="signUp" />} />

@@ -24,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 const X402_DONE_KEY = "bond402:onboarding:x402";
 const BOND_DONE_KEY = "bond402:onboarding:bond";
@@ -183,7 +184,7 @@ export function GuidedOnboarding() {
       icon: Sparkles,
       action: !x402Done ? (
         <Button asChild className="gap-2">
-          <a href="/developer#x402-sandbox">x402-Sandbox öffnen <ArrowRight className="h-4 w-4" /></a>
+          <Link href="/x402-sandbox">x402-Sandbox öffnen <ArrowRight className="h-4 w-4" /></Link>
         </Button>
       ) : null,
     },
