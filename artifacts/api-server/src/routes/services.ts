@@ -5,8 +5,6 @@ import {
   apiChecksTable,
   apiServicesTable,
   db,
-  type ApiCheckRow,
-  type ApiServiceRow,
 } from "@workspace/db";
 import {
   CreateServiceBody,
@@ -30,8 +28,13 @@ import {
   runLiveVerification,
   runManualVerification,
   validatePublicUrl,
-  type VerificationOutcome,
 } from "../lib/api-verifier";
+import {
+  findOwnedService,
+  saveOutcome,
+  toCheckResponse,
+  toServiceResponse,
+} from "../lib/service-data";
 
 const router: IRouter = Router();
 
@@ -71,105 +74,6 @@ const DEMO_SERVICES = [
     explanation: "Ein zweiter öffentlicher Testdienst mit verschachtelten Beispieldaten.",
   },
 ];
-
-function toCheckResponse(check: ApiCheckRow) {
-  return {
-    id: check.id,
-    serviceId: check.serviceId,
-    checkedAt: check.checkedAt.toISOString(),
-    status: check.status as "PASS" | "FAIL" | "REVIEW",
-    checkType: check.checkType as "LIVE" | "MANUAL",
-    reachable: check.reachable,
-    responseTimeMs: check.responseTimeMs,
-    structureMatch: check.structureMatch,
-    httpStatus: check.httpStatus,
-    errorCode: check.errorCode,
-    summary: check.summary,
-    foundFields: check.foundFields,
-    missingFields: check.missingFields,
-  };
-}
-
-function calculateTrust(checks: ApiCheckRow[], maxResponseTime: number) {
-  const liveChecks = checks.filter((check) => check.checkType === "LIVE");
-  if (liveChecks.length === 0) {
-    return {
-      score: null,
-      explanation: "Noch keine echte Prüfung vorhanden. Starten Sie einen Live-Check.",
-    };
-  }
-
-  const ratio = (count: number) => count / liveChecks.length;
-  const reachability = ratio(liveChecks.filter((check) => check.reachable).length);
-  const performance = ratio(
-    liveChecks.filter(
-      (check) => check.reachable && check.responseTimeMs > 0 && check.responseTimeMs <= maxResponseTime,
-    ).length,
-  );
-  const structure = ratio(liveChecks.filter((check) => check.structureMatch).length);
-  const reliability = ratio(
-    liveChecks.filter((check) => check.status === "PASS").length,
-  );
-  const score = Math.round(
-    reachability * 40 + performance * 25 + structure * 25 + reliability * 10,
-  );
-  const explanation =
-    `Berechnung aus ${liveChecks.length} echten Prüfungen: ` +
-    `Erreichbarkeit ${Math.round(reachability * 100)} % (40 Punkte), ` +
-    `Antwortzeit ${Math.round(performance * 100)} % (25 Punkte), ` +
-    `Strukturtreue ${Math.round(structure * 100)} % (25 Punkte) und ` +
-    `fehlerfreie PASS-Prüfungen ${Math.round(reliability * 100)} % (10 Punkte).`;
-  return { score, explanation };
-}
-
-async function loadChecks(serviceId: string) {
-  return db
-    .select()
-    .from(apiChecksTable)
-    .where(eq(apiChecksTable.serviceId, serviceId))
-    .orderBy(desc(apiChecksTable.checkedAt));
-}
-
-async function toServiceResponse(service: ApiServiceRow) {
-  const checks = await loadChecks(service.id);
-  const trust = calculateTrust(checks, service.maxResponseTime);
-  return {
-    id: service.id,
-    name: service.name,
-    url: service.url,
-    expectedStructure: service.expectedStructure,
-    maxResponseTime: service.maxResponseTime,
-    createdAt: service.createdAt.toISOString(),
-    trustScore: trust.score,
-    trustExplanation: trust.explanation,
-    checks: checks.map(toCheckResponse),
-  };
-}
-
-async function findOwnedService(id: string, ownerId: string) {
-  const [service] = await db
-    .select()
-    .from(apiServicesTable)
-    .where(and(eq(apiServicesTable.id, id), eq(apiServicesTable.ownerId, ownerId)));
-  return service;
-}
-
-async function saveOutcome(
-  serviceId: string,
-  checkType: "LIVE" | "MANUAL",
-  outcome: VerificationOutcome,
-) {
-  const [check] = await db
-    .insert(apiChecksTable)
-    .values({
-      id: crypto.randomUUID(),
-      serviceId,
-      checkType,
-      ...outcome,
-    })
-    .returning();
-  return check;
-}
 
 router.get("/services", async (req, res): Promise<void> => {
   const userId = requireUserId(req, res);

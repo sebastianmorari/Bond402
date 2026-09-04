@@ -1,0 +1,1 @@
+- [Developer API ingress](developer-api-ingress.md) — IP limits assume Bond402 requests arrive through exactly one trusted Replit proxy hop.

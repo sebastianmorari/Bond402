@@ -14,6 +14,80 @@ export interface ApiError {
   code: string;
 }
 
+export interface ApiKeyInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  name: string;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  /** @nullable */
+  lastUsedAt: string | null;
+  /** @nullable */
+  revokedAt: string | null;
+}
+
+export type CreatedApiKey = ApiKey & {
+  secret: string;
+};
+
+export interface DeveloperService {
+  id: string;
+  name: string;
+  url: string;
+  expectedStructure: string;
+  maxResponseTime: number;
+}
+
+export type CheckResultStatus = typeof CheckResultStatus[keyof typeof CheckResultStatus];
+
+
+export const CheckResultStatus = {
+  PASS: 'PASS',
+  FAIL: 'FAIL',
+  REVIEW: 'REVIEW',
+} as const;
+
+export type CheckResultCheckType = typeof CheckResultCheckType[keyof typeof CheckResultCheckType];
+
+
+export const CheckResultCheckType = {
+  LIVE: 'LIVE',
+  MANUAL: 'MANUAL',
+} as const;
+
+export interface CheckResult {
+  id: string;
+  serviceId: string;
+  checkedAt: string;
+  status: CheckResultStatus;
+  checkType: CheckResultCheckType;
+  reachable: boolean;
+  responseTimeMs: number;
+  structureMatch: boolean;
+  /** @nullable */
+  httpStatus: number | null;
+  /** @nullable */
+  errorCode: string | null;
+  summary: string;
+  foundFields: string[];
+  missingFields: string[];
+}
+
+export interface DeveloperServiceResult {
+  service: DeveloperService;
+  /** @nullable */
+  trustScore: number | null;
+  trustExplanation: string;
+  latestCheck: CheckResult | null;
+}
+
 export interface ApiServiceInput {
   /**
      * @minLength 2
@@ -58,41 +132,6 @@ export interface ApiServiceUpdate {
      * @maximum 15000
      */
   maxResponseTime?: number;
-}
-
-export type CheckResultStatus = typeof CheckResultStatus[keyof typeof CheckResultStatus];
-
-
-export const CheckResultStatus = {
-  PASS: 'PASS',
-  FAIL: 'FAIL',
-  REVIEW: 'REVIEW',
-} as const;
-
-export type CheckResultCheckType = typeof CheckResultCheckType[keyof typeof CheckResultCheckType];
-
-
-export const CheckResultCheckType = {
-  LIVE: 'LIVE',
-  MANUAL: 'MANUAL',
-} as const;
-
-export interface CheckResult {
-  id: string;
-  serviceId: string;
-  checkedAt: string;
-  status: CheckResultStatus;
-  checkType: CheckResultCheckType;
-  reachable: boolean;
-  responseTimeMs: number;
-  structureMatch: boolean;
-  /** @nullable */
-  httpStatus: number | null;
-  /** @nullable */
-  errorCode: string | null;
-  summary: string;
-  foundFields: string[];
-  missingFields: string[];
 }
 
 export interface ApiService {

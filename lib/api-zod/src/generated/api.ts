@@ -280,6 +280,171 @@ export const GetDashboardResponse = zod.object({
 
 
 /**
+ * @summary List API key metadata for the signed-in user
+ */
+export const ListApiKeysResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "prefix": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "lastUsedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable()
+})
+export const ListApiKeysResponse = zod.array(ListApiKeysResponseItem)
+
+
+/**
+ * @summary Create an API key and reveal its secret once
+ */
+export const createApiKeyBodyNameMin = 2;
+export const createApiKeyBodyNameMax = 80;
+
+
+
+export const CreateApiKeyBody = zod.object({
+  "name": zod.string().min(createApiKeyBodyNameMin).max(createApiKeyBodyNameMax)
+})
+
+export const CreateApiKeyResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "prefix": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "lastUsedAt": zod.coerce.date().nullable(),
+  "revokedAt": zod.coerce.date().nullable()
+}).and(zod.object({
+  "secret": zod.string()
+}))
+
+
+/**
+ * @summary Revoke an API key owned by the signed-in user
+ */
+
+
+
+export const RevokeApiKeyParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const RevokeApiKeyResponse = zod.void()
+
+
+/**
+ * @summary Read one owned service using a Bond402 API key
+ */
+
+
+
+export const DeveloperGetServiceParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const DeveloperGetServiceResponse = zod.object({
+  "service": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "url": zod.string(),
+  "expectedStructure": zod.string(),
+  "maxResponseTime": zod.number()
+}),
+  "trustScore": zod.number().nullable(),
+  "trustExplanation": zod.string(),
+  "latestCheck": zod.union([zod.object({
+  "id": zod.string(),
+  "serviceId": zod.string(),
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "checkType": zod.enum(['LIVE', 'MANUAL']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable(),
+  "errorCode": zod.string().nullable(),
+  "summary": zod.string(),
+  "foundFields": zod.array(zod.string()),
+  "missingFields": zod.array(zod.string())
+}),zod.null()])
+})
+
+
+/**
+ * @summary Run a live check for one owned service using a Bond402 API key
+ */
+
+
+
+export const DeveloperRunServiceCheckParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const DeveloperRunServiceCheckResponse = zod.object({
+  "service": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "url": zod.string(),
+  "expectedStructure": zod.string(),
+  "maxResponseTime": zod.number()
+}),
+  "trustScore": zod.number().nullable(),
+  "trustExplanation": zod.string(),
+  "latestCheck": zod.union([zod.object({
+  "id": zod.string(),
+  "serviceId": zod.string(),
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "checkType": zod.enum(['LIVE', 'MANUAL']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable(),
+  "errorCode": zod.string().nullable(),
+  "summary": zod.string(),
+  "foundFields": zod.array(zod.string()),
+  "missingFields": zod.array(zod.string())
+}),zod.null()])
+})
+
+
+/**
+ * @summary Read the latest check and trust score for one owned service
+ */
+
+
+
+export const DeveloperGetLatestCheckParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const DeveloperGetLatestCheckResponse = zod.object({
+  "service": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "url": zod.string(),
+  "expectedStructure": zod.string(),
+  "maxResponseTime": zod.number()
+}),
+  "trustScore": zod.number().nullable(),
+  "trustExplanation": zod.string(),
+  "latestCheck": zod.union([zod.object({
+  "id": zod.string(),
+  "serviceId": zod.string(),
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "checkType": zod.enum(['LIVE', 'MANUAL']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable(),
+  "errorCode": zod.string().nullable(),
+  "summary": zod.string(),
+  "foundFields": zod.array(zod.string()),
+  "missingFields": zod.array(zod.string())
+}),zod.null()])
+})
+
+
+/**
  * @summary List safe public demo endpoints
  */
 export const ListDemoServicesResponseItem = zod.object({

@@ -18,3 +18,4 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./bond402";
+export * from "./bond402-api-keys";

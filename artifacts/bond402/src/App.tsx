@@ -7,6 +7,7 @@ import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/dashboard';
 import { Landing } from '@/pages/landing';
 import { Profile } from '@/pages/profile';
+import { Developer } from '@/pages/developer';
 import {
   Route,
   Switch,
@@ -182,12 +183,26 @@ function ProfileProtect() {
   );
 }
 
+function DeveloperProtect() {
+  return (
+    <>
+      <Show when="signed-in">
+        <Developer />
+      </Show>
+      <Show when="signed-out">
+        <Redirect to="/" />
+      </Show>
+    </>
+  );
+}
+
 function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={HomeRedirect} />
         <Route path="/dashboard" component={DashboardProtect} />
+        <Route path="/developer" component={DeveloperProtect} />
         <Route path="/profile" component={ProfileProtect} />
         <Route path="/sign-in/*?" component={SignInPage} />
         <Route path="/sign-up/*?" component={SignUpPage} />

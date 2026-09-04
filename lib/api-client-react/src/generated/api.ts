@@ -21,12 +21,16 @@ import type {
 
 import type {
   ApiError,
+  ApiKey,
+  ApiKeyInput,
   ApiService,
   ApiServiceInput,
   ApiServiceUpdate,
   CheckResult,
+  CreatedApiKey,
   DashboardMetrics,
   DemoService,
+  DeveloperServiceResult,
   HealthStatus,
   VerificationInput
 } from './api.schemas';
@@ -711,6 +715,450 @@ export function useGetDashboard<TData = Awaited<ReturnType<typeof getDashboard>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListApiKeysUrl = () => {
+
+
+
+
+  return `/api/api-keys`
+}
+
+/**
+ * @summary List API key metadata for the signed-in user
+ */
+export const listApiKeys = async ( options?: Parameters<typeof customFetch>[1]): Promise<ApiKey[]> => {
+
+  return customFetch<ApiKey[]>(getListApiKeysUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListApiKeysQueryKey = () => {
+    return [
+    `/api/api-keys`
+    ] as const;
+    }
+
+
+export const getListApiKeysQueryOptions = <TData = Awaited<ReturnType<typeof listApiKeys>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApiKeys>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListApiKeysQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listApiKeys>>> = ({ signal }) => listApiKeys({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listApiKeys>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListApiKeysQueryResult = NonNullable<Awaited<ReturnType<typeof listApiKeys>>>
+export type ListApiKeysQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List API key metadata for the signed-in user
+ */
+
+export function useListApiKeys<TData = Awaited<ReturnType<typeof listApiKeys>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApiKeys>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListApiKeysQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateApiKeyUrl = () => {
+
+
+
+
+  return `/api/api-keys`
+}
+
+/**
+ * @summary Create an API key and reveal its secret once
+ */
+export const createApiKey = async (apiKeyInput: ApiKeyInput, options?: Parameters<typeof customFetch>[1]): Promise<CreatedApiKey> => {
+
+  return customFetch<CreatedApiKey>(getCreateApiKeyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(apiKeyInput)
+  }
+);}
+
+
+
+
+
+export const getCreateApiKeyMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createApiKey>>, TError,{data: BodyType<ApiKeyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createApiKey>>, TError,{data: BodyType<ApiKeyInput>}, TContext> => {
+
+const mutationKey = ['createApiKey'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createApiKey>>, {data: BodyType<ApiKeyInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createApiKey(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateApiKeyMutationResult = NonNullable<Awaited<ReturnType<typeof createApiKey>>>
+    export type CreateApiKeyMutationBody = BodyType<ApiKeyInput>
+    export type CreateApiKeyMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Create an API key and reveal its secret once
+ */
+export const useCreateApiKey = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createApiKey>>, TError,{data: BodyType<ApiKeyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createApiKey>>,
+        TError,
+        {data: BodyType<ApiKeyInput>},
+        TContext
+      > => {
+      return useMutation(getCreateApiKeyMutationOptions(options));
+    }
+
+export const getRevokeApiKeyUrl = (id: string,) => {
+
+
+
+
+  return `/api/api-keys/${id}`
+}
+
+/**
+ * @summary Revoke an API key owned by the signed-in user
+ */
+export const revokeApiKey = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getRevokeApiKeyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeApiKeyMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeApiKey>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeApiKey>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['revokeApiKey'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeApiKey>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  revokeApiKey(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeApiKeyMutationResult = NonNullable<Awaited<ReturnType<typeof revokeApiKey>>>
+
+    export type RevokeApiKeyMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Revoke an API key owned by the signed-in user
+ */
+export const useRevokeApiKey = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeApiKey>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeApiKey>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getRevokeApiKeyMutationOptions(options));
+    }
+
+export const getDeveloperGetServiceUrl = (id: string,) => {
+
+
+
+
+  return `/api/developer/services/${id}`
+}
+
+/**
+ * @summary Read one owned service using a Bond402 API key
+ */
+export const developerGetService = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<DeveloperServiceResult> => {
+
+  return customFetch<DeveloperServiceResult>(getDeveloperGetServiceUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeveloperGetServiceQueryKey = (id: string,) => {
+    return [
+    `/api/developer/services/${id}`
+    ] as const;
+    }
+
+
+export const getDeveloperGetServiceQueryOptions = <TData = Awaited<ReturnType<typeof developerGetService>>, TError = ErrorType<ApiError>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof developerGetService>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDeveloperGetServiceQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof developerGetService>>> = ({ signal }) => developerGetService(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof developerGetService>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DeveloperGetServiceQueryResult = NonNullable<Awaited<ReturnType<typeof developerGetService>>>
+export type DeveloperGetServiceQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Read one owned service using a Bond402 API key
+ */
+
+export function useDeveloperGetService<TData = Awaited<ReturnType<typeof developerGetService>>, TError = ErrorType<ApiError>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof developerGetService>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDeveloperGetServiceQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeveloperRunServiceCheckUrl = (id: string,) => {
+
+
+
+
+  return `/api/developer/services/${id}/checks`
+}
+
+/**
+ * @summary Run a live check for one owned service using a Bond402 API key
+ */
+export const developerRunServiceCheck = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<DeveloperServiceResult> => {
+
+  return customFetch<DeveloperServiceResult>(getDeveloperRunServiceCheckUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeveloperRunServiceCheckMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof developerRunServiceCheck>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof developerRunServiceCheck>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['developerRunServiceCheck'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof developerRunServiceCheck>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  developerRunServiceCheck(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeveloperRunServiceCheckMutationResult = NonNullable<Awaited<ReturnType<typeof developerRunServiceCheck>>>
+
+    export type DeveloperRunServiceCheckMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Run a live check for one owned service using a Bond402 API key
+ */
+export const useDeveloperRunServiceCheck = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof developerRunServiceCheck>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof developerRunServiceCheck>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeveloperRunServiceCheckMutationOptions(options));
+    }
+
+export const getDeveloperGetLatestCheckUrl = (id: string,) => {
+
+
+
+
+  return `/api/developer/services/${id}/checks/latest`
+}
+
+/**
+ * @summary Read the latest check and trust score for one owned service
+ */
+export const developerGetLatestCheck = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<DeveloperServiceResult> => {
+
+  return customFetch<DeveloperServiceResult>(getDeveloperGetLatestCheckUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeveloperGetLatestCheckQueryKey = (id: string,) => {
+    return [
+    `/api/developer/services/${id}/checks/latest`
+    ] as const;
+    }
+
+
+export const getDeveloperGetLatestCheckQueryOptions = <TData = Awaited<ReturnType<typeof developerGetLatestCheck>>, TError = ErrorType<ApiError>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof developerGetLatestCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDeveloperGetLatestCheckQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof developerGetLatestCheck>>> = ({ signal }) => developerGetLatestCheck(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof developerGetLatestCheck>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DeveloperGetLatestCheckQueryResult = NonNullable<Awaited<ReturnType<typeof developerGetLatestCheck>>>
+export type DeveloperGetLatestCheckQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Read the latest check and trust score for one owned service
+ */
+
+export function useDeveloperGetLatestCheck<TData = Awaited<ReturnType<typeof developerGetLatestCheck>>, TError = ErrorType<ApiError>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof developerGetLatestCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDeveloperGetLatestCheckQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -4,7 +4,7 @@ import { DemoServices } from "@/components/demo-services";
 import { ServiceRegistration } from "@/components/service-registration";
 import { ServiceList } from "@/components/service-list";
 import { ServiceDetails } from "@/components/service-details";
-import { Shield, User, LogOut } from "lucide-react";
+import { Shield, User, LogOut, Terminal } from "lucide-react";
 import { Link } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,10 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/developer" className="text-sm font-medium text-muted-foreground hover:text-foreground hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full transition-colors border border-transparent hover:bg-card/50 hover:border-border/50">
+              <Terminal className="h-4 w-4" />
+              <span>API-Zugang</span>
+            </Link>
             {user && (
               <Link href="/profile" className="flex items-center gap-2 hover:bg-card/50 px-3 py-1.5 rounded-full transition-colors border border-transparent hover:border-border/50">
                 <div className="h-6 w-6 rounded-full overflow-hidden bg-primary/20">

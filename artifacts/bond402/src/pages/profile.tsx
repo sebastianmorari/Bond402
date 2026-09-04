@@ -1,7 +1,7 @@
 import { useUser, useClerk } from "@clerk/react";
 import { Link } from "wouter";
-import { Shield, ArrowLeft, User, Mail, Calendar, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Shield, ArrowLeft, User, Mail, Calendar, LogOut, Terminal } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -114,6 +114,27 @@ export function Profile() {
               Abmelden
             </Button>
           </CardFooter>
+        </Card>
+
+        <Card className="bg-card/50 border-border/50 mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Terminal className="h-5 w-5 text-primary" />
+              Entwickler-API
+            </CardTitle>
+            <CardDescription>
+              Verwalten Sie Ihre API-Schlüssel für den programmatischen Zugriff auf Bond402.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Mit API-Schlüsseln können Sie die Zuverlässigkeitsprüfungen von Bond402 nahtlos in Ihre CI/CD-Pipelines oder eigenen Systeme integrieren.
+            </p>
+            <Link href="/developer" className={buttonVariants({ variant: "outline", className: "w-full sm:w-auto" })}>
+              <Terminal className="h-4 w-4 mr-2" />
+              API-Schlüssel verwalten
+            </Link>
+          </CardContent>
         </Card>
       </main>
     </div>

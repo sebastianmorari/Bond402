@@ -10,6 +10,8 @@ tags:
   - name: health
   - name: services
   - name: dashboard
+  - name: developer
+  - name: api-keys
 paths:
   /healthz:
     get:
@@ -190,6 +192,173 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardMetrics"
+  /api-keys:
+    get:
+      operationId: listApiKeys
+      tags: [api-keys]
+      summary: List API key metadata for the signed-in user
+      responses:
+        "200":
+          description: API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
+    post:
+      operationId: createApiKey
+      tags: [api-keys]
+      summary: Create an API key and reveal its secret once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiKeyInput"
+      responses:
+        "201":
+          description: Created API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedApiKey"
+        "400":
+          description: Invalid name or key limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many key-management requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api-keys/{id}:
+    delete:
+      operationId: revokeApiKey
+      tags: [api-keys]
+      summary: Revoke an API key owned by the signed-in user
+      parameters:
+        - $ref: "#/components/parameters/ApiKeyId"
+      responses:
+        "204":
+          description: Revoked
+        "404":
+          description: API key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many key-management requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /developer/services/{id}:
+    get:
+      operationId: developerGetService
+      tags: [developer]
+      summary: Read one owned service using a Bond402 API key
+      security:
+        - Bond402ApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Owned service with latest check
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeveloperServiceResult"
+        "401":
+          description: Missing, invalid, or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /developer/services/{id}/checks:
+    post:
+      operationId: developerRunServiceCheck
+      tags: [developer]
+      summary: Run a live check for one owned service using a Bond402 API key
+      security:
+        - Bond402ApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "201":
+          description: Completed check with updated trust score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeveloperServiceResult"
+        "401":
+          description: Missing, invalid, or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /developer/services/{id}/checks/latest:
+    get:
+      operationId: developerGetLatestCheck
+      tags: [developer]
+      summary: Read the latest check and trust score for one owned service
+      security:
+        - Bond402ApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Latest check with trust score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeveloperServiceResult"
+        "401":
+          description: Missing, invalid, or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Service or check not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /demo-services:
     get:
       operationId: listDemoServices
@@ -205,8 +374,20 @@ paths:
                 items:
                   $ref: "#/components/schemas/DemoService"
 components:
+  securitySchemes:
+    Bond402ApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: Bond402 API key
   parameters:
     ServiceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ApiKeyId:
       name: id
       in: path
       required: true
@@ -228,6 +409,69 @@ components:
         code:
           type: string
       required: [error, code]
+    ApiKeyInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+      required: [name]
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: ["string", "null"]
+          format: date-time
+        revokedAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, name, prefix, createdAt, lastUsedAt, revokedAt]
+    CreatedApiKey:
+      allOf:
+        - $ref: "#/components/schemas/ApiKey"
+        - type: object
+          properties:
+            secret:
+              type: string
+          required: [secret]
+    DeveloperService:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+        expectedStructure:
+          type: string
+        maxResponseTime:
+          type: number
+      required: [id, name, url, expectedStructure, maxResponseTime]
+    DeveloperServiceResult:
+      type: object
+      properties:
+        service:
+          $ref: "#/components/schemas/DeveloperService"
+        trustScore:
+          type: ["number", "null"]
+        trustExplanation:
+          type: string
+        latestCheck:
+          anyOf:
+            - $ref: "#/components/schemas/CheckResult"
+            - type: "null"
+      required: [service, trustScore, trustExplanation, latestCheck]
     ApiServiceInput:
       type: object
       properties:
