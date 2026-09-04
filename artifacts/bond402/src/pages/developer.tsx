@@ -22,6 +22,7 @@ import {
 } from "@workspace/api-client-react";
 import { X402Sandbox } from "@/components/x402-sandbox";
 import { BondSandbox } from "@/components/bond-sandbox";
+import { MobileNav } from "@/components/mobile-nav";
 
 export function Developer() {
   const { data: apiKeys = [], isLoading: isLoadingKeys } = useListApiKeys();
@@ -88,7 +89,7 @@ export function Developer() {
   const baseUrl = window.location.origin;
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground pb-20">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-28">
       <header className="border-b border-border/40 bg-card/30 sticky top-0 z-20 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -105,7 +106,7 @@ export function Developer() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-12">
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
         <div className="max-w-3xl">
           <h2 className="text-3xl font-bold tracking-tight mb-2">Entwickler-Zugang</h2>
           <p className="text-muted-foreground text-lg">
@@ -337,9 +338,12 @@ export function Developer() {
           </section>
         </div>
 
-        <X402Sandbox services={services} />
-        <BondSandbox services={services} />
+        <div className="space-y-8">
+          <X402Sandbox services={services} />
+          <BondSandbox services={services} />
+        </div>
       </main>
+      <MobileNav />
     </div>
   );
 }

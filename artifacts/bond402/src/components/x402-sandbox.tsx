@@ -179,6 +179,7 @@ export function X402Sandbox({ services }: X402SandboxProps) {
       }
 
       setResult(sandboxResult);
+      window.localStorage.setItem("bond402:onboarding:x402", "done");
       setCurrentStep(4);
       toast({
         title: sandboxResult.simulated ? "Sandbox-Ablauf abgeschlossen" : "Echter Bond402-Check abgeschlossen",
@@ -201,7 +202,7 @@ export function X402Sandbox({ services }: X402SandboxProps) {
   };
 
   return (
-    <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card shadow-lg shadow-primary/5">
+    <Card id="x402-sandbox" className="scroll-mt-24 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card shadow-lg shadow-primary/5">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -272,7 +273,7 @@ export function X402Sandbox({ services }: X402SandboxProps) {
                 <span>{currentStep < 0 ? "Bereit" : `${Math.min(currentStep + 1, steps.length)} / ${steps.length}`}</span>
               </div>
               <Progress value={currentStep < 0 ? 0 : ((currentStep + 1) / steps.length) * 100} />
-              <div className="grid gap-3 md:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
                 {steps.map((step, index) => {
                   const Icon = step.icon;
                   const isDone = currentStep > index;

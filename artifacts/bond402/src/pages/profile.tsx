@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useAuth } from "@/lib/auth";
+import { MobileNav } from "@/components/mobile-nav";
 
 export function Profile() {
   const { user, isLoaded, signOut } = useAuth();
@@ -25,7 +26,7 @@ export function Profile() {
   const createdAt = user.createdAt ? new Date(user.createdAt) : null;
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground pb-20">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-28">
       <header className="border-b border-border/40 bg-card/30 sticky top-0 z-20 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -128,6 +129,7 @@ export function Profile() {
           </CardContent>
         </Card>
       </main>
+      <MobileNav />
     </div>
   );
 }

@@ -8,13 +8,15 @@ import { Shield, User, LogOut, Terminal } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { GuidedOnboarding } from "@/components/guided-onboarding";
+import { MobileNav } from "@/components/mobile-nav";
 
 export default function Dashboard() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const { user, signOut } = useAuth();
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground pb-20">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-28">
       <header className="border-b border-border/40 bg-card/30 sticky top-0 z-20 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -56,7 +58,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         
         {/* Intro Section */}
         <section className="max-w-3xl">
@@ -65,6 +67,10 @@ export default function Dashboard() {
             Diese Plattform überwacht die Erreichbarkeit und Datenstruktur Ihrer Schnittstellen. 
             Maschinenlesbare Dienste benötigen Vertrauen – wir machen es messbar und dauerhaft nachweisbar.
           </p>
+        </section>
+
+        <section className="mb-8">
+          <GuidedOnboarding />
         </section>
 
         {/* Metrics */}
@@ -86,7 +92,9 @@ export default function Dashboard() {
           {/* Right Column: Actions (Demo & Register) */}
           <section className="space-y-6">
             <DemoServices readOnly={false} />
-            <ServiceRegistration />
+            <div id="service-registration" className="scroll-mt-24">
+              <ServiceRegistration />
+            </div>
           </section>
 
         </div>
@@ -96,6 +104,7 @@ export default function Dashboard() {
         serviceId={selectedServiceId} 
         onClose={() => setSelectedServiceId(null)} 
       />
+      <MobileNav />
     </div>
   );
 }

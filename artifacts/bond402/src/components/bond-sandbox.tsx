@@ -54,11 +54,14 @@ export function BondSandbox({ services }: BondSandboxProps) {
   const reputationDelta = approved ? 3 : -2;
 
   const runSimulation = () => {
-    if (selectedService && isValidAmount) setHasRun(true);
+    if (selectedService && isValidAmount) {
+      setHasRun(true);
+      window.localStorage.setItem("bond402:onboarding:bond", "done");
+    }
   };
 
   return (
-    <Card className="border-violet-400/30 bg-gradient-to-br from-violet-500/5 via-card to-card shadow-lg shadow-violet-500/5">
+    <Card id="bond-sandbox" className="scroll-mt-24 border-violet-400/30 bg-gradient-to-br from-violet-500/5 via-card to-card shadow-lg shadow-violet-500/5">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -126,7 +129,7 @@ export function BondSandbox({ services }: BondSandboxProps) {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { icon: CircleDollarSign, title: "Bond bereitstellen", text: `${isValidAmount ? bondAmount : "—"} TEST-BONDS` },
                 { icon: LockKeyhole, title: "Sicherheit prüfen", text: "Besitz & Zugriff" },
