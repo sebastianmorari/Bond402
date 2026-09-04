@@ -52,6 +52,7 @@ Bond402 ist eine leicht verständliche Vertrauens- und Prüfplattform für masch
 - Erwartete und tatsächliche Ergebnisse manuell vergleichen
 - Prüfverlauf und zusammengefasste Dashboard-Kennzahlen ansehen
 - Einen zukünftigen maschinellen Bezahlablauf ohne echte Zahlungen in der x402-Sandbox nachvollziehen
+- Eine lokale Bond-, Sicherheits- und Reputationsentscheidung mit Test-BONDS auf Basis der eigenen echten Prüfwerte simulieren, ohne Datenbank- oder Zahlungsbuchung
 
 ## User preferences
 

@@ -21,6 +21,7 @@ import {
   useListServices
 } from "@workspace/api-client-react";
 import { X402Sandbox } from "@/components/x402-sandbox";
+import { BondSandbox } from "@/components/bond-sandbox";
 
 export function Developer() {
   const { data: apiKeys = [], isLoading: isLoadingKeys } = useListApiKeys();
@@ -337,6 +338,7 @@ export function Developer() {
         </div>
 
         <X402Sandbox services={services} />
+        <BondSandbox services={services} />
       </main>
     </div>
   );
