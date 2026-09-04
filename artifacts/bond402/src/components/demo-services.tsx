@@ -2,17 +2,24 @@ import { useListDemoServices, useCreateService, getListServicesQueryKey, getGetD
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Info } from "lucide-react";
+import { Plus, Info, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Link } from "wouter";
 
-export function DemoServices() {
+interface DemoServicesProps {
+  readOnly?: boolean;
+}
+
+export function DemoServices({ readOnly = false }: DemoServicesProps) {
   const { data: demoServices, isLoading } = useListDemoServices();
   const createService = useCreateService();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const handleAddDemo = (demo: NonNullable<typeof demoServices>[number]) => {
+    if (readOnly) return;
+    
     createService.mutate(
       {
         data: {
@@ -57,16 +64,18 @@ export function DemoServices() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Demo-Dienste zum Ausprobieren</h3>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="w-[200px] text-xs">Sichere, öffentliche APIs, die Sie mit einem Klick hinzufügen können, um das System zu testen.</p>
-          </TooltipContent>
-        </Tooltip>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Demo-Dienste</h3>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="w-[200px] text-xs">Sichere, öffentliche APIs, die Sie mit einem Klick hinzufügen können, um das System zu testen.</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
       
       {demoServices.map((demo, idx) => (
@@ -79,20 +88,29 @@ export function DemoServices() {
                   {demo.url}
                 </CardDescription>
               </div>
-              <Button 
-                size="sm" 
-                variant="secondary" 
-                onClick={() => handleAddDemo(demo)}
-                disabled={createService.isPending}
-                className="shrink-0"
-              >
-                {createService.isPending ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
-                ) : (
-                  <Plus className="h-4 w-4 mr-1" />
-                )}
-                Hinzufügen
-              </Button>
+              {readOnly ? (
+                <Button size="sm" variant="secondary" className="shrink-0" asChild>
+                  <Link href="/sign-up">
+                    <Lock className="h-4 w-4 mr-1" />
+                    Anmelden
+                  </Link>
+                </Button>
+              ) : (
+                <Button 
+                  size="sm" 
+                  variant="secondary" 
+                  onClick={() => handleAddDemo(demo)}
+                  disabled={createService.isPending}
+                  className="shrink-0"
+                >
+                  {createService.isPending ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-1" />
+                  )}
+                  Hinzufügen
+                </Button>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -102,6 +120,14 @@ export function DemoServices() {
           </CardContent>
         </Card>
       ))}
+      
+      {readOnly && (
+        <div className="mt-4 text-center">
+          <Link href="/sign-up" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full">
+            Konto erstellen für eigenen API-Check
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

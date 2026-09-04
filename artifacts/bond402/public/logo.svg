@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="shieldGrad" x1="256" y1="50" x2="256" y2="450" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3399FF" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#3399FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="160" y1="256" x2="352" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3399FF" />
+      <stop offset="100%" stop-color="#00D2FF" />
+    </linearGradient>
+  </defs>
+  
+  <path d="M256 52.8l-144 51.4v139.7c0 109.1 61.2 211.4 144 263.3 82.8-51.9 144-154.2 144-263.3V104.2L256 52.8z" fill="url(#shieldGrad)" stroke="#3399FF" stroke-width="24" stroke-linejoin="round"/>
+  
+  <path d="M176 256l48 48L336 176" stroke="url(#checkGrad)" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <rect x="236" y="24" width="40" height="24" fill="#3399FF" rx="4"/>
+</svg>

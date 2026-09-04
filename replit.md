@@ -34,7 +34,9 @@ Bond402 ist eine leicht verständliche Vertrauens- und Prüfplattform für masch
 ## Architecture decisions
 
 - Live-Prüfungen laufen serverseitig und dürfen nur öffentliche HTTP-/HTTPS-Ziele aufrufen; private Netze und interne Adressen werden blockiert.
-- Registrierte Dienste und Prüfverläufe werden dauerhaft in PostgreSQL gespeichert; ein Benutzerkonto ist noch nicht erforderlich.
+- Registrierung, Anmeldung und Sitzungen laufen über die von Replit verwaltete Clerk-Integration.
+- Registrierte Dienste und Prüfverläufe werden dauerhaft in PostgreSQL gespeichert und serverseitig dem angemeldeten Besitzer zugeordnet.
+- Öffentliche Demo-Vorlagen bleiben ohne Anmeldung sichtbar; jede daraus registrierte Kopie gehört anschließend ausschließlich ihrem Benutzer.
 - Der Trust Score wird transparent aus echten Messwerten für Erreichbarkeit, Antwortzeit, Strukturtreue und bisherigen PASS-Ergebnissen berechnet.
 - Zahlungen, USDC, Bonds, Blockchain, Reputation und Token sind nur als spätere Ausbaustufen vorgesehen.
 

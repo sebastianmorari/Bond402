@@ -23,6 +23,7 @@ import type {
   ApiError,
   ApiService,
   ApiServiceInput,
+  ApiServiceUpdate,
   CheckResult,
   DashboardMetrics,
   DemoService,
@@ -428,6 +429,78 @@ export const useDeleteService = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getDeleteServiceMutationOptions(options));
+    }
+
+export const getUpdateServiceUrl = (id: string,) => {
+
+
+
+
+  return `/api/services/${id}`
+}
+
+/**
+ * @summary Update a registered service owned by the current user
+ */
+export const updateService = async (id: string,
+    apiServiceUpdate: ApiServiceUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ApiService> => {
+
+  return customFetch<ApiService>(getUpdateServiceUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(apiServiceUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateServiceMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateService>>, TError,{id: string;data: BodyType<ApiServiceUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateService>>, TError,{id: string;data: BodyType<ApiServiceUpdate>}, TContext> => {
+
+const mutationKey = ['updateService'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateService>>, {id: string;data: BodyType<ApiServiceUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateService(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateServiceMutationResult = NonNullable<Awaited<ReturnType<typeof updateService>>>
+    export type UpdateServiceMutationBody = BodyType<ApiServiceUpdate>
+    export type UpdateServiceMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Update a registered service owned by the current user
+ */
+export const useUpdateService = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateService>>, TError,{id: string;data: BodyType<ApiServiceUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateService>>,
+        TError,
+        {id: string;data: BodyType<ApiServiceUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateServiceMutationOptions(options));
     }
 
 export const getRunServiceCheckUrl = (id: string,) => {

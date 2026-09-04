@@ -1,5 +1,6 @@
-import { Router, type IRouter } from "express";
-import { desc, eq } from "drizzle-orm";
+import { Router, type IRouter, type Request, type Response } from "express";
+import { getAuth } from "@clerk/express";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   apiChecksTable,
   apiServicesTable,
@@ -18,6 +19,9 @@ import {
   ListServicesResponse,
   RunServiceCheckParams,
   RunServiceCheckResponse,
+  UpdateServiceBody,
+  UpdateServiceParams,
+  UpdateServiceResponse,
   VerifyServiceResponseBody,
   VerifyServiceResponseParams,
   VerifyServiceResponseResponse,
@@ -30,6 +34,19 @@ import {
 } from "../lib/api-verifier";
 
 const router: IRouter = Router();
+
+function requireUserId(req: Request, res: Response): string | null {
+  const auth = getAuth(req);
+  const userId = auth?.userId;
+  if (!userId) {
+    res.status(401).json({
+      error: "Bitte melden Sie sich an, um Ihre Dienste zu verwalten.",
+      code: "UNAUTHORIZED",
+    });
+    return null;
+  }
+  return userId;
+}
 
 const DEMO_SERVICES = [
   {
@@ -129,11 +146,11 @@ async function toServiceResponse(service: ApiServiceRow) {
   };
 }
 
-async function findService(id: string) {
+async function findOwnedService(id: string, ownerId: string) {
   const [service] = await db
     .select()
     .from(apiServicesTable)
-    .where(eq(apiServicesTable.id, id));
+    .where(and(eq(apiServicesTable.id, id), eq(apiServicesTable.ownerId, ownerId)));
   return service;
 }
 
@@ -154,16 +171,21 @@ async function saveOutcome(
   return check;
 }
 
-router.get("/services", async (_req, res): Promise<void> => {
+router.get("/services", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const services = await db
     .select()
     .from(apiServicesTable)
+    .where(eq(apiServicesTable.ownerId, userId))
     .orderBy(desc(apiServicesTable.createdAt));
   const response = await Promise.all(services.map(toServiceResponse));
   res.json(ListServicesResponse.parse(response));
 });
 
 router.post("/services", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const parsed = CreateServiceBody.safeParse(req.body);
   const normalizedName = parsed.success ? parsed.data.name.trim() : "";
   const normalizedStructure = parsed.success
@@ -197,6 +219,7 @@ router.post("/services", async (req, res): Promise<void> => {
     .insert(apiServicesTable)
     .values({
       id: crypto.randomUUID(),
+      ownerId: userId,
       name: normalizedName,
       url: parsed.data.url,
       expectedStructure: normalizedStructure,
@@ -207,12 +230,14 @@ router.post("/services", async (req, res): Promise<void> => {
 });
 
 router.get("/services/:id", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const params = GetServiceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
     return;
   }
-  const service = await findService(params.data.id);
+  const service = await findOwnedService(params.data.id, userId);
   if (!service) {
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;
@@ -220,7 +245,71 @@ router.get("/services/:id", async (req, res): Promise<void> => {
   res.json(GetServiceResponse.parse(await toServiceResponse(service)));
 });
 
+router.patch("/services/:id", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const params = UpdateServiceParams.safeParse(req.params);
+  const body = UpdateServiceBody.safeParse(req.body);
+  if (!params.success || !body.success || Object.keys(body.data).length === 0) {
+    res.status(400).json({ error: "Bitte prüfen Sie die Änderungen.", code: "INVALID_INPUT" });
+    return;
+  }
+
+  const changes = {
+    ...body.data,
+    ...(body.data.name !== undefined ? { name: body.data.name.trim() } : {}),
+    ...(body.data.expectedStructure !== undefined
+      ? { expectedStructure: body.data.expectedStructure.trim() }
+      : {}),
+  };
+  if (changes.name !== undefined && changes.name.length < 2) {
+    res.status(400).json({ error: "Der Dienstname ist zu kurz.", code: "INVALID_INPUT" });
+    return;
+  }
+  if (changes.expectedStructure !== undefined && changes.expectedStructure.length === 0) {
+    res.status(400).json({ error: "Die erwartete Struktur darf nicht leer sein.", code: "INVALID_INPUT" });
+    return;
+  }
+  if (changes.maxResponseTime !== undefined && !Number.isInteger(changes.maxResponseTime)) {
+    res.status(400).json({ error: "Die Antwortzeit muss eine ganze Zahl sein.", code: "INVALID_INPUT" });
+    return;
+  }
+  if (changes.url !== undefined) {
+    try {
+      await validatePublicUrl(changes.url);
+    } catch (error) {
+      const code =
+        typeof error === "object" && error && "code" in error
+          ? String(error.code)
+          : "INVALID_URL";
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "Die URL ist ungültig.",
+        code,
+      });
+      return;
+    }
+  }
+
+  const [service] = await db
+    .update(apiServicesTable)
+    .set(changes)
+    .where(
+      and(
+        eq(apiServicesTable.id, params.data.id),
+        eq(apiServicesTable.ownerId, userId),
+      ),
+    )
+    .returning();
+  if (!service) {
+    res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
+    return;
+  }
+  res.json(UpdateServiceResponse.parse(await toServiceResponse(service)));
+});
+
 router.delete("/services/:id", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const params = DeleteServiceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
@@ -228,7 +317,12 @@ router.delete("/services/:id", async (req, res): Promise<void> => {
   }
   const deleted = await db
     .delete(apiServicesTable)
-    .where(eq(apiServicesTable.id, params.data.id))
+    .where(
+      and(
+        eq(apiServicesTable.id, params.data.id),
+        eq(apiServicesTable.ownerId, userId),
+      ),
+    )
     .returning({ id: apiServicesTable.id });
   if (deleted.length === 0) {
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
@@ -238,12 +332,14 @@ router.delete("/services/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/services/:id/checks", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const params = RunServiceCheckParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
     return;
   }
-  const service = await findService(params.data.id);
+  const service = await findOwnedService(params.data.id, userId);
   if (!service) {
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;
@@ -258,13 +354,15 @@ router.post("/services/:id/checks", async (req, res): Promise<void> => {
 });
 
 router.post("/services/:id/verify", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const params = VerifyServiceResponseParams.safeParse(req.params);
   const body = VerifyServiceResponseBody.safeParse(req.body);
   if (!params.success || !body.success) {
     res.status(400).json({ error: "Bitte fügen Sie eine gültige Antwort ein.", code: "INVALID_INPUT" });
     return;
   }
-  const service = await findService(params.data.id);
+  const service = await findOwnedService(params.data.id, userId);
   if (!service) {
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;
@@ -274,9 +372,21 @@ router.post("/services/:id/verify", async (req, res): Promise<void> => {
   res.status(201).json(VerifyServiceResponseResponse.parse(toCheckResponse(check)));
 });
 
-router.get("/dashboard", async (_req, res): Promise<void> => {
-  const services = await db.select().from(apiServicesTable);
-  const checks = await db.select().from(apiChecksTable);
+router.get("/dashboard", async (req, res): Promise<void> => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const services = await db
+    .select()
+    .from(apiServicesTable)
+    .where(eq(apiServicesTable.ownerId, userId));
+  const serviceIds = new Set(services.map((service) => service.id));
+  const checks =
+    services.length === 0
+      ? []
+      : await db
+          .select()
+          .from(apiChecksTable)
+          .where(inArray(apiChecksTable.serviceId, [...serviceIds]));
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
   const timedChecks = liveChecks.filter((check) => check.responseTimeMs > 0);
   const passRate =

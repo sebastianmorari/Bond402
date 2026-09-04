@@ -4,21 +4,55 @@ import { DemoServices } from "@/components/demo-services";
 import { ServiceRegistration } from "@/components/service-registration";
 import { ServiceList } from "@/components/service-list";
 import { ServiceDetails } from "@/components/service-details";
-import { Shield } from "lucide-react";
+import { Shield, User, LogOut } from "lucide-react";
+import { Link } from "wouter";
+import { useUser, useClerk } from "@clerk/react";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const { user } = useUser();
+  const { signOut } = useClerk();
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground pb-20">
       <header className="border-b border-border/40 bg-card/30 sticky top-0 z-20 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-3">
-          <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
-            <Shield className="h-5 w-5" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg leading-tight tracking-tight">Bond402</h1>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Trust Infrastructure</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-lg leading-tight tracking-tight">Bond402</h1>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Trust Infrastructure</p>
+          <div className="flex items-center gap-4">
+            {user && (
+              <Link href="/profile" className="flex items-center gap-2 hover:bg-card/50 px-3 py-1.5 rounded-full transition-colors border border-transparent hover:border-border/50">
+                <div className="h-6 w-6 rounded-full overflow-hidden bg-primary/20">
+                  {user.imageUrl ? (
+                    <img src={user.imageUrl} alt="Profil" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <User className="h-3 w-3 text-primary" />
+                    </div>
+                  )}
+                </div>
+                <span className="text-sm font-medium hidden sm:block">
+                  {user.firstName || user.username || "Profil"}
+                </span>
+              </Link>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => signOut({ redirectUrl: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" })}
+              title="Abmelden"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </header>
@@ -52,7 +86,7 @@ export default function Dashboard() {
 
           {/* Right Column: Actions (Demo & Register) */}
           <section className="space-y-6">
-            <DemoServices />
+            <DemoServices readOnly={false} />
             <ServiceRegistration />
           </section>
 

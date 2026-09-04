@@ -95,6 +95,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateService
+      tags: [services]
+      summary: Update a registered service owned by the current user
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiServiceUpdate"
+      responses:
+        "200":
+          description: Updated service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiService"
+        "400":
+          description: Invalid update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /services/{id}/checks:
     post:
       operationId: runServiceCheck
@@ -217,6 +248,25 @@ components:
           minimum: 100
           maximum: 15000
       required: [name, url, expectedStructure, maxResponseTime]
+    ApiServiceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        url:
+          type: string
+          maxLength: 2048
+          pattern: "^https?://"
+        expectedStructure:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        maxResponseTime:
+          type: number
+          minimum: 100
+          maximum: 15000
     ApiService:
       type: object
       properties:

@@ -149,6 +149,64 @@ export const DeleteServiceResponse = zod.void()
 
 
 /**
+ * @summary Update a registered service owned by the current user
+ */
+
+
+
+export const UpdateServiceParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const updateServiceBodyNameMin = 2;
+export const updateServiceBodyNameMax = 100;
+
+export const updateServiceBodyUrlMax = 2048;
+
+
+export const updateServiceBodyUrlRegExp = new RegExp('^https?:/');
+export const updateServiceBodyExpectedStructureMax = 4000;
+
+export const updateServiceBodyMaxResponseTimeMin = 100;
+export const updateServiceBodyMaxResponseTimeMax = 15000;
+
+
+
+export const UpdateServiceBody = zod.object({
+  "name": zod.string().min(updateServiceBodyNameMin).max(updateServiceBodyNameMax).optional(),
+  "url": zod.string().max(updateServiceBodyUrlMax).regex(updateServiceBodyUrlRegExp).optional(),
+  "expectedStructure": zod.string().min(1).max(updateServiceBodyExpectedStructureMax).optional(),
+  "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional()
+})
+
+export const UpdateServiceResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "url": zod.string(),
+  "expectedStructure": zod.string(),
+  "maxResponseTime": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "trustScore": zod.number().nullable(),
+  "trustExplanation": zod.string(),
+  "checks": zod.array(zod.object({
+  "id": zod.string(),
+  "serviceId": zod.string(),
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "checkType": zod.enum(['LIVE', 'MANUAL']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable(),
+  "errorCode": zod.string().nullable(),
+  "summary": zod.string(),
+  "foundFields": zod.array(zod.string()),
+  "missingFields": zod.array(zod.string())
+}))
+})
+
+
+/**
  * @summary Run a safe external verification
  */
 

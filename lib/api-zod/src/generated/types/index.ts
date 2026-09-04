@@ -9,6 +9,7 @@
 export * from './apiError';
 export * from './apiService';
 export * from './apiServiceInput';
+export * from './apiServiceUpdate';
 export * from './checkResult';
 export * from './checkResultCheckType';
 export * from './checkResultStatus';

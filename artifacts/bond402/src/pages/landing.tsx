@@ -1,0 +1,107 @@
+import { DemoServices } from "@/components/demo-services";
+import { Shield, ArrowRight, Activity, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Link } from "wouter";
+
+export function Landing() {
+  return (
+    <div className="min-h-[100dvh] bg-background text-foreground flex flex-col">
+      <header className="border-b border-border/40 bg-card/30 sticky top-0 z-20 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/20">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg leading-tight tracking-tight">Bond402</h1>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold leading-none">Trust Infrastructure</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Link href="/sign-in" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Anmelden
+            </Link>
+            <Link href="/sign-up" className="text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md shadow-lg shadow-primary/20 transition-all flex items-center gap-2">
+              Kostenlos registrieren <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <div className="w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] mix-blend-screen" />
+        </div>
+
+        <div className="max-w-4xl w-full text-center space-y-8 relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
+            <Activity className="h-4 w-4" />
+            <span>API-Zuverlässigkeit in Echtzeit messen</span>
+          </div>
+          
+          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-foreground">
+            Vertrauen ist gut.<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan-400">
+              Messbare APIs sind besser.
+            </span>
+          </h1>
+          
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Bond402 ist die präzise Kontrollumgebung für maschinenlesbare Schnittstellen. 
+            Überwachen Sie Erreichbarkeit, Antwortzeiten und JSON-Strukturen Ihrer Dienste kontinuierlich und schaffen Sie transparentes Vertrauen.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <Link href="/sign-up" className="w-full sm:w-auto text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3.5 rounded-lg shadow-xl shadow-primary/25 transition-all flex items-center justify-center gap-2">
+              Jetzt Dienste absichern
+            </Link>
+            <Link href="/sign-in" className="w-full sm:w-auto text-base font-medium bg-card border border-border hover:bg-card/80 text-foreground px-8 py-3.5 rounded-lg transition-all flex items-center justify-center">
+              Zum Dashboard
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-16 max-w-3xl mx-auto text-left">
+            <div className="bg-card/50 border border-border/50 p-5 rounded-xl space-y-3">
+              <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold">Strukturprüfung</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Stellen Sie sicher, dass Ihre APIs genau das JSON-Format zurückgeben, das andere Systeme erwarten.</p>
+            </div>
+            <div className="bg-card/50 border border-border/50 p-5 rounded-xl space-y-3">
+              <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                <Activity className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold">Latenz-Monitoring</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Erkennen Sie sofort, wenn Ihre Dienste die definierten Antwortzeiten überschreiten.</p>
+            </div>
+            <div className="bg-card/50 border border-border/50 p-5 rounded-xl space-y-3">
+              <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold">Trust Score</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Bauen Sie Vertrauen durch einen nachvollziehbaren Zuverlässigkeits-Score für jeden Endpunkt auf.</p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <section className="border-t border-border/40 bg-muted/20 py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-bold tracking-tight mb-2">Wie funktioniert Bond402?</h2>
+            <p className="text-muted-foreground">Erkunden Sie unsere öffentlichen Demo-Dienste. Melden Sie sich an, um sie Ihrem Dashboard hinzuzufügen.</p>
+          </div>
+          
+          <div className="bg-card/50 border border-border/50 rounded-2xl p-6 sm:p-8">
+            <DemoServices readOnly={true} />
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-border/40 py-8 px-4 sm:px-6 lg:px-8 bg-card/30 text-center text-sm text-muted-foreground">
+        <p>Bond402 &copy; {new Date().getFullYear()}. Präzise Trust-Infrastruktur.</p>
+      </footer>
+    </div>
+  );
+}

@@ -11,11 +11,13 @@ import { z } from "zod/v4";
 
 export const apiServicesTable = pgTable("bond402_api_services", {
   id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull().default("legacy-unowned"),
   name: text("name").notNull(),
   url: text("url").notNull(),
   expectedStructure: text("expected_structure").notNull(),
   maxResponseTime: integer("max_response_time").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
 export const apiChecksTable = pgTable("bond402_api_checks", {
@@ -38,6 +40,7 @@ export const apiChecksTable = pgTable("bond402_api_checks", {
 
 export const insertApiServiceSchema = createInsertSchema(apiServicesTable).omit({
   createdAt: true,
+  updatedAt: true,
 });
 export const insertApiCheckSchema = createInsertSchema(apiChecksTable).omit({
   checkedAt: true,

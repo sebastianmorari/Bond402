@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   useGetService, 
   useDeleteService, 
+  useUpdateService,
   useRunServiceCheck, 
   useVerifyServiceResponse,
   getListServicesQueryKey,
@@ -28,9 +29,13 @@ import {
   Activity,
   CheckCircle2,
   XCircle,
-  HelpCircle
+  HelpCircle,
+  Save,
+  Pencil
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -55,6 +60,13 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [manualResponse, setManualResponse] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    url: "",
+    maxResponseTime: 1000,
+    expectedStructure: ""
+  });
 
   const { data: service, isLoading, isError } = useGetService(serviceId || "", {
     query: {
@@ -63,9 +75,21 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
     }
   });
 
+  useEffect(() => {
+    if (service && !isEditing) {
+      setEditForm({
+        name: service.name,
+        url: service.url,
+        maxResponseTime: service.maxResponseTime,
+        expectedStructure: service.expectedStructure
+      });
+    }
+  }, [service, isEditing]);
+
   const runCheck = useRunServiceCheck();
   const verifyManual = useVerifyServiceResponse();
   const deleteService = useDeleteService();
+  const updateService = useUpdateService();
 
   const handleRunLiveCheck = () => {
     if (!serviceId) return;
@@ -138,8 +162,39 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
     );
   };
 
+  const handleUpdate = () => {
+    if (!serviceId) return;
+    updateService.mutate(
+      { 
+        id: serviceId, 
+        data: {
+          name: editForm.name,
+          url: editForm.url,
+          maxResponseTime: Number(editForm.maxResponseTime),
+          expectedStructure: editForm.expectedStructure
+        } 
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetServiceQueryKey(serviceId) });
+          queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
+          setIsEditing(false);
+          toast({ title: "Gespeichert", description: "Dienstkonfiguration wurde aktualisiert." });
+        },
+        onError: (error) => {
+          toast({ title: "Fehler", description: error.data?.error || "Konnte nicht gespeichert werden.", variant: "destructive" });
+        }
+      }
+    );
+  };
+
   return (
-    <Sheet open={!!serviceId} onOpenChange={(open) => !open && onClose()}>
+    <Sheet open={!!serviceId} onOpenChange={(open) => {
+      if (!open) {
+        setIsEditing(false);
+        onClose();
+      }
+    }}>
       <SheetContent className="w-full sm:max-w-xl md:max-w-2xl bg-card border-l-border/50 p-0 flex flex-col">
         {isLoading && (
           <div className="p-6 space-y-4">
@@ -354,28 +409,101 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                 </TabsContent>
 
                 <TabsContent value="config" className="p-6 m-0 space-y-6">
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">URL</p>
-                      <p className="font-mono text-sm break-all bg-muted/30 p-2 rounded border border-border/50">{service.url}</p>
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h4 className="font-medium text-sm">Dienstkonfiguration</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Passen Sie die Überwachungsparameter an.
+                      </p>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Max. erlaubte Antwortzeit</p>
-                      <p className="font-mono text-sm bg-muted/30 p-2 rounded border border-border/50">{service.maxResponseTime} ms</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Erwartete JSON-Struktur</p>
-                      <pre className="font-mono text-xs bg-muted/30 p-4 rounded border border-border/50 overflow-x-auto">
-                        {(() => {
-                          try {
-                            return JSON.stringify(JSON.parse(service.expectedStructure), null, 2);
-                          } catch {
-                            return service.expectedStructure;
-                          }
-                        })()}
-                      </pre>
-                    </div>
+                    <Button 
+                      variant={isEditing ? "default" : "outline"} 
+                      size="sm" 
+                      onClick={() => {
+                        if (isEditing) {
+                          handleUpdate();
+                        } else {
+                          setIsEditing(true);
+                        }
+                      }}
+                      disabled={updateService.isPending}
+                    >
+                      {isEditing ? (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Speichern
+                        </>
+                      ) : (
+                        <>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Bearbeiten
+                        </>
+                      )}
+                    </Button>
                   </div>
+
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Name</Label>
+                        <Input 
+                          value={editForm.name} 
+                          onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>URL</Label>
+                        <Input 
+                          value={editForm.url} 
+                          onChange={(e) => setEditForm(f => ({ ...f, url: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Max. Antwortzeit (ms)</Label>
+                        <Input 
+                          type="number"
+                          value={editForm.maxResponseTime} 
+                          onChange={(e) => setEditForm(f => ({ ...f, maxResponseTime: Number(e.target.value) }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Erwartete Struktur (JSON)</Label>
+                        <Textarea 
+                          className="font-mono text-xs min-h-[150px]"
+                          value={editForm.expectedStructure} 
+                          onChange={(e) => setEditForm(f => ({ ...f, expectedStructure: e.target.value }))}
+                        />
+                      </div>
+                      <div className="flex justify-end pt-2">
+                        <Button variant="ghost" onClick={() => setIsEditing(false)}>
+                          Abbrechen
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">URL</p>
+                        <p className="font-mono text-sm break-all bg-muted/30 p-2 rounded border border-border/50">{service.url}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Max. erlaubte Antwortzeit</p>
+                        <p className="font-mono text-sm bg-muted/30 p-2 rounded border border-border/50">{service.maxResponseTime} ms</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Erwartete JSON-Struktur</p>
+                        <pre className="font-mono text-xs bg-muted/30 p-4 rounded border border-border/50 overflow-x-auto whitespace-pre-wrap">
+                          {(() => {
+                            try {
+                              return JSON.stringify(JSON.parse(service.expectedStructure), null, 2);
+                            } catch {
+                              return service.expectedStructure;
+                            }
+                          })()}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>

@@ -37,6 +37,29 @@ export interface ApiServiceInput {
   maxResponseTime: number;
 }
 
+export interface ApiServiceUpdate {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name?: string;
+  /**
+     * @maxLength 2048
+     * @pattern ^https?://
+     */
+  url?: string;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  expectedStructure?: string;
+  /**
+     * @minimum 100
+     * @maximum 15000
+     */
+  maxResponseTime?: number;
+}
+
 export type CheckResultStatus = typeof CheckResultStatus[keyof typeof CheckResultStatus];
 
 
