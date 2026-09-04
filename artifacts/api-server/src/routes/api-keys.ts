@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import { getAuth } from "@clerk/express";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import { apiKeysTable, apiRateLimitsTable, db } from "@workspace/db";
@@ -10,19 +9,11 @@ import {
   RevokeApiKeyParams,
 } from "@workspace/api-zod";
 import { consumeOwnerRateLimit, hashApiKey } from "../lib/api-key-auth";
+import { requireUserId } from "../lib/auth";
 
 const router: IRouter = Router();
 const MAX_ACTIVE_KEYS = 10;
 const MAX_REVOKED_KEYS = 20;
-
-function requireUserId(req: Request, res: Response): string | null {
-  const userId = getAuth(req)?.userId;
-  if (!userId) {
-    res.status(401).json({ error: "Bitte melden Sie sich an.", code: "UNAUTHORIZED" });
-    return null;
-  }
-  return userId;
-}
 
 function toResponse(key: typeof apiKeysTable.$inferSelect) {
   return {
@@ -65,7 +56,7 @@ async function pruneRevokedKeys(ownerId: string) {
 }
 
 router.get("/api-keys", async (req, res): Promise<void> => {
-  const ownerId = requireUserId(req, res);
+  const ownerId = await requireUserId(req, res);
   if (!ownerId) return;
   const keys = await db
     .select()
@@ -77,7 +68,7 @@ router.get("/api-keys", async (req, res): Promise<void> => {
 });
 
 router.post("/api-keys", async (req, res): Promise<void> => {
-  const ownerId = requireUserId(req, res);
+  const ownerId = await requireUserId(req, res);
   if (!ownerId) return;
   if (!(await requireKeyManagementCapacity(ownerId, res))) return;
   const body = CreateApiKeyBody.safeParse(req.body);
@@ -116,7 +107,7 @@ router.post("/api-keys", async (req, res): Promise<void> => {
 });
 
 router.delete("/api-keys/:id", async (req, res): Promise<void> => {
-  const ownerId = requireUserId(req, res);
+  const ownerId = await requireUserId(req, res);
   if (!ownerId) return;
   if (!(await requireKeyManagementCapacity(ownerId, res))) return;
   const params = RevokeApiKeyParams.safeParse(req.params);

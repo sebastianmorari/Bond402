@@ -17,6 +17,91 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Read the current local session user
+ */
+export const getAuthMeResponseUserEmailRegExp = new RegExp('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+
+
+export const GetAuthMeResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.string().regex(getAuthMeResponseUserEmailRegExp),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Register a local Bond402 account
+ */
+export const registerAuthUserBodyNameMax = 80;
+
+export const registerAuthUserBodyEmailMax = 320;
+
+
+export const registerAuthUserBodyEmailRegExp = new RegExp('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+export const registerAuthUserBodyPasswordMin = 8;
+export const registerAuthUserBodyPasswordMax = 128;
+
+
+
+export const RegisterAuthUserBody = zod.object({
+  "name": zod.string().min(1).max(registerAuthUserBodyNameMax),
+  "email": zod.string().max(registerAuthUserBodyEmailMax).regex(registerAuthUserBodyEmailRegExp),
+  "password": zod.string().min(registerAuthUserBodyPasswordMin).max(registerAuthUserBodyPasswordMax)
+})
+
+export const registerAuthUserResponseUserEmailRegExp = new RegExp('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+
+
+export const RegisterAuthUserResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.string().regex(registerAuthUserResponseUserEmailRegExp),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Sign in to a local Bond402 account
+ */
+export const loginAuthUserBodyEmailMax = 320;
+
+
+export const loginAuthUserBodyEmailRegExp = new RegExp('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+export const loginAuthUserBodyPasswordMin = 8;
+export const loginAuthUserBodyPasswordMax = 128;
+
+
+
+export const LoginAuthUserBody = zod.object({
+  "email": zod.string().max(loginAuthUserBodyEmailMax).regex(loginAuthUserBodyEmailRegExp),
+  "password": zod.string().min(loginAuthUserBodyPasswordMin).max(loginAuthUserBodyPasswordMax)
+})
+
+export const loginAuthUserResponseUserEmailRegExp = new RegExp('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+
+
+export const LoginAuthUserResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.string().regex(loginAuthUserResponseUserEmailRegExp),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary End the current local session
+ */
+export const LogoutAuthUserResponse = zod.void()
+
+
+/**
  * @summary List all registered API services with their checks
  */
 export const ListServicesResponseItem = zod.object({

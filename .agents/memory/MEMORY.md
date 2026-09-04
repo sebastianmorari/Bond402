@@ -1,1 +1,2 @@
 - [Developer API ingress](developer-api-ingress.md) — IP limits assume Bond402 requests arrive through exactly one trusted Replit proxy hop.
+- [Dependency removal and lockfile sync](dependency-removal-lockfile.md) — verify package manifests and pnpm-lock.yaml after removing an integration.

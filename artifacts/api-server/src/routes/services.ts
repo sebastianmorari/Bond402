@@ -1,5 +1,4 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { getAuth } from "@clerk/express";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   apiChecksTable,
@@ -35,21 +34,9 @@ import {
   toCheckResponse,
   toServiceResponse,
 } from "../lib/service-data";
+import { requireUserId } from "../lib/auth";
 
 const router: IRouter = Router();
-
-function requireUserId(req: Request, res: Response): string | null {
-  const auth = getAuth(req);
-  const userId = auth?.userId;
-  if (!userId) {
-    res.status(401).json({
-      error: "Bitte melden Sie sich an, um Ihre Dienste zu verwalten.",
-      code: "UNAUTHORIZED",
-    });
-    return null;
-  }
-  return userId;
-}
 
 const DEMO_SERVICES = [
   {
@@ -76,7 +63,7 @@ const DEMO_SERVICES = [
 ];
 
 router.get("/services", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const services = await db
     .select()
@@ -88,7 +75,7 @@ router.get("/services", async (req, res): Promise<void> => {
 });
 
 router.post("/services", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const parsed = CreateServiceBody.safeParse(req.body);
   const normalizedName = parsed.success ? parsed.data.name.trim() : "";
@@ -134,7 +121,7 @@ router.post("/services", async (req, res): Promise<void> => {
 });
 
 router.get("/services/:id", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const params = GetServiceParams.safeParse(req.params);
   if (!params.success) {
@@ -150,7 +137,7 @@ router.get("/services/:id", async (req, res): Promise<void> => {
 });
 
 router.patch("/services/:id", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const params = UpdateServiceParams.safeParse(req.params);
   const body = UpdateServiceBody.safeParse(req.body);
@@ -212,7 +199,7 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/services/:id", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const params = DeleteServiceParams.safeParse(req.params);
   if (!params.success) {
@@ -236,7 +223,7 @@ router.delete("/services/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/services/:id/checks", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const params = RunServiceCheckParams.safeParse(req.params);
   if (!params.success) {
@@ -258,7 +245,7 @@ router.post("/services/:id/checks", async (req, res): Promise<void> => {
 });
 
 router.post("/services/:id/verify", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const params = VerifyServiceResponseParams.safeParse(req.params);
   const body = VerifyServiceResponseBody.safeParse(req.body);
@@ -277,7 +264,7 @@ router.post("/services/:id/verify", async (req, res): Promise<void> => {
 });
 
 router.get("/dashboard", async (req, res): Promise<void> => {
-  const userId = requireUserId(req, res);
+  const userId = await requireUserId(req, res);
   if (!userId) return;
   const services = await db
     .select()

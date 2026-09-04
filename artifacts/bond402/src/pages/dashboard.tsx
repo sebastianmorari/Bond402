@@ -6,13 +6,12 @@ import { ServiceList } from "@/components/service-list";
 import { ServiceDetails } from "@/components/service-details";
 import { Shield, User, LogOut, Terminal } from "lucide-react";
 import { Link } from "wouter";
-import { useUser, useClerk } from "@clerk/react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 
 export default function Dashboard() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground pb-20">
@@ -35,16 +34,12 @@ export default function Dashboard() {
             {user && (
               <Link href="/profile" className="flex items-center gap-2 hover:bg-card/50 px-3 py-1.5 rounded-full transition-colors border border-transparent hover:border-border/50">
                 <div className="h-6 w-6 rounded-full overflow-hidden bg-primary/20">
-                  {user.imageUrl ? (
-                    <img src={user.imageUrl} alt="Profil" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center">
-                      <User className="h-3 w-3 text-primary" />
-                    </div>
-                  )}
+                  <div className="h-full w-full flex items-center justify-center">
+                    <User className="h-3 w-3 text-primary" />
+                  </div>
                 </div>
                 <span className="text-sm font-medium hidden sm:block">
-                  {user.firstName || user.username || "Profil"}
+                  {user.name || "Profil"}
                 </span>
               </Link>
             )}
@@ -52,7 +47,7 @@ export default function Dashboard() {
               variant="ghost" 
               size="icon" 
               className="text-muted-foreground hover:text-foreground"
-              onClick={() => signOut({ redirectUrl: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" })}
+               onClick={() => signOut()}
               title="Abmelden"
             >
               <LogOut className="h-4 w-4" />

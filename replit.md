@@ -34,7 +34,7 @@ Bond402 ist eine leicht verständliche Vertrauens- und Prüfplattform für masch
 ## Architecture decisions
 
 - Live-Prüfungen laufen serverseitig und dürfen nur öffentliche HTTP-/HTTPS-Ziele aufrufen; private Netze und interne Adressen werden blockiert.
-- Registrierung, Anmeldung und Sitzungen laufen über die von Replit verwaltete Clerk-Integration.
+- Registrierung, Anmeldung und Sitzungen laufen lokal über PostgreSQL, scrypt-Passwort-Hashes und httpOnly-Sessions; externe Authentifizierungsdienste sind nicht erforderlich.
 - Registrierte Dienste und Prüfverläufe werden dauerhaft in PostgreSQL gespeichert und serverseitig dem angemeldeten Besitzer zugeordnet.
 - Öffentliche Demo-Vorlagen bleiben ohne Anmeldung sichtbar; jede daraus registrierte Kopie gehört anschließend ausschließlich ihrem Benutzer.
 - Angemeldete Nutzer verwalten auf `/developer` eigene API-Schlüssel; vollständige Schlüssel werden nur unmittelbar nach der Erstellung angezeigt und ausschließlich gehasht gespeichert.

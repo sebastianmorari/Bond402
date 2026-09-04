@@ -9,6 +9,49 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface AuthRegisterBody {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+  /**
+     * @maxLength 320
+     * @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$
+     */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface AuthLoginBody {
+  /**
+     * @maxLength 320
+     * @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$
+     */
+  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface AuthUser {
+  id: string;
+  /** @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$ */
+  email: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+}
+
 export interface ApiError {
   error: string;
   code: string;

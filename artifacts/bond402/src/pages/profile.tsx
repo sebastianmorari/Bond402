@@ -1,14 +1,13 @@
-import { useUser, useClerk } from "@clerk/react";
 import { Link } from "wouter";
 import { Shield, ArrowLeft, User, Mail, Calendar, LogOut, Terminal } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { useAuth } from "@/lib/auth";
 
 export function Profile() {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const { user, isLoaded, signOut } = useAuth();
 
   if (!isLoaded) {
     return (
@@ -22,7 +21,7 @@ export function Profile() {
     return null;
   }
 
-  const primaryEmail = user.primaryEmailAddress?.emailAddress;
+  const primaryEmail = user.email;
   const createdAt = user.createdAt ? new Date(user.createdAt) : null;
 
   return (
@@ -61,14 +60,10 @@ export function Profile() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl border border-border/50">
               <div className="h-16 w-16 bg-primary/20 rounded-full flex items-center justify-center text-primary border border-primary/30">
-                {user.imageUrl ? (
-                  <img src={user.imageUrl} alt={user.fullName || "Benutzer"} className="h-16 w-16 rounded-full object-cover" />
-                ) : (
                   <User className="h-8 w-8" />
-                )}
               </div>
               <div>
-                <h3 className="text-lg font-semibold">{user.fullName || "Unbenannt"}</h3>
+                <h3 className="text-lg font-semibold">{user.name || "Unbenannt"}</h3>
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <Mail className="h-3 w-3" /> {primaryEmail}
                 </p>
@@ -78,19 +73,15 @@ export function Profile() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <User className="h-4 w-4" /> Vorname
+                  <User className="h-4 w-4" /> Name
                 </p>
-                <p className="font-medium bg-muted/30 p-3 rounded-lg border border-border/50">
-                  {user.firstName || "Nicht angegeben"}
-                </p>
+                <p className="font-medium bg-muted/30 p-3 rounded-lg border border-border/50">{user.name}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <User className="h-4 w-4" /> Nachname
+                  <User className="h-4 w-4" /> E-Mail-Adresse
                 </p>
-                <p className="font-medium bg-muted/30 p-3 rounded-lg border border-border/50">
-                  {user.lastName || "Nicht angegeben"}
-                </p>
+                <p className="font-medium bg-muted/30 p-3 rounded-lg border border-border/50">{user.email}</p>
               </div>
               {createdAt && (
                 <div className="space-y-1 sm:col-span-2">
@@ -108,7 +99,7 @@ export function Profile() {
             <Button 
               variant="destructive" 
               className="w-full sm:w-auto"
-              onClick={() => signOut({ redirectUrl: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" })}
+              onClick={() => signOut()}
             >
               <LogOut className="h-4 w-4 mr-2" />
               Abmelden

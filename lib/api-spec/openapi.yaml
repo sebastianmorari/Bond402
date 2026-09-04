@@ -8,6 +8,7 @@ servers:
     description: Base API path
 tags:
   - name: health
+  - name: auth
   - name: services
   - name: dashboard
   - name: developer
@@ -25,6 +26,92 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/me:
+    get:
+      operationId: getAuthMe
+      tags: [auth]
+      summary: Read the current local session user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/register:
+    post:
+      operationId: registerAuthUser
+      tags: [auth]
+      summary: Register a local Bond402 account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRegisterBody"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Invalid registration data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/login:
+    post:
+      operationId: loginAuthUser
+      tags: [auth]
+      summary: Sign in to a local Bond402 account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginBody"
+      responses:
+        "200":
+          description: Signed-in user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/logout:
+    post:
+      operationId: logoutAuthUser
+      tags: [auth]
+      summary: End the current local session
+      responses:
+        "204":
+          description: Signed out
   /services:
     get:
       operationId: listServices
@@ -401,6 +488,54 @@ components:
         status:
           type: string
       required: [status]
+    AuthRegisterBody:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          type: string
+          maxLength: 320
+          pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required: [name, email, password]
+    AuthLoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 320
+          pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required: [email, password]
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, email, name, createdAt]
+    AuthSession:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthUser"
+      required: [user]
     ApiError:
       type: object
       properties:

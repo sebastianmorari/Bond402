@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
-@layer theme, base, clerk, components, utilities;
+@layer theme, base, components, utilities;
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -118,7 +118,7 @@
   }
 }
 
-/* Clerk specific overrides */
+/* Authentication form refinements */
 .cl-formFieldInput::placeholder { 
   color: hsl(var(--muted-foreground)); 
   opacity: 1; 
