@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "PORT=26251 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/bond402 run build",
+  "outputDirectory": "artifacts/bond402/dist/public",
+  "rewrites": [
+    {
+      "source": "/api",
+      "destination": "https://bond402-api.onrender.com/api"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://bond402-api.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
