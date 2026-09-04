@@ -196,7 +196,7 @@ export function GuidedOnboarding() {
       icon: ShieldCheck,
       action: !bondDone ? (
         <Button asChild className="gap-2">
-          <a href="/developer#bond-sandbox">Bond-Sandbox öffnen <ArrowRight className="h-4 w-4" /></a>
+          <Link href="/bond-sandbox">Bond-Sandbox öffnen <ArrowRight className="h-4 w-4" /></Link>
         </Button>
       ) : null,
     },
