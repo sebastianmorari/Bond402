@@ -39,6 +39,8 @@ Bond402 ist eine leicht verständliche Vertrauens- und Prüfplattform für masch
 - Öffentliche Demo-Vorlagen bleiben ohne Anmeldung sichtbar; jede daraus registrierte Kopie gehört anschließend ausschließlich ihrem Benutzer.
 - Angemeldete Nutzer verwalten auf `/developer` eigene API-Schlüssel; vollständige Schlüssel werden nur unmittelbar nach der Erstellung angezeigt und ausschließlich gehasht gespeichert.
 - Die maschinenlesbare Prüf-API liegt unter `/api/developer/services/...`, erzwingt Besitzerrechte und schützt Lese- und Live-Prüfanfragen durch Schlüssel-, Besitzer- und IP-basierte Limits.
+- Die x402-Demo auf `/developer` ist ausschließlich eine Sandbox: Anfrage, simulierte 402-Zahlungsanforderung und Freigabe nutzen Testwerte; nur optional wird beim letzten Schritt ein echter Bond402-Check über einen nur im Arbeitsspeicher gehaltenen Developer-Schlüssel ausgelöst.
+- Developer-Antworten enthalten neben dem Trust Score und dem letzten Ergebnis bis zu 100 gespeicherte Prüfungen, damit die bestehende Historie maschinenlesbar nutzbar bleibt.
 - Der Trust Score wird transparent aus echten Messwerten für Erreichbarkeit, Antwortzeit, Strukturtreue und bisherigen PASS-Ergebnissen berechnet.
 - Zahlungen, USDC, Bonds, Blockchain, Reputation und Token sind nur als spätere Ausbaustufen vorgesehen.
 
@@ -49,6 +51,7 @@ Bond402 ist eine leicht verständliche Vertrauens- und Prüfplattform für masch
 - Trust Score, Erreichbarkeit, Antwortzeit und Strukturtreue pro Dienst ansehen
 - Erwartete und tatsächliche Ergebnisse manuell vergleichen
 - Prüfverlauf und zusammengefasste Dashboard-Kennzahlen ansehen
+- Einen zukünftigen maschinellen Bezahlablauf ohne echte Zahlungen in der x402-Sandbox nachvollziehen
 
 ## User preferences
 
