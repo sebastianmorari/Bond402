@@ -86,6 +86,8 @@ export interface DeveloperServiceResult {
   trustScore: number | null;
   trustExplanation: string;
   latestCheck: CheckResult | null;
+  /** @maxItems 100 */
+  checks: CheckResult[];
 }
 
 export interface ApiServiceInput {

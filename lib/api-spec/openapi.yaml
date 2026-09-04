@@ -268,7 +268,7 @@ paths:
         - $ref: "#/components/parameters/ServiceId"
       responses:
         "200":
-          description: Owned service with latest check
+          description: Owned service with trust score and recent check history
           content:
             application/json:
               schema:
@@ -302,7 +302,7 @@ paths:
         - $ref: "#/components/parameters/ServiceId"
       responses:
         "201":
-          description: Completed check with updated trust score
+          description: Completed check with updated trust score and recent history
           content:
             application/json:
               schema:
@@ -336,7 +336,7 @@ paths:
         - $ref: "#/components/parameters/ServiceId"
       responses:
         "200":
-          description: Latest check with trust score
+          description: Latest check, trust score, and recent history
           content:
             application/json:
               schema:
@@ -471,7 +471,12 @@ components:
           anyOf:
             - $ref: "#/components/schemas/CheckResult"
             - type: "null"
-      required: [service, trustScore, trustExplanation, latestCheck]
+        checks:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/CheckResult"
+      required: [service, trustScore, trustExplanation, latestCheck, checks]
     ApiServiceInput:
       type: object
       properties:

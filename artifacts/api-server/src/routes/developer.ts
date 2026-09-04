@@ -33,6 +33,7 @@ async function buildResponse(service: NonNullable<Awaited<ReturnType<typeof find
     trustScore: trust.score,
     trustExplanation: trust.explanation,
     latestCheck: checks[0] ? toCheckResponse(checks[0]) : null,
+      checks: checks.map(toCheckResponse),
   };
 }
 

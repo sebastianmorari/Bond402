@@ -340,6 +340,10 @@ export const DeveloperGetServiceParams = zod.object({
   "id": zod.coerce.string().min(1)
 })
 
+export const developerGetServiceResponseChecksMax = 100;
+
+
+
 export const DeveloperGetServiceResponse = zod.object({
   "service": zod.object({
   "id": zod.string(),
@@ -364,7 +368,22 @@ export const DeveloperGetServiceResponse = zod.object({
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
   "missingFields": zod.array(zod.string())
-}),zod.null()])
+}),zod.null()]),
+  "checks": zod.array(zod.object({
+  "id": zod.string(),
+  "serviceId": zod.string(),
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "checkType": zod.enum(['LIVE', 'MANUAL']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable(),
+  "errorCode": zod.string().nullable(),
+  "summary": zod.string(),
+  "foundFields": zod.array(zod.string()),
+  "missingFields": zod.array(zod.string())
+})).max(developerGetServiceResponseChecksMax)
 })
 
 
@@ -377,6 +396,10 @@ export const DeveloperGetServiceResponse = zod.object({
 export const DeveloperRunServiceCheckParams = zod.object({
   "id": zod.coerce.string().min(1)
 })
+
+export const developerRunServiceCheckResponseChecksMax = 100;
+
+
 
 export const DeveloperRunServiceCheckResponse = zod.object({
   "service": zod.object({
@@ -402,7 +425,22 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
   "missingFields": zod.array(zod.string())
-}),zod.null()])
+}),zod.null()]),
+  "checks": zod.array(zod.object({
+  "id": zod.string(),
+  "serviceId": zod.string(),
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "checkType": zod.enum(['LIVE', 'MANUAL']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable(),
+  "errorCode": zod.string().nullable(),
+  "summary": zod.string(),
+  "foundFields": zod.array(zod.string()),
+  "missingFields": zod.array(zod.string())
+})).max(developerRunServiceCheckResponseChecksMax)
 })
 
 
@@ -415,6 +453,10 @@ export const DeveloperRunServiceCheckResponse = zod.object({
 export const DeveloperGetLatestCheckParams = zod.object({
   "id": zod.coerce.string().min(1)
 })
+
+export const developerGetLatestCheckResponseChecksMax = 100;
+
+
 
 export const DeveloperGetLatestCheckResponse = zod.object({
   "service": zod.object({
@@ -440,7 +482,22 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
   "missingFields": zod.array(zod.string())
-}),zod.null()])
+}),zod.null()]),
+  "checks": zod.array(zod.object({
+  "id": zod.string(),
+  "serviceId": zod.string(),
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "checkType": zod.enum(['LIVE', 'MANUAL']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable(),
+  "errorCode": zod.string().nullable(),
+  "summary": zod.string(),
+  "foundFields": zod.array(zod.string()),
+  "missingFields": zod.array(zod.string())
+})).max(developerGetLatestCheckResponseChecksMax)
 })
 
 

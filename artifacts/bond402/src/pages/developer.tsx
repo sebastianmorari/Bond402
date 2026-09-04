@@ -20,6 +20,7 @@ import {
   getListApiKeysQueryKey,
   useListServices
 } from "@workspace/api-client-react";
+import { X402Sandbox } from "@/components/x402-sandbox";
 
 export function Developer() {
   const { data: apiKeys = [], isLoading: isLoadingKeys } = useListApiKeys();
@@ -334,6 +335,8 @@ export function Developer() {
             </Card>
           </section>
         </div>
+
+        <X402Sandbox services={services} />
       </main>
     </div>
   );
