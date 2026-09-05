@@ -9,10 +9,20 @@ import * as zod from 'zod';
 
 
 /**
- * @summary Health check
+ * Confirms that the Bond402 API process is running. It does not check external dependencies.
+ * @summary Liveness check
  */
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
+})
+
+
+/**
+ * Confirms that the API process can reach its PostgreSQL database.
+ * @summary Readiness check
+ */
+export const ReadinessCheckResponse = zod.object({
+  "status": zod.enum(['ok', 'unavailable'])
 })
 
 

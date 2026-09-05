@@ -132,6 +132,10 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(health.response.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
   assert.equal(health.response.headers.get("permissions-policy"), "camera=(), microphone=(), geolocation=(), payment=()");
 
+  const readiness = await request("/api/readyz");
+  assert.equal(readiness.response.status, 200);
+  assert.deepEqual(readiness.data, { status: "ok" });
+
   const invalidRegister = await request("/api/auth/register", {
     body: { name: " ", email: `${testPrefix}-invalid@example.test`, password: "short" },
     headers: { "X-Forwarded-For": "203.0.113.1" },

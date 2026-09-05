@@ -25,4 +25,6 @@ export * from './demoService';
 export * from './developerService';
 export * from './developerServiceResult';
 export * from './healthStatus';
+export * from './readinessStatus';
+export * from './readinessStatusStatus';
 export * from './verificationInput';

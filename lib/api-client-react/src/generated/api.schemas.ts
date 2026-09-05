@@ -9,6 +9,18 @@ export interface HealthStatus {
   status: string;
 }
 
+export type ReadinessStatusStatus = typeof ReadinessStatusStatus[keyof typeof ReadinessStatusStatus];
+
+
+export const ReadinessStatusStatus = {
+  ok: 'ok',
+  unavailable: 'unavailable',
+} as const;
+
+export interface ReadinessStatus {
+  status: ReadinessStatusStatus;
+}
+
 export interface AuthRegisterBody {
   /**
      * @minLength 1
