@@ -11,6 +11,7 @@ import { Developer } from '@/pages/developer';
 import { X402SandboxPage } from '@/pages/x402-sandbox';
 import { BondSandboxPage } from '@/pages/bond-sandbox';
 import { AuthPage } from '@/pages/auth';
+import { DatenschutzPage, ImpressumPage } from '@/pages/legal';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import {
   Route,
@@ -78,6 +79,8 @@ function Router() {
         <Route path="/x402-sandbox" component={X402SandboxProtect} />
         <Route path="/bond-sandbox" component={BondSandboxProtect} />
         <Route path="/profile" component={ProfileProtect} />
+        <Route path="/impressum" component={ImpressumPage} />
+        <Route path="/datenschutz" component={DatenschutzPage} />
         <Route path="/sign-in/*?" component={() => <AuthPage mode="signIn" />} />
         <Route path="/sign-up/*?" component={() => <AuthPage mode="signUp" />} />
         <Route component={NotFound} />

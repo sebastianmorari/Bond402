@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
+import { PublicFooter } from "@/components/public-footer";
 
 export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
   const [, setLocation] = useLocation();
@@ -99,6 +100,7 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
           Lokale Bond402-Anmeldung für den MVP. Keine externen Authentifizierungsdienste und keine kostenpflichtigen Anbieter.
         </p>
+        <PublicFooter />
       </div>
     </div>
   );

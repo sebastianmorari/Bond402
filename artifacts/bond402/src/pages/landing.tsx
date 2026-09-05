@@ -1,4 +1,5 @@
 import { DemoServices } from "@/components/demo-services";
+import { PublicFooter } from "@/components/public-footer";
 import { Shield, ArrowRight, Activity, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 
@@ -99,9 +100,7 @@ export function Landing() {
         </div>
       </section>
 
-      <footer className="border-t border-border/40 py-8 px-4 sm:px-6 lg:px-8 bg-card/30 text-center text-sm text-muted-foreground">
-        <p>Bond402 &copy; {new Date().getFullYear()}. Präzise Trust-Infrastruktur.</p>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }
