@@ -9,16 +9,12 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface DashboardMetrics {
-  serviceCount: number;
-  checkCount: number;
-  passRate: number;
-  averageResponseTimeMs: number;
-  /** @nullable */
-  uptimePercent: number | null;
-  /** @nullable */
-  p95ResponseTimeMs: number | null;
-  /** @nullable */
-  p99ResponseTimeMs: number | null;
-  timedSampleCount: number;
-}
+export type DomainVerificationStatus = typeof DomainVerificationStatus[keyof typeof DomainVerificationStatus];
+
+
+export const DomainVerificationStatus = {
+  VERIFIED: 'VERIFIED',
+  PENDING: 'PENDING',
+  NOT_STARTED: 'NOT_STARTED',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+} as const;

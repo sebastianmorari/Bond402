@@ -18,6 +18,23 @@ export function evaluatePreAction(
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
   const latest = liveChecks[0];
   const trust = calculateTrust(checks, service.maxResponseTime);
+  const latestSignals = latest
+    ? {
+        https: latest.https ? ("CHECKED" as const) : ("WARNING" as const),
+        tls: latest.tlsStatus as "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED",
+        securityHeaders: latest.securityHeaders.status as
+          | "CHECKED"
+          | "WARNING"
+          | "UNAVAILABLE"
+          | "NOT_EVALUATED",
+        domain: service.domainVerifiedAt ? ("CHECKED" as const) : ("NOT_EVALUATED" as const),
+      }
+    : {
+        https: "NOT_EVALUATED" as const,
+        tls: "NOT_EVALUATED" as const,
+        securityHeaders: "NOT_EVALUATED" as const,
+        domain: "NOT_EVALUATED" as const,
+      };
   const reasons: string[] = [];
   const anomalies: string[] = [];
   let decision: AgentDecision = "ALLOW";
@@ -56,6 +73,14 @@ export function evaluatePreAction(
     }
     if (latest.status === "FAIL") block("Die letzte gespeicherte Live-Prüfung ist fehlgeschlagen.");
     if (latest.status === "REVIEW") caution("Die letzte Live-Prüfung benötigt eine genauere Prüfung.");
+    if (latest.tlsStatus !== "NOT_EVALUATED" && !latest.https) {
+      caution("Der Dienst wurde nicht über HTTPS geprüft.");
+    }
+    if (latest.tlsStatus === "WARNING") caution("Das TLS-Zertifikat ist auffällig oder läuft bald ab.");
+    if (latest.tlsStatus === "UNAVAILABLE") caution("Das TLS-Zertifikat konnte nicht vollständig bewertet werden.");
+    if (latest.securityHeaders.status === "WARNING") {
+      caution("Mindestens ein geprüfter Security-Header fehlt oder ist auffällig.");
+    }
   }
 
   const recent = liveChecks.slice(0, 5);
@@ -103,6 +128,8 @@ export function evaluatePreAction(
       latestResponseTimeMs: latest?.responseTimeMs ?? null,
       latestReachable: latest?.reachable ?? null,
       latestStructureMatch: latest?.structureMatch ?? null,
+      signals: latestSignals,
+      trustMetrics: trust.metrics,
       recentLiveChecks: recent.length,
       recentPasses: passes,
       recentFailures: failures,

@@ -277,6 +277,26 @@ export function PreActionTester({ services }: PreActionTesterProps) {
                   </dl>
                 </div>
 
+                <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                  <h4 className="text-sm font-semibold">Prüfbare Signalzustände</h4>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                    {[
+                      ["HTTPS", result.factors.signals.https],
+                      ["TLS", result.factors.signals.tls],
+                      ["Security-Header", result.factors.signals.securityHeaders],
+                      ["Domain", result.factors.signals.domain],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                        <p className="mt-1 font-semibold">{value === "CHECKED" ? "Geprüft" : value === "WARNING" ? "Auffällig" : value === "UNAVAILABLE" ? "Nicht verfügbar" : "Nicht bewertet"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                    Diese Signale sind beobachtete Zustände. Auch ALLOW ist keine Sicherheitsgarantie.
+                  </p>
+                </div>
+
                 <div className="flex flex-col gap-2 border-t border-border/60 pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                   <span className="flex items-center gap-1.5">
                     <Clock3 className="h-3.5 w-3.5" />

@@ -44,6 +44,8 @@ import type {
   DemoService,
   DeveloperPreActionCheck,
   DeveloperServiceResult,
+  DomainVerificationIssue,
+  DomainVerificationResult,
   HealthStatus,
   PublicDiscovery,
   PublicPreActionBody,
@@ -1393,6 +1395,148 @@ export const useVerifyServiceResponse = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getVerifyServiceResponseMutationOptions(options));
+    }
+
+export const getIssueDomainVerificationUrl = (id: string,) => {
+
+
+
+
+  return `/api/services/${id}/domain-verification`
+}
+
+/**
+ * @summary Issue a one-time domain verification token
+ */
+export const issueDomainVerification = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<DomainVerificationIssue> => {
+
+  return customFetch<DomainVerificationIssue>(getIssueDomainVerificationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getIssueDomainVerificationMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueDomainVerification>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof issueDomainVerification>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['issueDomainVerification'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof issueDomainVerification>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  issueDomainVerification(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IssueDomainVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof issueDomainVerification>>>
+
+    export type IssueDomainVerificationMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Issue a one-time domain verification token
+ */
+export const useIssueDomainVerification = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueDomainVerification>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof issueDomainVerification>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getIssueDomainVerificationMutationOptions(options));
+    }
+
+export const getCheckDomainVerificationUrl = (id: string,) => {
+
+
+
+
+  return `/api/services/${id}/domain-verification/check`
+}
+
+/**
+ * @summary Check the HTTPS well-known domain verification file
+ */
+export const checkDomainVerification = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<DomainVerificationResult> => {
+
+  return customFetch<DomainVerificationResult>(getCheckDomainVerificationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckDomainVerificationMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkDomainVerification>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkDomainVerification>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['checkDomainVerification'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkDomainVerification>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  checkDomainVerification(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckDomainVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof checkDomainVerification>>>
+
+    export type CheckDomainVerificationMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Check the HTTPS well-known domain verification file
+ */
+export const useCheckDomainVerification = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkDomainVerification>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkDomainVerification>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getCheckDomainVerificationMutationOptions(options));
     }
 
 export const getGetDashboardUrl = () => {

@@ -15,6 +15,7 @@ import { DatenschutzPage, ImpressumPage } from '@/pages/legal';
 import { ApiDocsPage } from '@/pages/api-docs';
 import { StatusPage } from '@/pages/status';
 import { PublicCatalogPage, PublicServicePage } from '@/pages/public-catalog';
+import { AboutPage, SecurityPage } from '@/pages/security';
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from '@/pages/auth-mail';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import {
@@ -87,6 +88,8 @@ function Router() {
         <Route path="/datenschutz" component={DatenschutzPage} />
         <Route path="/api-docs" component={ApiDocsPage} />
         <Route path="/status" component={StatusPage} />
+        <Route path="/security" component={SecurityPage} />
+        <Route path="/about" component={AboutPage} />
         <Route path="/catalog" component={PublicCatalogPage} />
         <Route path="/catalog/:id" component={PublicServicePage} />
         <Route path="/verify-email" component={VerifyEmailPage} />

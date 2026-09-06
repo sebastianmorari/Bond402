@@ -14,6 +14,20 @@ type PublicService = {
   url: string;
   trustScore: number | null;
   trustExplanation: string;
+  trustMetrics: {
+    sampleCount: number;
+    timedSampleCount: number;
+    uptimePercent: number | null;
+    averageResponseTimeMs: number | null;
+    p95ResponseTimeMs: number | null;
+    p99ResponseTimeMs: number | null;
+    withinTargetPercent: number | null;
+    windowStartAt: string | null;
+    latestCheckAt: string | null;
+    weighting: { description: string };
+  };
+  signals: { https: string; tls: string; securityHeaders: string };
+  domainVerification: { status: string; verifiedAt: string | null };
   latestStatus: "PASS" | "FAIL" | "REVIEW" | null;
   latestCheckAt: string | null;
   latestCheck: {
@@ -23,6 +37,12 @@ type PublicService = {
     responseTimeMs: number;
     structureMatch: boolean;
     httpStatus: number | null;
+    https: boolean;
+    tlsStatus: string;
+    tlsExpiresAt: string | null;
+    tlsDaysRemaining: number | null;
+    securityHeaders: { status: string; present: string[]; missing: string[] };
+    probeRegion: string;
   } | null;
   access: { preActionRequiresDeveloperKey: boolean; liveCheckRequiresDeveloperKey: boolean };
 };
@@ -66,6 +86,16 @@ function decisionVariant(decision: string) {
   return decision === "ALLOW" ? "default" : decision === "BLOCK" ? "destructive" : "secondary";
 }
 
+function signalLabel(value: string) {
+  return value === "CHECKED"
+    ? "Geprüft"
+    : value === "WARNING"
+      ? "Auffällig"
+      : value === "UNAVAILABLE"
+        ? "Nicht verfügbar"
+        : "Nicht bewertet";
+}
+
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
@@ -96,7 +126,12 @@ function ServiceCard({ service }: { service: PublicService }) {
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Trust Score</p><p className="mt-1 text-xl font-bold">{service.trustScore === null ? "—" : `${service.trustScore}%`}</p></div>
-        <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Letzte Prüfung</p><p className="mt-1 font-medium">{service.latestCheck ? `${service.latestCheck.responseTimeMs} ms` : "Noch keine"}</p></div>
+        <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Beobachtete Uptime</p><p className="mt-1 font-medium">{service.trustMetrics.uptimePercent === null ? "Noch keine" : `${service.trustMetrics.uptimePercent}%`}</p></div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        <Badge variant="outline">HTTPS: {signalLabel(service.signals.https)}</Badge>
+        <Badge variant="outline">TLS: {signalLabel(service.signals.tls)}</Badge>
+        <Badge variant="outline">Domain: {signalLabel(service.domainVerification.status === "VERIFIED" ? "CHECKED" : service.domainVerification.status === "NOT_EVALUATED" ? "NOT_EVALUATED" : "WARNING")}</Badge>
       </div>
       <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted-foreground">{service.trustExplanation}</p>
       <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Trust-Daten öffnen <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
@@ -169,7 +204,26 @@ export function PublicServicePage() {
       <Link href="/catalog" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Zum Katalog</Link>
       {error ? <div className="mt-8 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive">{error}</div> : service ? <div className="mt-8 max-w-4xl">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start"><div><Badge variant="outline">Öffentlich gelistet</Badge><h1 className="mt-3 text-3xl font-bold tracking-tight">{service.name}</h1><a href={service.url} target="_blank" rel="noreferrer" className="mt-2 block break-all font-mono text-sm text-primary hover:underline">{service.url}</a></div><div className="rounded-2xl border border-border/60 bg-card/60 p-5 text-center"><p className="text-xs uppercase tracking-widest text-muted-foreground">Trust Score</p><p className="mt-1 text-4xl font-bold">{service.trustScore === null ? "—" : service.trustScore}</p><p className="text-xs text-muted-foreground">von 100</p></div></div>
-        <div className="mt-8 grid gap-4 md:grid-cols-3"><div className="rounded-2xl border border-border/60 bg-card/50 p-5"><ShieldAlert className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">Maschinenlesbar</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Trust Score, Prüfstatus, Frische und Entscheidung sind über die Public API abrufbar.</p></div><div className="rounded-2xl border border-border/60 bg-card/50 p-5"><Timer className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">Letzte Prüfung</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{service.latestCheck ? `${service.latestCheck.responseTimeMs} ms · ${service.latestCheck.status}` : "Noch keine Live-Prüfung gespeichert."}</p></div><div className="rounded-2xl border border-border/60 bg-card/50 p-5"><CheckCircle2 className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">Zugriff</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Public Pre-Action ist lesbar. Eine neue Live-Prüfung bleibt owner- und Developer-Key-geschützt.</p></div></div>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-border/60 bg-card/50 p-5"><ShieldAlert className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">Maschinenlesbar</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Trust Score, Prüfstatus, Frische und Entscheidung sind über die Public API abrufbar.</p></div>
+          <div className="rounded-2xl border border-border/60 bg-card/50 p-5"><Timer className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">Historie</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{service.trustMetrics.sampleCount} Livechecks · p95 {service.trustMetrics.p95ResponseTimeMs ?? "—"} ms · p99 {service.trustMetrics.p99ResponseTimeMs ?? "—"} ms</p></div>
+          <div className="rounded-2xl border border-border/60 bg-card/50 p-5"><CheckCircle2 className="h-5 w-5 text-primary" /><h2 className="mt-3 font-semibold">Zugriff</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Public Pre-Action ist lesbar. Eine neue Live-Prüfung bleibt owner- und Developer-Key-geschützt.</p></div>
+        </div>
+        <section className="mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-xl font-semibold">Prüfbare Trust-Signale</h2><p className="mt-1 text-sm text-muted-foreground">Diese Zustände beschreiben gespeicherte Beobachtungen, keine Sicherheitsgarantie.</p></div>
+            <Badge variant="outline">{service.domainVerification.status === "VERIFIED" ? "Domain verifiziert" : "Domain nicht verifiziert"}</Badge>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["HTTPS", service.signals.https],
+              ["TLS/Zertifikat", service.signals.tls],
+              ["Security-Header", service.signals.securityHeaders],
+              ["Uptime", service.trustMetrics.uptimePercent === null ? "NOT_EVALUATED" : `${service.trustMetrics.uptimePercent}% beobachtet`],
+            ].map(([label, value]) => <div key={label} className="rounded-xl border border-border/60 bg-background/50 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-semibold">{value.length > 20 ? value : signalLabel(value)}</p></div>)}
+          </div>
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">{service.trustMetrics.weighting.description} Uptime und Latenz beziehen sich nur auf gespeicherte Bond402-Livechecks im sichtbaren Beobachtungsfenster.</p>
+        </section>
         <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h2 className="text-xl font-semibold">Pre-Action-Entscheidung</h2><p className="mt-1 text-sm text-muted-foreground">Gespeicherte Trust-Daten für den gewählten Aktionskontext.</p></div><select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={context} onChange={(event) => setContext(event.target.value)}><option value="GENERAL">Allgemein</option><option value="READ">Lesen</option><option value="WRITE">Schreiben</option><option value="PAYMENT">Zahlung</option><option value="CREDENTIAL_USE">Zugangsdaten verwenden</option></select></div>{decision && <div className="mt-5"><Badge variant={decisionVariant(decision.decision)} className="text-sm">{decision.decision}</Badge><ul className="mt-4 space-y-2 text-sm leading-6 text-muted-foreground">{decision.reasons.map((reason) => <li key={reason}>• {reason}</li>)}</ul><p className="mt-4 text-xs text-muted-foreground">Policy {decision.policy.version} · Datenstatus {decision.freshness.state}{decision.freshness.ageSeconds === null ? "" : ` · ${Math.floor(decision.freshness.ageSeconds / 3600)} h alt`}</p></div>}</section>
         <p className="mt-8 text-xs leading-5 text-muted-foreground">Öffentliche Antworten enthalten keine Kontodaten, Besitzerinformationen, API-Schlüssel oder internen Prüfdetails. Die API ist auf 60 Anfragen pro Minute und IP begrenzt.</p>
       </div> : <div className="mt-8 h-64 animate-pulse rounded-2xl bg-muted/50" />}

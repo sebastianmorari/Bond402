@@ -15,6 +15,12 @@ export function PublicFooter() {
           <Link href="/api-docs" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
             API-Doku
           </Link>
+          <Link href="/security" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
+            Security & Trust
+          </Link>
+          <Link href="/about" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
+            Über Bond402
+          </Link>
           <Link href="/catalog" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
             Öffentlicher Katalog
           </Link>

@@ -93,6 +93,17 @@ function simulatedCheck(serviceId: string): CheckResult {
     summary: "Sandbox-Ergebnis: Dienstprüfung erfolgreich simuliert.",
     foundFields: ["status", "data"],
     missingFields: [],
+    https: true,
+    tlsStatus: "CHECKED",
+    tlsExpiresAt: null,
+    tlsDaysRemaining: null,
+    securityHeaders: {
+      status: "CHECKED",
+      evaluated: [],
+      present: [],
+      missing: [],
+    },
+    probeRegion: "sandbox",
   };
 }
 

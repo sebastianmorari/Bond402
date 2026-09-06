@@ -10,6 +10,9 @@
  */
 import type { ApiServiceVisibility } from './apiServiceVisibility';
 import type { CheckResult } from './checkResult';
+import type { DomainVerification } from './domainVerification';
+import type { SignalStates } from './signalStates';
+import type { TrustMetrics } from './trustMetrics';
 
 export interface ApiService {
   id: string;
@@ -24,5 +27,8 @@ export interface ApiService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  trustMetrics: TrustMetrics;
+  signals: SignalStates;
+  domainVerification: DomainVerification;
   checks: CheckResult[];
 }

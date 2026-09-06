@@ -439,6 +439,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /services/{id}/domain-verification:
+    post:
+      operationId: issueDomainVerification
+      tags: [services]
+      summary: Issue a one-time domain verification token
+      security:
+        - Bond402Session: []
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Verification instructions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainVerificationIssue"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /services/{id}/domain-verification/check:
+    post:
+      operationId: checkDomainVerification
+      tags: [services]
+      summary: Check the HTTPS well-known domain verification file
+      security:
+        - Bond402Session: []
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Domain verification status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DomainVerificationResult"
+        "400":
+          description: Verification has not been started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /dashboard:
     get:
       operationId: getDashboard
@@ -1171,11 +1221,17 @@ components:
           type: ["number", "null"]
         trustExplanation:
           type: string
+        trustMetrics:
+          $ref: "#/components/schemas/TrustMetrics"
+        signals:
+          $ref: "#/components/schemas/SignalStates"
+        domainVerification:
+          $ref: "#/components/schemas/DomainVerification"
         checks:
           type: array
           items:
             $ref: "#/components/schemas/CheckResult"
-      required: [id, name, url, expectedStructure, maxResponseTime, visibility, listedAt, createdAt, trustScore, trustExplanation, checks]
+      required: [id, name, url, expectedStructure, maxResponseTime, visibility, listedAt, createdAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, checks]
     CheckResult:
       type: object
       properties:
@@ -1212,7 +1268,20 @@ components:
           type: array
           items:
             type: string
-      required: [id, serviceId, checkedAt, status, checkType, reachable, responseTimeMs, structureMatch, httpStatus, errorCode, summary, foundFields, missingFields]
+        https:
+          type: boolean
+        tlsStatus:
+          $ref: "#/components/schemas/SignalState"
+        tlsExpiresAt:
+          type: ["string", "null"]
+          format: date-time
+        tlsDaysRemaining:
+          type: ["number", "null"]
+        securityHeaders:
+          $ref: "#/components/schemas/SecurityHeaders"
+        probeRegion:
+          type: string
+      required: [id, serviceId, checkedAt, status, checkType, reachable, responseTimeMs, structureMatch, httpStatus, errorCode, summary, foundFields, missingFields, https, tlsStatus, tlsExpiresAt, tlsDaysRemaining, securityHeaders, probeRegion]
     VerificationInput:
       type: object
       properties:
@@ -1232,7 +1301,118 @@ components:
           type: number
         averageResponseTimeMs:
           type: number
-      required: [serviceCount, checkCount, passRate, averageResponseTimeMs]
+        uptimePercent:
+          type: ["number", "null"]
+        p95ResponseTimeMs:
+          type: ["number", "null"]
+        p99ResponseTimeMs:
+          type: ["number", "null"]
+        timedSampleCount:
+          type: number
+      required: [serviceCount, checkCount, passRate, averageResponseTimeMs, uptimePercent, p95ResponseTimeMs, p99ResponseTimeMs, timedSampleCount]
+    SignalState:
+      type: string
+      enum: [CHECKED, WARNING, UNAVAILABLE, NOT_EVALUATED]
+    SecurityHeaders:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/SignalState"
+        evaluated:
+          type: array
+          items:
+            type: string
+        present:
+          type: array
+          items:
+            type: string
+        missing:
+          type: array
+          items:
+            type: string
+      required: [status, evaluated, present, missing]
+    SignalStates:
+      type: object
+      properties:
+        https:
+          $ref: "#/components/schemas/SignalState"
+        tls:
+          $ref: "#/components/schemas/SignalState"
+        securityHeaders:
+          $ref: "#/components/schemas/SignalState"
+      required: [https, tls, securityHeaders]
+    TrustMetrics:
+      type: object
+      properties:
+        sampleCount:
+          type: number
+        timedSampleCount:
+          type: number
+        uptimePercent:
+          type: ["number", "null"]
+        averageResponseTimeMs:
+          type: ["number", "null"]
+        p95ResponseTimeMs:
+          type: ["number", "null"]
+        p99ResponseTimeMs:
+          type: ["number", "null"]
+        withinTargetPercent:
+          type: ["number", "null"]
+        windowStartAt:
+          type: ["string", "null"]
+          format: date-time
+        latestCheckAt:
+          type: ["string", "null"]
+          format: date-time
+        weighting:
+          type: object
+          properties:
+            method:
+              type: string
+            halfLifeDays:
+              type: number
+            description:
+              type: string
+          required: [method, halfLifeDays, description]
+      required: [sampleCount, timedSampleCount, uptimePercent, averageResponseTimeMs, p95ResponseTimeMs, p99ResponseTimeMs, withinTargetPercent, windowStartAt, latestCheckAt, weighting]
+    DomainVerification:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [VERIFIED, PENDING, NOT_STARTED, NOT_EVALUATED]
+        verifiedAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [status, verifiedAt]
+    DomainVerificationIssue:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [PENDING]
+        token:
+          type: string
+        path:
+          type: string
+        instructions:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time
+      required: [status, token, path, instructions, issuedAt]
+    DomainVerificationResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [VERIFIED, PENDING]
+        verifiedAt:
+          type: ["string", "null"]
+          format: date-time
+        reason:
+          type: string
+      required: [status, verifiedAt, reason]
     UsageSummary:
       type: object
       properties:
@@ -1296,6 +1476,20 @@ components:
           type: ["boolean", "null"]
         latestStructureMatch:
           type: ["boolean", "null"]
+        signals:
+          type: object
+          properties:
+            https:
+              $ref: "#/components/schemas/SignalState"
+            tls:
+              $ref: "#/components/schemas/SignalState"
+            securityHeaders:
+              $ref: "#/components/schemas/SignalState"
+            domain:
+              $ref: "#/components/schemas/SignalState"
+          required: [https, tls, securityHeaders, domain]
+        trustMetrics:
+          $ref: "#/components/schemas/TrustMetrics"
         recentLiveChecks:
           type: number
         recentPasses:
@@ -1306,7 +1500,7 @@ components:
           type: array
           items:
             type: string
-      required: [trustScore, latestStatus, latestCheckAt, latestResponseTimeMs, latestReachable, latestStructureMatch, recentLiveChecks, recentPasses, recentFailures, anomalies]
+      required: [trustScore, latestStatus, latestCheckAt, latestResponseTimeMs, latestReachable, latestStructureMatch, signals, trustMetrics, recentLiveChecks, recentPasses, recentFailures, anomalies]
     DeveloperPreActionCheck:
       type: object
       properties:
@@ -1376,6 +1570,12 @@ components:
           type: ["number", "null"]
         trustExplanation:
           type: string
+        trustMetrics:
+          $ref: "#/components/schemas/TrustMetrics"
+        signals:
+          $ref: "#/components/schemas/SignalStates"
+        domainVerification:
+          $ref: "#/components/schemas/DomainVerification"
         latestStatus:
           type: ["string", "null"]
           enum: [PASS, FAIL, REVIEW, null]
@@ -1400,7 +1600,20 @@ components:
                   type: boolean
                 httpStatus:
                   type: ["number", "null"]
-              required: [checkedAt, status, reachable, responseTimeMs, structureMatch, httpStatus]
+                https:
+                  type: boolean
+                tlsStatus:
+                  $ref: "#/components/schemas/SignalState"
+                tlsExpiresAt:
+                  type: ["string", "null"]
+                  format: date-time
+                tlsDaysRemaining:
+                  type: ["number", "null"]
+                securityHeaders:
+                  $ref: "#/components/schemas/SecurityHeaders"
+                probeRegion:
+                  type: string
+              required: [checkedAt, status, reachable, responseTimeMs, structureMatch, httpStatus, https, tlsStatus, tlsExpiresAt, tlsDaysRemaining, securityHeaders, probeRegion]
             - type: "null"
         access:
           type: object
@@ -1422,7 +1635,7 @@ components:
             privilegedPreActionCheck:
               type: string
           required: [detail, preActionCheck, privilegedPreActionCheck]
-      required: [id, name, url, visibility, listedAt, trustScore, trustExplanation, latestStatus, latestCheckAt, latestCheck, access, links]
+      required: [id, name, url, visibility, listedAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, latestStatus, latestCheckAt, latestCheck, access, links]
     PublicServiceCatalog:
       type: object
       properties:

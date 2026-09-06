@@ -26,10 +26,13 @@ import {
 import {
   runLiveVerification,
   runManualVerification,
+  hashDomainVerificationToken,
+  verifyDomainChallenge,
   validatePublicUrl,
 } from "../lib/api-verifier";
 import {
   findOwnedService,
+  calculateTrustMetrics,
   saveOutcome,
   toCheckResponse,
   toServiceResponse,
@@ -287,6 +290,74 @@ router.post("/services/:id/verify", async (req, res): Promise<void> => {
   res.status(201).json(VerifyServiceResponseResponse.parse(toCheckResponse(check)));
 });
 
+router.post("/services/:id/domain-verification", async (req, res): Promise<void> => {
+  const userId = await requireUserId(req, res);
+  if (!userId) return;
+  const params = GetServiceParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
+    return;
+  }
+  const service = await findOwnedService(params.data.id, userId);
+  if (!service) {
+    res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
+    return;
+  }
+  const token = `bond402_${crypto.randomUUID()}`;
+  const [updated] = await db
+    .update(apiServicesTable)
+    .set({
+      domainVerificationTokenHash: hashDomainVerificationToken(token),
+      domainVerificationIssuedAt: new Date(),
+      domainVerifiedAt: null,
+    })
+    .where(and(eq(apiServicesTable.id, service.id), eq(apiServicesTable.ownerId, userId)))
+    .returning();
+  res.json({
+    status: "PENDING",
+    token,
+    path: "/.well-known/bond402-verification.txt",
+    instructions:
+      "Legen Sie den Token als reinen Text unter der angegebenen HTTPS-Well-Known-Adresse ab und starten Sie danach die Verifizierung.",
+    issuedAt: updated.domainVerificationIssuedAt?.toISOString() ?? new Date().toISOString(),
+  });
+});
+
+router.post("/services/:id/domain-verification/check", async (req, res): Promise<void> => {
+  const userId = await requireUserId(req, res);
+  if (!userId) return;
+  const params = GetServiceParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
+    return;
+  }
+  const service = await findOwnedService(params.data.id, userId);
+  if (!service) {
+    res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
+    return;
+  }
+  if (!service.domainVerificationTokenHash) {
+    res.status(400).json({
+      error: "Bitte erzeugen Sie zuerst einen Domain-Verifizierungstoken.",
+      code: "VERIFICATION_NOT_STARTED",
+    });
+    return;
+  }
+  const result = await verifyDomainChallenge(service.url, service.domainVerificationTokenHash);
+  const [updated] = result.verified
+    ? await db
+        .update(apiServicesTable)
+        .set({ domainVerifiedAt: new Date() })
+        .where(and(eq(apiServicesTable.id, service.id), eq(apiServicesTable.ownerId, userId)))
+        .returning()
+    : [service];
+  res.json({
+    status: result.verified ? "VERIFIED" : "PENDING",
+    verifiedAt: updated.domainVerifiedAt?.toISOString() ?? null,
+    reason: result.reason,
+  });
+});
+
 router.get("/dashboard", async (req, res): Promise<void> => {
   const userId = await requireUserId(req, res);
   if (!userId) return;
@@ -304,6 +375,7 @@ router.get("/dashboard", async (req, res): Promise<void> => {
           .where(inArray(apiChecksTable.serviceId, [...serviceIds]));
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
   const timedChecks = liveChecks.filter((check) => check.responseTimeMs > 0);
+  const aggregateMetrics = calculateTrustMetrics(liveChecks, 15000);
   const passRate =
     liveChecks.length === 0
       ? 0
@@ -324,6 +396,10 @@ router.get("/dashboard", async (req, res): Promise<void> => {
       checkCount: checks.length,
       passRate,
       averageResponseTimeMs,
+      uptimePercent: aggregateMetrics.uptimePercent,
+      p95ResponseTimeMs: aggregateMetrics.p95ResponseTimeMs,
+      p99ResponseTimeMs: aggregateMetrics.p99ResponseTimeMs,
+      timedSampleCount: aggregateMetrics.timedSampleCount,
     }),
   );
 });

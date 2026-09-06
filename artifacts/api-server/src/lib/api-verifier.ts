@@ -591,6 +591,12 @@ export function runManualVerification(
       summary: "Das eingefügte tatsächliche Ergebnis ist kein gültiges JSON.",
       foundFields: [],
       missingFields: parseExpectedFields(expectedStructure),
+      https: false,
+      tlsStatus: "NOT_EVALUATED",
+      tlsExpiresAt: null,
+      tlsDaysRemaining: null,
+      securityHeaders: DEFAULT_SECURITY_HEADERS,
+      probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
   }
 

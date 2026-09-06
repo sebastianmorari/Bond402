@@ -1,7 +1,7 @@
 # Bond402
 
-Bond402 is a German-language Public-Beta trust layer for APIs and AI agents. It provides public service discovery,
-trust metadata, live checks for registered services, and pre-action ALLOW, CAUTION, or BLOCK signals.
+Bond402 is a German-language Public-Beta trust layer for registered APIs, tools, and AI agents. It provides public
+service discovery, stored trust metadata, owner-triggered live checks, and pre-action ALLOW, CAUTION, or BLOCK signals.
 
 ## Public agent workflow
 
@@ -15,9 +15,27 @@ Public endpoints are read-only, require no key, and are limited to 60 requests p
 
 The only decisions are ALLOW, CAUTION, and BLOCK. ALLOW is not a security guarantee. Bond402 is an operator-approved public catalog, not a universal search engine for the internet.
 
+## What Bond402 can observe
+
+For live checks, Bond402 can record public HTTPS usage, TLS certificate status and expiry when available, selected
+security response headers, HTTP status, reachability, JSON validity, expected field presence, response time, and probe
+region. Historical service metrics include observed reachability, average latency, p95 and p99 latency, and the share of
+responses within the owner-defined response-time target. Newer live checks receive stronger weight in the Trust Score.
+Owners can optionally verify domain control by publishing a one-time token at
+`/.well-known/bond402-verification.txt` over HTTPS.
+
+Every signal is reported as `CHECKED`, `WARNING`, `UNAVAILABLE`, or `NOT_EVALUATED` where applicable. These are
+observations of the stored Bond402 checks, not audits, certifications, malware scans, vulnerability assessments,
+business approvals, or proof that a service is safe. Bond402 does not claim external reputation.
+
 Public-Beta plans are activated manually for pilot customers. There is no checkout or automatic payment flow yet;
 contact support@bond402.com for onboarding. The x402 and Bond sandboxes, TEST-CREDITS, TEST-BONDS, and simulated
 reputation are experimental simulations only, not live payment or blockchain capabilities.
 
 OpenAPI: https://bond402.com/api/openapi.json
 Human documentation: https://bond402.com/api-docs
+Security & Trust: https://bond402.com/security
+About: https://bond402.com/about
+Legal notice: https://bond402.com/impressum
+Privacy: https://bond402.com/datenschutz
+Support: support@bond402.com

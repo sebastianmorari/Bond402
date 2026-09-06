@@ -224,6 +224,31 @@ export const ListServicesResponseItem = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "domainVerification": zod.object({
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "verifiedAt": zod.coerce.date().nullable()
+}),
   "checks": zod.array(zod.object({
   "id": zod.string(),
   "serviceId": zod.string(),
@@ -237,7 +262,18 @@ export const ListServicesResponseItem = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }))
 })
 export const ListServicesResponse = zod.array(ListServicesResponseItem)
@@ -278,6 +314,31 @@ export const CreateServiceResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "domainVerification": zod.object({
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "verifiedAt": zod.coerce.date().nullable()
+}),
   "checks": zod.array(zod.object({
   "id": zod.string(),
   "serviceId": zod.string(),
@@ -291,7 +352,18 @@ export const CreateServiceResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }))
 })
 
@@ -317,6 +389,31 @@ export const GetServiceResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "domainVerification": zod.object({
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "verifiedAt": zod.coerce.date().nullable()
+}),
   "checks": zod.array(zod.object({
   "id": zod.string(),
   "serviceId": zod.string(),
@@ -330,7 +427,18 @@ export const GetServiceResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }))
 })
 
@@ -391,6 +499,31 @@ export const UpdateServiceResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "domainVerification": zod.object({
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "verifiedAt": zod.coerce.date().nullable()
+}),
   "checks": zod.array(zod.object({
   "id": zod.string(),
   "serviceId": zod.string(),
@@ -404,7 +537,18 @@ export const UpdateServiceResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }))
 })
 
@@ -432,7 +576,18 @@ export const RunServiceCheckResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 })
 
 
@@ -467,7 +622,54 @@ export const VerifyServiceResponseResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
+})
+
+
+/**
+ * @summary Issue a one-time domain verification token
+ */
+
+
+
+export const IssueDomainVerificationParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const IssueDomainVerificationResponse = zod.object({
+  "status": zod.enum(['PENDING']),
+  "token": zod.string(),
+  "path": zod.string(),
+  "instructions": zod.string(),
+  "issuedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Check the HTTPS well-known domain verification file
+ */
+
+
+
+export const CheckDomainVerificationParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const CheckDomainVerificationResponse = zod.object({
+  "status": zod.enum(['VERIFIED', 'PENDING']),
+  "verifiedAt": zod.coerce.date().nullable(),
+  "reason": zod.string()
 })
 
 
@@ -478,7 +680,11 @@ export const GetDashboardResponse = zod.object({
   "serviceCount": zod.number(),
   "checkCount": zod.number(),
   "passRate": zod.number(),
-  "averageResponseTimeMs": zod.number()
+  "averageResponseTimeMs": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "timedSampleCount": zod.number()
 })
 
 
@@ -594,7 +800,18 @@ export const DeveloperGetServiceResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }),zod.null()]),
   "checks": zod.array(zod.object({
   "id": zod.string(),
@@ -609,7 +826,18 @@ export const DeveloperGetServiceResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 })).max(developerGetServiceResponseChecksMax)
 })
 
@@ -651,7 +879,18 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }),zod.null()]),
   "checks": zod.array(zod.object({
   "id": zod.string(),
@@ -666,7 +905,18 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 })).max(developerRunServiceCheckResponseChecksMax)
 })
 
@@ -708,7 +958,18 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }),zod.null()]),
   "checks": zod.array(zod.object({
   "id": zod.string(),
@@ -723,7 +984,18 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "errorCode": zod.string().nullable(),
   "summary": zod.string(),
   "foundFields": zod.array(zod.string()),
-  "missingFields": zod.array(zod.string())
+  "missingFields": zod.array(zod.string()),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 })).max(developerGetLatestCheckResponseChecksMax)
 })
 
@@ -753,6 +1025,28 @@ export const DeveloperPreActionCheckResponse = zod.object({
   "latestResponseTimeMs": zod.number().nullable(),
   "latestReachable": zod.boolean().nullable(),
   "latestStructureMatch": zod.boolean().nullable(),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
   "recentLiveChecks": zod.number(),
   "recentPasses": zod.number(),
   "recentFailures": zod.number(),
@@ -837,6 +1131,31 @@ export const SearchPublicServicesResponse = zod.object({
   "listedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "domainVerification": zod.object({
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "verifiedAt": zod.coerce.date().nullable()
+}),
   "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
   "latestCheckAt": zod.coerce.date().nullable(),
   "latestCheck": zod.union([zod.object({
@@ -845,7 +1164,18 @@ export const SearchPublicServicesResponse = zod.object({
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
   "structureMatch": zod.boolean(),
-  "httpStatus": zod.number().nullable()
+  "httpStatus": zod.number().nullable(),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }),zod.null()]),
   "access": zod.object({
   "publicCatalog": zod.boolean(),
@@ -885,6 +1215,31 @@ export const GetPublicServiceResponse = zod.object({
   "listedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "domainVerification": zod.object({
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "verifiedAt": zod.coerce.date().nullable()
+}),
   "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
   "latestCheckAt": zod.coerce.date().nullable(),
   "latestCheck": zod.union([zod.object({
@@ -893,7 +1248,18 @@ export const GetPublicServiceResponse = zod.object({
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
   "structureMatch": zod.boolean(),
-  "httpStatus": zod.number().nullable()
+  "httpStatus": zod.number().nullable(),
+  "https": zod.boolean(),
+  "tlsStatus": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tlsExpiresAt": zod.coerce.date().nullable(),
+  "tlsDaysRemaining": zod.number().nullable(),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "probeRegion": zod.string()
 }),zod.null()]),
   "access": zod.object({
   "publicCatalog": zod.boolean(),
@@ -934,6 +1300,28 @@ export const GetPublicPreActionCheckResponse = zod.object({
   "latestResponseTimeMs": zod.number().nullable(),
   "latestReachable": zod.boolean().nullable(),
   "latestStructureMatch": zod.boolean().nullable(),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
   "recentLiveChecks": zod.number(),
   "recentPasses": zod.number(),
   "recentFailures": zod.number(),
@@ -1000,6 +1388,28 @@ export const PostPublicPreActionCheckResponse = zod.object({
   "latestResponseTimeMs": zod.number().nullable(),
   "latestReachable": zod.boolean().nullable(),
   "latestStructureMatch": zod.boolean().nullable(),
+  "signals": zod.object({
+  "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
+  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+}),
+  "trustMetrics": zod.object({
+  "sampleCount": zod.number(),
+  "timedSampleCount": zod.number(),
+  "uptimePercent": zod.number().nullable(),
+  "averageResponseTimeMs": zod.number().nullable(),
+  "p95ResponseTimeMs": zod.number().nullable(),
+  "p99ResponseTimeMs": zod.number().nullable(),
+  "withinTargetPercent": zod.number().nullable(),
+  "windowStartAt": zod.coerce.date().nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "weighting": zod.object({
+  "method": zod.string(),
+  "halfLifeDays": zod.number(),
+  "description": zod.string()
+})
+}),
   "recentLiveChecks": zod.number(),
   "recentPasses": zod.number(),
   "recentFailures": zod.number(),

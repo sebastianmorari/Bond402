@@ -9,6 +9,8 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { PublicServiceLatestCheckStatus } from './publicServiceLatestCheckStatus';
+import type { SecurityHeaders } from './securityHeaders';
+import type { SignalState } from './signalState';
 
 export type PublicServiceLatestCheck = {
   checkedAt: Date;
@@ -18,4 +20,12 @@ export type PublicServiceLatestCheck = {
   structureMatch: boolean;
   /** @nullable */
   httpStatus: number | null;
+  https: boolean;
+  tlsStatus: SignalState;
+  /** @nullable */
+  tlsExpiresAt: Date | null;
+  /** @nullable */
+  tlsDaysRemaining: number | null;
+  securityHeaders: SecurityHeaders;
+  probeRegion: string;
 } | null;

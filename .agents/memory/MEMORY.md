@@ -4,3 +4,4 @@
 - [Bond402 usage model](usage-model.md) — productive checks consume the monthly plan quota; demo and sandbox simulations stay free and do not affect usage.
 - [Auth mail launch configuration](auth-mail-launch.md) — set PUBLIC_BASE_URL only from the published HTTPS URL; local Resend API overrides belong only in tests.
 - [Public beta catalog](public-beta-catalog.md) — only explicitly listed services expose stored trust metadata; public pre-action is read-only and live checks remain owner-key protected.
+- [Observed trust signals](trust-signals.md) — signal states and historical metrics describe stored observations, never security guarantees or certifications.

@@ -9,6 +9,8 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { DeveloperPreActionFactorsLatestStatus } from './developerPreActionFactorsLatestStatus';
+import type { DeveloperPreActionFactorsSignals } from './developerPreActionFactorsSignals';
+import type { TrustMetrics } from './trustMetrics';
 
 export interface DeveloperPreActionFactors {
   /** @nullable */
@@ -23,6 +25,8 @@ export interface DeveloperPreActionFactors {
   latestReachable: boolean | null;
   /** @nullable */
   latestStructureMatch: boolean | null;
+  signals: DeveloperPreActionFactorsSignals;
+  trustMetrics: TrustMetrics;
   recentLiveChecks: number;
   recentPasses: number;
   recentFailures: number;

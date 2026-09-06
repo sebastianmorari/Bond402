@@ -10,6 +10,8 @@
  */
 import type { CheckResultCheckType } from './checkResultCheckType';
 import type { CheckResultStatus } from './checkResultStatus';
+import type { SecurityHeaders } from './securityHeaders';
+import type { SignalState } from './signalState';
 
 export interface CheckResult {
   id: string;
@@ -27,4 +29,12 @@ export interface CheckResult {
   summary: string;
   foundFields: string[];
   missingFields: string[];
+  https: boolean;
+  tlsStatus: SignalState;
+  /** @nullable */
+  tlsExpiresAt: Date | null;
+  /** @nullable */
+  tlsDaysRemaining: number | null;
+  securityHeaders: SecurityHeaders;
+  probeRegion: string;
 }

@@ -5,6 +5,8 @@ import {
   useUpdateService,
   useRunServiceCheck, 
   useVerifyServiceResponse,
+  useIssueDomainVerification,
+  useCheckDomainVerification,
   getListServicesQueryKey,
   getGetDashboardQueryKey,
   getGetServiceQueryKey
@@ -61,6 +63,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [manualResponse, setManualResponse] = useState("");
+  const [domainToken, setDomainToken] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
@@ -93,6 +96,8 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
   const verifyManual = useVerifyServiceResponse();
   const deleteService = useDeleteService();
   const updateService = useUpdateService();
+  const issueDomainVerification = useIssueDomainVerification();
+  const checkDomainVerification = useCheckDomainVerification();
 
   const handleRunLiveCheck = () => {
     if (!serviceId) return;
@@ -144,6 +149,39 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
           });
         }
       }
+    );
+  };
+
+  const handleIssueDomainVerification = () => {
+    if (!serviceId) return;
+    issueDomainVerification.mutate(
+      { id: serviceId },
+      {
+        onSuccess: (result) => {
+          setDomainToken(result.token);
+          queryClient.invalidateQueries({ queryKey: getGetServiceQueryKey(serviceId) });
+          toast({ title: "Token erstellt", description: "Legen Sie den Token unter der Well-Known-Adresse Ihres Dienstes ab." });
+        },
+        onError: () => toast({ title: "Token konnte nicht erstellt werden", variant: "destructive" }),
+      },
+    );
+  };
+
+  const handleCheckDomainVerification = () => {
+    if (!serviceId) return;
+    checkDomainVerification.mutate(
+      { id: serviceId },
+      {
+        onSuccess: (result) => {
+          queryClient.invalidateQueries({ queryKey: getGetServiceQueryKey(serviceId) });
+          toast({
+            title: result.status === "VERIFIED" ? "Domain verifiziert" : "Noch nicht verifiziert",
+            description: result.reason,
+            variant: result.status === "VERIFIED" ? "default" : "destructive",
+          });
+        },
+        onError: (error) => toast({ title: "Verifizierung fehlgeschlagen", description: error.data?.error, variant: "destructive" }),
+      },
     );
   };
 
@@ -301,6 +339,41 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                 </div>
 
                 <TabsContent value="tests" className="p-6 m-0 space-y-6">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Historische Trust-Signale</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <span>Uptime</span><strong>{service.trustMetrics.uptimePercent === null ? "Nicht bewertet" : `${service.trustMetrics.uptimePercent}%`}</strong>
+                        <span>p95 / p99</span><strong>{service.trustMetrics.p95ResponseTimeMs ?? "—"} / {service.trustMetrics.p99ResponseTimeMs ?? "—"} ms</strong>
+                        <span>Samples</span><strong>{service.trustMetrics.sampleCount}</strong>
+                        <span>Domain</span><strong>{service.domainVerification.status}</strong>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">{service.trustMetrics.weighting.description}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Letzte Signalzustände</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <span>HTTPS</span><strong>{service.signals.https}</strong>
+                        <span>TLS/Zertifikat</span><strong>{service.signals.tls}</strong>
+                        <span>Security-Header</span><strong>{service.signals.securityHeaders}</strong>
+                        <span>Freshness</span><strong>{service.trustMetrics.latestCheckAt ? "Vorhanden" : "Nicht bewertet"}</strong>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">Geprüft bedeutet nur: Bond402 hat dieses Signal bei einer Live-Prüfung beobachtet. Es ist keine Sicherheitsgarantie.</p>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h4 className="font-medium text-sm">Domain-Verifizierung</h4>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">Bestätigt, dass der Betreiber eine HTTPS-Well-Known-Datei unter der Service-Domain kontrolliert.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={handleIssueDomainVerification} disabled={issueDomainVerification.isPending}>Token erzeugen</Button>
+                        <Button size="sm" onClick={handleCheckDomainVerification} disabled={checkDomainVerification.isPending || service.domainVerification.status === "NOT_STARTED"}>Jetzt prüfen</Button>
+                      </div>
+                    </div>
+                    {domainToken && <p className="mt-3 break-all rounded-lg bg-background/70 p-3 font-mono text-xs">Token: {domainToken}</p>}
+                  </div>
                   <div className="bg-muted/30 border border-border/50 rounded-xl p-4 flex items-center justify-between">
                     <div>
                       <h4 className="font-medium text-sm">Jetzt prüfen</h4>

@@ -223,6 +223,23 @@ export const CheckResultCheckType = {
   MANUAL: 'MANUAL',
 } as const;
 
+export type SignalState = typeof SignalState[keyof typeof SignalState];
+
+
+export const SignalState = {
+  CHECKED: 'CHECKED',
+  WARNING: 'WARNING',
+  UNAVAILABLE: 'UNAVAILABLE',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+} as const;
+
+export interface SecurityHeaders {
+  status: SignalState;
+  evaluated: string[];
+  present: string[];
+  missing: string[];
+}
+
 export interface CheckResult {
   id: string;
   serviceId: string;
@@ -239,6 +256,14 @@ export interface CheckResult {
   summary: string;
   foundFields: string[];
   missingFields: string[];
+  https: boolean;
+  tlsStatus: SignalState;
+  /** @nullable */
+  tlsExpiresAt: string | null;
+  /** @nullable */
+  tlsDaysRemaining: number | null;
+  securityHeaders: SecurityHeaders;
+  probeRegion: string;
 }
 
 export interface DeveloperServiceResult {
@@ -314,6 +339,54 @@ export const ApiServiceVisibility = {
   LISTED: 'LISTED',
 } as const;
 
+export type TrustMetricsWeighting = {
+  method: string;
+  halfLifeDays: number;
+  description: string;
+};
+
+export interface TrustMetrics {
+  sampleCount: number;
+  timedSampleCount: number;
+  /** @nullable */
+  uptimePercent: number | null;
+  /** @nullable */
+  averageResponseTimeMs: number | null;
+  /** @nullable */
+  p95ResponseTimeMs: number | null;
+  /** @nullable */
+  p99ResponseTimeMs: number | null;
+  /** @nullable */
+  withinTargetPercent: number | null;
+  /** @nullable */
+  windowStartAt: string | null;
+  /** @nullable */
+  latestCheckAt: string | null;
+  weighting: TrustMetricsWeighting;
+}
+
+export interface SignalStates {
+  https: SignalState;
+  tls: SignalState;
+  securityHeaders: SignalState;
+}
+
+export type DomainVerificationStatus = typeof DomainVerificationStatus[keyof typeof DomainVerificationStatus];
+
+
+export const DomainVerificationStatus = {
+  VERIFIED: 'VERIFIED',
+  PENDING: 'PENDING',
+  NOT_STARTED: 'NOT_STARTED',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+} as const;
+
+export interface DomainVerification {
+  status: DomainVerificationStatus;
+  /** @nullable */
+  verifiedAt: string | null;
+}
+
 export interface ApiService {
   id: string;
   name: string;
@@ -327,6 +400,9 @@ export interface ApiService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  trustMetrics: TrustMetrics;
+  signals: SignalStates;
+  domainVerification: DomainVerification;
   checks: CheckResult[];
 }
 
@@ -343,6 +419,43 @@ export interface DashboardMetrics {
   checkCount: number;
   passRate: number;
   averageResponseTimeMs: number;
+  /** @nullable */
+  uptimePercent: number | null;
+  /** @nullable */
+  p95ResponseTimeMs: number | null;
+  /** @nullable */
+  p99ResponseTimeMs: number | null;
+  timedSampleCount: number;
+}
+
+export type DomainVerificationIssueStatus = typeof DomainVerificationIssueStatus[keyof typeof DomainVerificationIssueStatus];
+
+
+export const DomainVerificationIssueStatus = {
+  PENDING: 'PENDING',
+} as const;
+
+export interface DomainVerificationIssue {
+  status: DomainVerificationIssueStatus;
+  token: string;
+  path: string;
+  instructions: string;
+  issuedAt: string;
+}
+
+export type DomainVerificationResultStatus = typeof DomainVerificationResultStatus[keyof typeof DomainVerificationResultStatus];
+
+
+export const DomainVerificationResultStatus = {
+  VERIFIED: 'VERIFIED',
+  PENDING: 'PENDING',
+} as const;
+
+export interface DomainVerificationResult {
+  status: DomainVerificationResultStatus;
+  /** @nullable */
+  verifiedAt: string | null;
+  reason: string;
 }
 
 /**
@@ -357,6 +470,13 @@ export const DeveloperPreActionFactorsLatestStatus = {
   REVIEW: 'REVIEW',
 } as const;
 
+export type DeveloperPreActionFactorsSignals = {
+  https: SignalState;
+  tls: SignalState;
+  securityHeaders: SignalState;
+  domain: SignalState;
+};
+
 export interface DeveloperPreActionFactors {
   /** @nullable */
   trustScore: number | null;
@@ -370,6 +490,8 @@ export interface DeveloperPreActionFactors {
   latestReachable: boolean | null;
   /** @nullable */
   latestStructureMatch: boolean | null;
+  signals: DeveloperPreActionFactorsSignals;
+  trustMetrics: TrustMetrics;
   recentLiveChecks: number;
   recentPasses: number;
   recentFailures: number;
@@ -466,6 +588,14 @@ export type PublicServiceLatestCheck = {
   structureMatch: boolean;
   /** @nullable */
   httpStatus: number | null;
+  https: boolean;
+  tlsStatus: SignalState;
+  /** @nullable */
+  tlsExpiresAt: string | null;
+  /** @nullable */
+  tlsDaysRemaining: number | null;
+  securityHeaders: SecurityHeaders;
+  probeRegion: string;
 } | null;
 
 export type PublicServiceAccess = {
@@ -490,6 +620,9 @@ export interface PublicService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  trustMetrics: TrustMetrics;
+  signals: SignalStates;
+  domainVerification: DomainVerification;
   /** @nullable */
   latestStatus: PublicServiceLatestStatus;
   /** @nullable */

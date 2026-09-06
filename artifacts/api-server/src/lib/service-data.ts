@@ -8,6 +8,97 @@ import {
 } from "@workspace/db";
 import type { VerificationOutcome } from "./api-verifier";
 
+const TRUST_HALF_LIFE_DAYS = 14;
+
+function freshnessWeight(checkedAt: Date) {
+  const ageDays = Math.max(0, (Date.now() - checkedAt.getTime()) / 86_400_000);
+  return Math.pow(0.5, ageDays / TRUST_HALF_LIFE_DAYS);
+}
+
+function percentile(values: number[], percentileValue: number) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.ceil(percentileValue * sorted.length) - 1),
+  );
+  return sorted[index] ?? null;
+}
+
+function weightedRatio(
+  checks: ApiCheckRow[],
+  predicate: (check: ApiCheckRow) => boolean,
+) {
+  let weightedTotal = 0;
+  let weightedMatches = 0;
+  for (const check of checks) {
+    const weight = freshnessWeight(check.checkedAt);
+    weightedTotal += weight;
+    if (predicate(check)) weightedMatches += weight;
+  }
+  return weightedTotal === 0 ? 0 : weightedMatches / weightedTotal;
+}
+
+export function calculateTrustMetrics(checks: ApiCheckRow[], maxResponseTime: number) {
+  const liveChecks = checks.filter((check) => check.checkType === "LIVE");
+  const timedChecks = liveChecks.filter(
+    (check) => check.reachable && check.responseTimeMs > 0,
+  );
+  const responseTimes = timedChecks.map((check) => check.responseTimeMs);
+  const firstCheck = liveChecks.at(-1);
+  const latestCheck = liveChecks[0];
+  return {
+    sampleCount: liveChecks.length,
+    timedSampleCount: timedChecks.length,
+    uptimePercent:
+      liveChecks.length === 0
+        ? null
+        : Math.round(weightedRatio(liveChecks, (check) => check.reachable) * 1000) / 10,
+    averageResponseTimeMs:
+      timedChecks.length === 0
+        ? null
+        : Math.round(
+            timedChecks.reduce((sum, check) => sum + check.responseTimeMs, 0) /
+              timedChecks.length,
+          ),
+    p95ResponseTimeMs: percentile(responseTimes, 0.95),
+    p99ResponseTimeMs: percentile(responseTimes, 0.99),
+    withinTargetPercent:
+      timedChecks.length === 0
+        ? null
+        : Math.round(
+            weightedRatio(timedChecks, (check) => check.responseTimeMs <= maxResponseTime) *
+              1000,
+          ) / 10,
+    windowStartAt: firstCheck?.checkedAt.toISOString() ?? null,
+    latestCheckAt: latestCheck?.checkedAt.toISOString() ?? null,
+    weighting: {
+      method: "EXPONENTIAL_DECAY" as const,
+      halfLifeDays: TRUST_HALF_LIFE_DAYS,
+      description: "Neuere Live-Prüfungen zählen stärker; nach 14 Tagen halbiert sich das Gewicht.",
+    },
+  };
+}
+
+function signalState(check: ApiCheckRow | undefined) {
+  if (!check) {
+    return {
+      https: "NOT_EVALUATED" as const,
+      tls: "NOT_EVALUATED" as const,
+      securityHeaders: "NOT_EVALUATED" as const,
+    };
+  }
+  return {
+    https: check.https ? ("CHECKED" as const) : ("WARNING" as const),
+    tls: check.tlsStatus as "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED",
+    securityHeaders: check.securityHeaders.status as
+      | "CHECKED"
+      | "WARNING"
+      | "UNAVAILABLE"
+      | "NOT_EVALUATED",
+  };
+}
+
 export function toCheckResponse(check: ApiCheckRow) {
   return {
     id: check.id,
@@ -23,37 +114,44 @@ export function toCheckResponse(check: ApiCheckRow) {
     summary: check.summary,
     foundFields: check.foundFields,
     missingFields: check.missingFields,
+    https: check.https,
+    tlsStatus: check.tlsStatus,
+    tlsExpiresAt: check.tlsExpiresAt?.toISOString() ?? null,
+    tlsDaysRemaining: check.tlsDaysRemaining,
+    securityHeaders: check.securityHeaders,
+    probeRegion: check.probeRegion,
   };
 }
 
 export function calculateTrust(checks: ApiCheckRow[], maxResponseTime: number) {
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
+  const metrics = calculateTrustMetrics(checks, maxResponseTime);
   if (liveChecks.length === 0) {
     return {
       score: null,
       explanation: "Noch keine echte Prüfung vorhanden. Starten Sie einen Live-Check.",
+      metrics,
     };
   }
 
-  const ratio = (count: number) => count / liveChecks.length;
-  const reachability = ratio(liveChecks.filter((check) => check.reachable).length);
-  const performance = ratio(
-    liveChecks.filter(
-      (check) =>
-        check.reachable &&
-        check.responseTimeMs > 0 &&
-        check.responseTimeMs <= maxResponseTime,
-    ).length,
+  const reachability = weightedRatio(liveChecks, (check) => check.reachable);
+  const performance = weightedRatio(
+    liveChecks,
+    (check) =>
+      check.reachable &&
+      check.responseTimeMs > 0 &&
+      check.responseTimeMs <= maxResponseTime,
   );
-  const structure = ratio(liveChecks.filter((check) => check.structureMatch).length);
-  const reliability = ratio(liveChecks.filter((check) => check.status === "PASS").length);
+  const structure = weightedRatio(liveChecks, (check) => check.structureMatch);
+  const reliability = weightedRatio(liveChecks, (check) => check.status === "PASS");
   const score = Math.round(
     reachability * 40 + performance * 25 + structure * 25 + reliability * 10,
   );
   return {
     score,
+    metrics,
     explanation:
-      `Berechnung aus ${liveChecks.length} echten Prüfungen: ` +
+      `Berechnung aus ${liveChecks.length} echten Prüfungen mit stärkerem Gewicht für neue Daten: ` +
       `Erreichbarkeit ${Math.round(reachability * 100)} % (40 Punkte), ` +
       `Antwortzeit ${Math.round(performance * 100)} % (25 Punkte), ` +
       `Strukturtreue ${Math.round(structure * 100)} % (25 Punkte) und ` +
@@ -103,6 +201,7 @@ export async function saveOutcome(
 export async function toServiceResponse(service: ApiServiceRow) {
   const checks = await loadChecks(service.id);
   const trust = calculateTrust(checks, service.maxResponseTime);
+  const latestCheck = checks.find((check) => check.checkType === "LIVE");
   return {
     id: service.id,
     name: service.name,
@@ -114,6 +213,16 @@ export async function toServiceResponse(service: ApiServiceRow) {
     createdAt: service.createdAt.toISOString(),
     trustScore: trust.score,
     trustExplanation: trust.explanation,
+    trustMetrics: trust.metrics,
+    signals: signalState(latestCheck),
+    domainVerification: {
+      status: service.domainVerifiedAt
+        ? ("VERIFIED" as const)
+        : service.domainVerificationTokenHash
+          ? ("PENDING" as const)
+          : ("NOT_STARTED" as const),
+      verifiedAt: service.domainVerifiedAt?.toISOString() ?? null,
+    },
     checks: checks.map(toCheckResponse),
   };
 }
@@ -129,6 +238,12 @@ export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheck
     listedAt: service.listedAt?.toISOString() ?? null,
     trustScore: trust.score,
     trustExplanation: trust.explanation,
+    trustMetrics: trust.metrics,
+    signals: signalState(latestCheck),
+    domainVerification: {
+      status: service.domainVerifiedAt ? ("VERIFIED" as const) : ("NOT_EVALUATED" as const),
+      verifiedAt: service.domainVerifiedAt?.toISOString() ?? null,
+    },
     latestStatus: latestCheck?.status as "PASS" | "FAIL" | "REVIEW" | undefined ?? null,
     latestCheckAt: latestCheck?.checkedAt.toISOString() ?? null,
     latestCheck: latestCheck
@@ -139,6 +254,12 @@ export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheck
           responseTimeMs: latestCheck.responseTimeMs,
           structureMatch: latestCheck.structureMatch,
           httpStatus: latestCheck.httpStatus,
+          https: latestCheck.https,
+          tlsStatus: latestCheck.tlsStatus,
+          tlsExpiresAt: latestCheck.tlsExpiresAt?.toISOString() ?? null,
+          tlsDaysRemaining: latestCheck.tlsDaysRemaining,
+          securityHeaders: latestCheck.securityHeaders,
+          probeRegion: latestCheck.probeRegion,
         }
       : null,
     access: {

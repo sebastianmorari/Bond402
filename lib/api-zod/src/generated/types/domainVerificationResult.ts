@@ -8,17 +8,11 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { DomainVerificationResultStatus } from './domainVerificationResultStatus';
 
-export interface DashboardMetrics {
-  serviceCount: number;
-  checkCount: number;
-  passRate: number;
-  averageResponseTimeMs: number;
+export interface DomainVerificationResult {
+  status: DomainVerificationResultStatus;
   /** @nullable */
-  uptimePercent: number | null;
-  /** @nullable */
-  p95ResponseTimeMs: number | null;
-  /** @nullable */
-  p99ResponseTimeMs: number | null;
-  timedSampleCount: number;
+  verifiedAt: Date | null;
+  reason: string;
 }

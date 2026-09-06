@@ -1,7 +1,7 @@
 import { useGetDashboard } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, ShieldCheck, Clock, Layers } from "lucide-react";
+import { Activity, ShieldCheck, Clock, Layers, Gauge, TimerReset } from "lucide-react";
 
 export function DashboardMetrics() {
   const { data, isLoading, isError } = useGetDashboard();
@@ -49,10 +49,25 @@ export function DashboardMetrics() {
       icon: Clock,
       description: "Durchschnittliche Latenz",
     },
+    {
+      title: "Beobachtete Uptime",
+      value: data.uptimePercent === null ? "—" : `${data.uptimePercent.toFixed(1)}%`,
+      icon: Gauge,
+      description: "Gewichtete Live-Erreichbarkeit",
+    },
+    {
+      title: "p95 / p99 Latenz",
+      value:
+        data.p95ResponseTimeMs === null || data.p99ResponseTimeMs === null
+          ? "—"
+          : `${data.p95ResponseTimeMs} / ${data.p99ResponseTimeMs} ms`,
+      icon: TimerReset,
+      description: `${data.timedSampleCount} zeitgemessene Livechecks`,
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {metrics.map((metric) => (
         <Card key={metric.title} className="bg-card/50 border-border/50 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">

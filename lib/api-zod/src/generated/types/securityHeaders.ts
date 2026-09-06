@@ -8,17 +8,11 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { SignalState } from './signalState';
 
-export interface DashboardMetrics {
-  serviceCount: number;
-  checkCount: number;
-  passRate: number;
-  averageResponseTimeMs: number;
-  /** @nullable */
-  uptimePercent: number | null;
-  /** @nullable */
-  p95ResponseTimeMs: number | null;
-  /** @nullable */
-  p99ResponseTimeMs: number | null;
-  timedSampleCount: number;
+export interface SecurityHeaders {
+  status: SignalState;
+  evaluated: string[];
+  present: string[];
+  missing: string[];
 }

@@ -8,11 +8,14 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { DomainVerification } from './domainVerification';
 import type { PublicServiceAccess } from './publicServiceAccess';
 import type { PublicServiceLatestCheck } from './publicServiceLatestCheck';
 import type { PublicServiceLatestStatus } from './publicServiceLatestStatus';
 import type { PublicServiceLinks } from './publicServiceLinks';
 import type { PublicServiceVisibility } from './publicServiceVisibility';
+import type { SignalStates } from './signalStates';
+import type { TrustMetrics } from './trustMetrics';
 
 export interface PublicService {
   id: string;
@@ -24,6 +27,9 @@ export interface PublicService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  trustMetrics: TrustMetrics;
+  signals: SignalStates;
+  domainVerification: DomainVerification;
   /** @nullable */
   latestStatus: PublicServiceLatestStatus;
   /** @nullable */

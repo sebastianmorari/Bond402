@@ -206,6 +206,9 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.ok(openApi.data.paths["/public/services"]);
   assert.ok(openApi.data.paths["/public/services/{id}/pre-action-check"].post);
   assert.ok(openApi.data.components.schemas.PublicPreActionCheck);
+  assert.ok(openApi.data.components.schemas.TrustMetrics);
+  assert.ok(openApi.data.components.schemas.SecurityHeaders);
+  assert.ok(openApi.data.components.schemas.DomainVerification);
 });
 
 test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
@@ -452,6 +455,15 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const serviceId = serviceCreated.data.id;
   assert.ok(serviceId);
 
+  const domainIssue = await request(`/api/services/${serviceId}/domain-verification`, {
+    method: "POST",
+    jar: jarA,
+  });
+  assert.equal(domainIssue.response.status, 200);
+  assert.equal(domainIssue.data.status, "PENDING");
+  assert.match(domainIssue.data.token, /^bond402_/);
+  assert.equal(domainIssue.data.path, "/.well-known/bond402-verification.txt");
+
   const liveCheck = await request(`/api/services/${serviceId}/checks`, {
     method: "POST",
     jar: jarA,
@@ -530,6 +542,8 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(allowDecision.response.status, 200);
   assert.equal(allowDecision.data.decision, "ALLOW");
   assert.equal(allowDecision.data.factors.latestReachable, true);
+  assert.equal(allowDecision.data.factors.signals.tls, "NOT_EVALUATED");
+  assert.equal(allowDecision.data.factors.trustMetrics.sampleCount, 1);
 
   runSql(checkSql("REVIEW", true, 120, true));
   const cautionDecision = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
