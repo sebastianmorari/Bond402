@@ -70,8 +70,8 @@ export function ImpressumPage() {
         <h2 className="text-xl font-semibold text-foreground">Kontakt</h2>
         <p>
           E-Mail:{" "}
-          <a className="font-medium text-primary hover:underline" href="mailto:sseby17@gmail.com">
-            sseby17@gmail.com
+          <a className="font-medium text-primary hover:underline" href="mailto:support@bond402.com">
+            support@bond402.com
           </a>
         </p>
       </section>
@@ -91,6 +91,22 @@ export function ImpressumPage() {
           Die Inhalte von Bond402 werden mit angemessener Sorgfalt erstellt. Eine
           Gewähr für Vollständigkeit, Aktualität oder jederzeitige Verfügbarkeit kann
           nicht übernommen werden.
+        </p>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold text-foreground">Trust-Signale und Public Beta</h2>
+        <p>
+          Ein Ergebnis wie <strong>ALLOW</strong> ist ein Entscheidungssignal auf Basis
+          gespeicherter Prüf- und Trust-Daten, aber keine Sicherheitsgarantie. Betreiber
+          entscheiden selbst, ob ihre Dienste öffentlich gelistet werden. Bei einer
+          solchen Listung können die ausgewählten Trust- und Betriebsdaten öffentlich
+          sichtbar und maschinenlesbar abrufbar sein.
+        </p>
+        <p>
+          Bond402 befindet sich in einer öffentlichen Beta. Die Angaben beschreiben den
+          aktuellen Produktstand und stellen keine individuelle Rechts-, Sicherheits- oder
+          Compliance-Beratung dar.
         </p>
       </section>
     </LegalPageLayout>
@@ -118,8 +134,8 @@ export function DatenschutzPage() {
           Schweiz
           <br />
           E-Mail:{" "}
-          <a className="font-medium text-primary hover:underline" href="mailto:sseby17@gmail.com">
-            sseby17@gmail.com
+          <a className="font-medium text-primary hover:underline" href="mailto:support@bond402.com">
+            support@bond402.com
           </a>
         </address>
       </section>
@@ -221,8 +237,8 @@ export function DatenschutzPage() {
         <p>
            Bond402 verwendet aktuell kein Analytics- oder Werbetracking, kein Sentry
            oder anderes externes Fehlertracking. Der E-Mail-Versand für Authentifizierung
-           erfolgt über Resend. Es gibt keine echte Zahlungsabwicklung wie Stripe und keine Wallets, Kryptowährungen
-          oder Blockchain-Transaktionen eingesetzt.
+           erfolgt über Resend. Es gibt keine echte Zahlungsabwicklung wie Stripe;
+           Wallets, Kryptowährungen und Blockchain-Transaktionen werden nicht eingesetzt.
         </p>
         <p>
           Die x402-Sandbox sowie die Bond-Sandbox sind reine Simulationen. TEST-CREDITS,
@@ -257,8 +273,8 @@ export function DatenschutzPage() {
         </p>
         <p>
           Anfragen können an{" "}
-          <a className="font-medium text-primary hover:underline" href="mailto:sseby17@gmail.com">
-            sseby17@gmail.com
+          <a className="font-medium text-primary hover:underline" href="mailto:support@bond402.com">
+            support@bond402.com
           </a>{" "}
           gerichtet werden.
         </p>

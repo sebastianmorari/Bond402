@@ -34,7 +34,7 @@ export function DemoServices({ readOnly = false }: DemoServicesProps) {
           queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() });
           toast({
-            title: "Demo-Dienst hinzugefügt",
+            title: "Beispiel-Dienst registriert",
             description: `${demo.name} wurde erfolgreich registriert.`,
           });
         },
@@ -61,7 +61,7 @@ export function DemoServices({ readOnly = false }: DemoServicesProps) {
   if (isError) {
     return (
       <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-5 text-sm text-destructive">
-        Demo-Dienste konnten nicht geladen werden. Bitte versuchen Sie es später erneut.
+        Beispiel-Dienste konnten nicht geladen werden. Bitte versuchen Sie es später erneut.
       </div>
     );
   }
@@ -74,13 +74,13 @@ export function DemoServices({ readOnly = false }: DemoServicesProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Demo-Dienste</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Beispiel-Dienste</h3>
           <Tooltip>
             <TooltipTrigger asChild>
               <Info className="h-4 w-4 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent>
-              <p className="w-[200px] text-xs">Sichere, öffentliche APIs, die Sie mit einem Klick hinzufügen können, um das System zu testen.</p>
+              <p className="w-[200px] text-xs">Öffentliche Beispiel-APIs, die Sie mit einem Klick registrieren können, um Live-Checks und Trust-Daten kennenzulernen.</p>
             </TooltipContent>
           </Tooltip>
         </div>

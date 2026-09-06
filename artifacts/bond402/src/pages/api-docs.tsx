@@ -91,8 +91,8 @@ export function ApiDocsPage() {
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Bond402 Developer-API</h1>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
             Fragen Sie Bond402 vor der Nutzung eines externen Dienstes ab.
-            Die unabhängige Trust Firewall verbindet Prüfresultate, Historie und Trust Score
-            zu einer maschinenlesbaren Risikoklarheit für AI Agents, APIs und x402-/MCP-nahe Dienste.
+             Bond402 bietet öffentliche Service-Discovery, Trust-Metadaten, Live-Checks und
+             maschinenlesbare ALLOW-, CAUTION- oder BLOCK-Signale für AI Agents und API-Konsumenten.
           </p>
         </section>
 
@@ -113,7 +113,7 @@ export function ApiDocsPage() {
           </div>
           <div className="rounded-xl border border-border/60 bg-card/60 p-5">
             <Timer className="mb-3 h-5 w-5 text-primary" />
-            <h2 className="font-semibold">MVP-Limits</h2>
+            <h2 className="font-semibold">Public-Beta-Limits</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
                Öffentlich: 60 pro IP/Minute. Lesen: 60 pro Schlüssel/Minute. Live-Prüfungen: 10 pro Schlüssel/Minute.
             </p>
@@ -267,7 +267,7 @@ curl -X POST "https://bond402.com/api/public/services/SERVICE_ID/pre-action-chec
           <p className="text-xs leading-5 text-muted-foreground">
              Der öffentliche Pre-Action-Check liest gespeicherte Daten und ist kostenlos innerhalb des öffentlichen IP-Limits.
              Der ownergebundene Developer-Pre-Action-Check ist ein produktiver Check und wird vom Monatskontingent abgezogen.
-             Sandbox- und Demo-Abläufe bleiben simuliert und kostenlos.
+             x402-, TEST-CREDITS-, TEST-BONDS- und Reputations-Sandboxes bleiben klar getrennte Simulationen und sind keine Live-Zahlungs- oder Blockchain-Funktionen.
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
             {[
@@ -284,7 +284,7 @@ curl -X POST "https://bond402.com/api/public/services/SERVICE_ID/pre-action-chec
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Monatliche Pakete</h2>
+          <h2 className="text-lg font-semibold">Pilotzugang und Pakete</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {[
               ["Free", "100 Checks", "0 CHF"],
@@ -301,7 +301,11 @@ curl -X POST "https://bond402.com/api/public/services/SERVICE_ID/pre-action-chec
             ))}
           </div>
           <p className="text-xs leading-5 text-muted-foreground">
-            Das Paketmodell ist vorbereitet, aber noch nicht buchbar. Es werden keine Zahlungen ausgelöst.
+             Während der Public Beta werden Kontingente und Pläne manuell aktiviert. Für einen Pilotzugang schreiben Sie an{" "}
+             <a className="font-medium text-primary hover:underline" href="mailto:support@bond402.com?subject=Bond402%20Pilotzugang">
+               support@bond402.com
+             </a>
+             . Self-Service-Billing kommt später; aktuell gibt es keinen Checkout und keine automatische Zahlung.
           </p>
         </section>
 

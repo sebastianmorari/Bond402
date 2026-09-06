@@ -21,7 +21,13 @@ export function PublicFooter() {
           <Link href="/status" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
             Status
           </Link>
+          <a href="mailto:support@bond402.com" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
+            Support
+          </a>
         </nav>
+        <p className="text-xs text-muted-foreground">
+          <a href="mailto:support@bond402.com" className="hover:text-foreground hover:underline">support@bond402.com</a>
+        </p>
       </div>
     </footer>
   );

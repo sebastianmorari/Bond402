@@ -38,3 +38,18 @@ owner's Bearer API key.
 
 `ALLOW` is not a security guarantee. Agents must apply their own domain, authorization,
 data-protection and business-policy checks before acting.
+
+## Early access and beta horizon
+
+Public-Beta plans and monthly check quotas are activated manually for pilot customers.
+There is currently no checkout or automatic payment flow. Contact
+support@bond402.com to discuss onboarding, listed services, agent workflows, and an
+appropriate pilot plan.
+
+There is no artificial end date for the beta. Bond402 will leave Public Beta after the
+catalog, trust signals, live checks, and agent API have been validated with pilot customers
+and self-service billing is ready. The transition will be announced in advance.
+
+The x402 and Bond sandboxes are experimental simulations only. TEST-CREDITS, TEST-BONDS,
+simulated reputation values, wallets, blockchain transactions, and real payment settlement
+are not part of the current production capability.

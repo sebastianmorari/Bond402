@@ -16,3 +16,14 @@ or expiry; rotation is create-new then revoke-old.
 
 **How to apply:** Keep public endpoints read-only, rate-limited, and limited to listed service
 metadata. Keep privileged owner routes owner-bound even when adding new agent-facing discovery.
+
+Public customer messaging should lead with discovery, trust metadata, live checks, and
+pre-action signals. Public-Beta plans are manually activated for pilots; there is no fixed
+beta end date, and x402/Bond/TEST-CREDITS/TEST-BONDS/reputation remain clearly labeled
+experimental simulations.
+
+**Why:** Self-service billing and live settlement are not part of the current production
+capability, while pilot onboarding is the supported early-access path.
+
+**How to apply:** Keep pricing UI informational, route pilot requests to support@bond402.com,
+and state that the beta transition depends on pilot validation and later self-service billing.

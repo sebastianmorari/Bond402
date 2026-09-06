@@ -1,6 +1,7 @@
 # Bond402
 
-Bond402 is a German-language trust firewall for APIs and AI agents.
+Bond402 is a German-language Public-Beta trust layer for APIs and AI agents. It provides public service discovery,
+trust metadata, live checks for registered services, and pre-action ALLOW, CAUTION, or BLOCK signals.
 
 ## Public agent workflow
 
@@ -13,6 +14,10 @@ Bond402 is a German-language trust firewall for APIs and AI agents.
 Public endpoints are read-only, require no key, and are limited to 60 requests per minute per IP. They do not consume the owner's monthly product quota. Live checks, owner updates, and quota-counted developer operations require an owner-bound Bearer API key. The public-beta pilot key model has no cross-account delegation, scope selection, or expiry; rotate keys by creating a new key and revoking the old one.
 
 The only decisions are ALLOW, CAUTION, and BLOCK. ALLOW is not a security guarantee. Bond402 is an operator-approved public catalog, not a universal search engine for the internet.
+
+Public-Beta plans are activated manually for pilot customers. There is no checkout or automatic payment flow yet;
+contact support@bond402.com for onboarding. The x402 and Bond sandboxes, TEST-CREDITS, TEST-BONDS, and simulated
+reputation are experimental simulations only, not live payment or blockchain capabilities.
 
 OpenAPI: https://bond402.com/api/openapi.json
 Human documentation: https://bond402.com/api-docs

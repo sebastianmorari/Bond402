@@ -1,8 +1,7 @@
 import { useGetUsage } from "@workspace/api-client-react";
-import { CalendarClock, CreditCard, Gauge, Sparkles } from "lucide-react";
+import { CalendarClock, Gauge, Sparkles } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 
 function formatLimit(value: number | null) {
   return value === null ? "Individuell" : value.toLocaleString("de-CH");
@@ -42,7 +41,7 @@ export function QuotaCard() {
             Trust Firewall-Kontingent
           </CardTitle>
           <CardDescription>
-            Produktive Live-, manuelle und Agenten-Vorabchecks. Demo- und Sandbox-Abläufe sind kostenlos simuliert.
+            Produktive Live-, manuelle und Agenten-Vorabchecks. Sandbox-Abläufe sind klar getrennt und kostenlos simuliert.
           </CardDescription>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
@@ -87,7 +86,7 @@ export function QuotaCard() {
         {data.remainingChecks === 0 && (
           <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm leading-6 text-warning-foreground">
             Ihr monatliches Kontingent ist verbraucht. Weitere Produktchecks werden sicher blockiert.
-            Die Paket-Upgrades sind vorbereitet, aber noch nicht buchbar und lösen keine Zahlung aus.
+            Das nächste Kontingent wird während der Public Beta manuell aktiviert. Es gibt keinen automatischen Checkout.
           </div>
         )}
 
@@ -107,17 +106,20 @@ export function QuotaCard() {
                 {plan.priceChf === null ? "Auf Anfrage" : plan.priceChf === 0 ? "Kostenlos" : `${plan.priceChf} CHF / Monat`}
               </p>
               <p className="mt-2 text-sm font-medium">{formatLimit(plan.monthlyLimit)} Checks</p>
-              {plan.plan !== data.plan && (
-                <Button variant="outline" size="sm" className="mt-3 w-full" disabled title="Noch nicht buchbar">
-                  <CreditCard className="mr-1.5 h-3.5 w-3.5" />
-                  Bald verfügbar
-                </Button>
-              )}
+                {plan.plan !== data.plan && (
+                  <span className="mt-3 block text-center text-[11px] font-medium text-muted-foreground">
+                    Manuell auf Anfrage
+                  </span>
+                )}
             </div>
           ))}
         </div>
         <p className="text-xs leading-5 text-muted-foreground">
-          Upgrade-Schaltflächen erklären das spätere Paketmodell. Es werden aktuell keine Zahlungen ausgelöst und kein Zahlungsanbieter benötigt.
+          Pläne und Kontingente werden während der Public Beta manuell aktiviert. Schreiben Sie an{" "}
+          <a className="font-medium text-primary hover:underline" href="mailto:support@bond402.com?subject=Bond402%20Pilotzugang">
+            support@bond402.com
+          </a>
+          ; Self-Service-Billing folgt später. Es werden aktuell keine Zahlungen ausgelöst.
         </p>
       </CardContent>
     </Card>

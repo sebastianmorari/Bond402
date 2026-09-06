@@ -65,7 +65,8 @@ export default function Dashboard() {
         <section className="max-w-3xl">
           <h2 className="text-3xl font-bold tracking-tight mb-2">Trust Firewall for AI Agents</h2>
           <p className="text-muted-foreground text-lg">
-            Bond402 ist die unabhängige Vertrauens- und Risikoschicht für AI Agents, APIs sowie x402-/MCP-nahe Dienste.
+            Bond402 verbindet Service-Discovery, Trust-Metadaten und Live-Checks mit einer
+            maschinenlesbaren Entscheidung vor jeder externen Agentenaktion.
             Prüfen Sie einen Dienst, bevor ein Agent ihn verwendet.
           </p>
         </section>
