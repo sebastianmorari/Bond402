@@ -2,3 +2,4 @@
 - [Dependency removal and lockfile sync](dependency-removal-lockfile.md) — verify package manifests and pnpm-lock.yaml after removing an integration.
 - [Bond402 frontend test runtime](frontend-test-runtime.md) — local Vite smoke tests require both PORT and BASE_PATH and must terminate the spawned process group.
 - [Bond402 usage model](usage-model.md) — productive checks consume the monthly plan quota; demo and sandbox simulations stay free and do not affect usage.
+- [Auth mail launch configuration](auth-mail-launch.md) — set PUBLIC_BASE_URL only from the published HTTPS URL; local Resend API overrides belong only in tests.
