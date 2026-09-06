@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
+import tls from "node:tls";
 
 const MAX_RESPONSE_BYTES = 1_000_000;
 const MAX_REDIRECTS = 3;
@@ -16,7 +18,85 @@ export type VerificationOutcome = {
   summary: string;
   foundFields: string[];
   missingFields: string[];
+  https: boolean;
+  tlsStatus: SignalStatus;
+  tlsExpiresAt: Date | null;
+  tlsDaysRemaining: number | null;
+  securityHeaders: SecurityHeadersSnapshot;
+  probeRegion: string;
 };
+
+export type SignalStatus = "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED";
+
+export type SecurityHeadersSnapshot = {
+  status: SignalStatus;
+  evaluated: string[];
+  present: string[];
+  missing: string[];
+};
+
+const DEFAULT_SECURITY_HEADERS: SecurityHeadersSnapshot = {
+  status: "NOT_EVALUATED",
+  evaluated: [],
+  present: [],
+  missing: [],
+};
+
+const SECURITY_HEADERS = [
+  "strict-transport-security",
+  "content-security-policy",
+  "x-content-type-options",
+  "referrer-policy",
+  "permissions-policy",
+];
+
+function inspectSecurityHeaders(
+  headers: Record<string, string>,
+  isHttps: boolean,
+): SecurityHeadersSnapshot {
+  const evaluated = isHttps
+    ? SECURITY_HEADERS
+    : SECURITY_HEADERS.filter((header) => header !== "strict-transport-security");
+  const present = evaluated.filter((header) => Boolean(headers[header]));
+  const missing = evaluated.filter((header) => !headers[header]);
+  return {
+    status: missing.length === 0 ? "CHECKED" : "WARNING",
+    evaluated,
+    present,
+    missing,
+  };
+}
+
+function inspectTls(
+  protocol: string,
+  socket: import("node:net").Socket | null,
+): {
+  status: SignalStatus;
+  expiresAt: Date | null;
+  daysRemaining: number | null;
+} {
+  if (protocol !== "https:") {
+    return { status: "WARNING", expiresAt: null, daysRemaining: null };
+  }
+  if (!(socket instanceof tls.TLSSocket) || !socket.authorized) {
+    return { status: "WARNING", expiresAt: null, daysRemaining: null };
+  }
+  const certificate = socket.getPeerCertificate();
+  const expiresAt = certificate.valid_to ? new Date(certificate.valid_to) : null;
+  if (!expiresAt || Number.isNaN(expiresAt.getTime())) {
+    return { status: "UNAVAILABLE", expiresAt: null, daysRemaining: null };
+  }
+  const daysRemaining = Math.floor((expiresAt.getTime() - Date.now()) / 86_400_000);
+  return {
+    status: daysRemaining <= 30 ? "WARNING" : "CHECKED",
+    expiresAt,
+    daysRemaining,
+  };
+}
+
+export function hashDomainVerificationToken(token: string) {
+  return createHash("sha256").update(token, "utf8").digest("hex");
+}
 
 function publicVerificationSummary(code: string) {
   switch (code) {
@@ -180,7 +260,14 @@ export async function validatePublicUrl(
 async function requestOnce(
   url: URL,
   deadline: number,
-): Promise<{ status: number; body: string; location?: string; elapsedMs: number }> {
+): Promise<{
+  status: number;
+  body: string;
+  location?: string;
+  elapsedMs: number;
+  headers: Record<string, string>;
+  tls: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null };
+}> {
   const hostname = url.hostname.replace(/^\[|\]$/g, "");
   const addresses = await lookupBeforeDeadline(hostname, deadline);
   const target = addresses.find(({ address }) => !isBlockedIp(address));
@@ -229,11 +316,20 @@ async function requestOnce(
           chunks.push(chunk);
         });
         response.on("end", () => {
+            const headers = Object.fromEntries(
+              Object.entries(response.headers).flatMap(([key, value]) =>
+                value === undefined
+                  ? []
+                  : [[key.toLowerCase(), Array.isArray(value) ? value.join(", ") : value]],
+              ),
+            );
           resolve({
             status: response.statusCode ?? 0,
             body: Buffer.concat(chunks).toString("utf8"),
             location: response.headers.location,
             elapsedMs: Math.max(1, Math.round(performance.now() - started)),
+              headers,
+              tls: inspectTls(url.protocol, response.socket),
           });
         });
       },
@@ -254,14 +350,28 @@ async function requestOnce(
 async function safeGet(
   initialUrl: string,
   timeoutMs: number,
-): Promise<{ status: number; body: string; elapsedMs: number }> {
+): Promise<{
+  status: number;
+  body: string;
+  elapsedMs: number;
+  headers: Record<string, string>;
+  tls: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null };
+}> {
   const deadline = Date.now() + timeoutMs;
   let url = await validatePublicUrl(initialUrl, deadline);
   let totalElapsed = 0;
+  let headers: Record<string, string> = {};
+  let tlsInfo: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null } = {
+    status: "UNAVAILABLE",
+    expiresAt: null,
+    daysRemaining: null,
+  };
 
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
     const response = await requestOnce(url, deadline);
     totalElapsed += response.elapsedMs;
+    headers = response.headers;
+    tlsInfo = response.tls;
     if (response.status >= 300 && response.status < 400 && response.location) {
       if (redirect === MAX_REDIRECTS) {
         throw Object.assign(new Error("Zu viele Weiterleitungen."), { code: "TOO_MANY_REDIRECTS" });
@@ -269,7 +379,13 @@ async function safeGet(
       url = await validatePublicUrl(new URL(response.location, url).toString(), deadline);
       continue;
     }
-    return { status: response.status, body: response.body, elapsedMs: totalElapsed };
+    return {
+      status: response.status,
+      body: response.body,
+      elapsedMs: totalElapsed,
+      headers,
+      tls: tlsInfo,
+    };
   }
 
   throw Object.assign(new Error("Die Weiterleitung konnte nicht abgeschlossen werden."), {
@@ -336,6 +452,12 @@ export async function runLiveVerification(
         summary: `Der Dienst antwortete mit HTTP-Status ${response.status}.`,
         foundFields: [],
         missingFields: parseExpectedFields(expectedStructure),
+        https: url.startsWith("https:"),
+        tlsStatus: response.tls.status,
+        tlsExpiresAt: response.tls.expiresAt,
+        tlsDaysRemaining: response.tls.daysRemaining,
+        securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+        probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
       };
     }
 
@@ -353,6 +475,12 @@ export async function runLiveVerification(
         summary: "Der Dienst ist erreichbar, lieferte aber kein gültiges JSON.",
         foundFields: [],
         missingFields: parseExpectedFields(expectedStructure),
+        https: url.startsWith("https:"),
+        tlsStatus: response.tls.status,
+        tlsExpiresAt: response.tls.expiresAt,
+        tlsDaysRemaining: response.tls.daysRemaining,
+        securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+        probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
       };
     }
 
@@ -381,6 +509,12 @@ export async function runLiveVerification(
       summary,
       foundFields: comparison.foundFields,
       missingFields: comparison.missingFields,
+      https: url.startsWith("https:"),
+      tlsStatus: response.tls.status,
+      tlsExpiresAt: response.tls.expiresAt,
+      tlsDaysRemaining: response.tls.daysRemaining,
+      securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+      probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
   } catch (error) {
     const code =
@@ -397,7 +531,45 @@ export async function runLiveVerification(
       summary: publicVerificationSummary(code),
       foundFields: [],
       missingFields: parseExpectedFields(expectedStructure),
+      https: url.startsWith("https:"),
+      tlsStatus: url.startsWith("https:")
+        ? ["CERT_HAS_EXPIRED", "CERT_NOT_YET_VALID", "UNABLE_TO_VERIFY_LEAF_SIGNATURE", "DEPTH_ZERO_SELF_SIGNED_CERT"].includes(code)
+          ? "WARNING"
+          : "UNAVAILABLE"
+        : "WARNING",
+      tlsExpiresAt: null,
+      tlsDaysRemaining: null,
+      securityHeaders: DEFAULT_SECURITY_HEADERS,
+      probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
+  }
+}
+
+export async function verifyDomainChallenge(
+  serviceUrl: string,
+  expectedTokenHash: string,
+): Promise<{ verified: boolean; reason: string }> {
+  let baseUrl: URL;
+  try {
+    baseUrl = new URL(serviceUrl);
+  } catch {
+    return { verified: false, reason: "Die Service-URL ist ungültig." };
+  }
+  if (baseUrl.protocol !== "https:") {
+    return { verified: false, reason: "Die Domain-Verifizierung benötigt HTTPS." };
+  }
+  try {
+    const challengeUrl = new URL("/.well-known/bond402-verification.txt", baseUrl);
+    const response = await safeGet(challengeUrl.toString(), 5_000);
+    if (response.status !== 200) {
+      return { verified: false, reason: `Die Verifizierungsdatei antwortete mit HTTP ${response.status}.` };
+    }
+    if (hashDomainVerificationToken(response.body.trim()) !== expectedTokenHash) {
+      return { verified: false, reason: "Der Inhalt der Verifizierungsdatei stimmt nicht überein." };
+    }
+    return { verified: true, reason: "Die Domain wurde über eine HTTPS-Well-Known-Datei verifiziert." };
+  } catch {
+    return { verified: false, reason: "Die Verifizierungsdatei konnte nicht sicher abgerufen werden." };
   }
 }
 
@@ -439,5 +611,11 @@ export function runManualVerification(
           : "Zu viele erwartete Felder fehlen.",
     foundFields: comparison.foundFields,
     missingFields: comparison.missingFields,
+    https: false,
+    tlsStatus: "NOT_EVALUATED",
+    tlsExpiresAt: null,
+    tlsDaysRemaining: null,
+    securityHeaders: DEFAULT_SECURITY_HEADERS,
+    probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
   };
 }

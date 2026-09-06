@@ -19,6 +19,9 @@ export const apiServicesTable = pgTable("bond402_api_services", {
   visibility: text("visibility").notNull().default("PRIVATE"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   listedAt: timestamp("listed_at", { withTimezone: true }),
+  domainVerificationTokenHash: text("domain_verification_token_hash"),
+  domainVerificationIssuedAt: timestamp("domain_verification_issued_at", { withTimezone: true }),
+  domainVerifiedAt: timestamp("domain_verified_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
@@ -38,6 +41,20 @@ export const apiChecksTable = pgTable("bond402_api_checks", {
   summary: text("summary").notNull(),
   foundFields: jsonb("found_fields").$type<string[]>().notNull().default([]),
   missingFields: jsonb("missing_fields").$type<string[]>().notNull().default([]),
+  https: boolean("https").notNull().default(false),
+  tlsStatus: text("tls_status").notNull().default("NOT_EVALUATED"),
+  tlsExpiresAt: timestamp("tls_expires_at", { withTimezone: true }),
+  tlsDaysRemaining: integer("tls_days_remaining"),
+  securityHeaders: jsonb("security_headers")
+    .$type<{
+      status: string;
+      evaluated: string[];
+      present: string[];
+      missing: string[];
+    }>()
+    .notNull()
+    .default({ status: "NOT_EVALUATED", evaluated: [], present: [], missing: [] }),
+  probeRegion: text("probe_region").notNull().default("default"),
 });
 
 export const insertApiServiceSchema = createInsertSchema(apiServicesTable).omit({
