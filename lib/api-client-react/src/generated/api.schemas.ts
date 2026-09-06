@@ -80,9 +80,59 @@ export interface AuthSession {
   user: AuthUser;
 }
 
+export type UsageSummaryPlan = typeof UsageSummaryPlan[keyof typeof UsageSummaryPlan];
+
+
+export const UsageSummaryPlan = {
+  FREE: 'FREE',
+  STARTER: 'STARTER',
+  PRO: 'PRO',
+  BUSINESS: 'BUSINESS',
+  ENTERPRISE: 'ENTERPRISE',
+} as const;
+
+export type PlanOptionPlan = typeof PlanOptionPlan[keyof typeof PlanOptionPlan];
+
+
+export const PlanOptionPlan = {
+  FREE: 'FREE',
+  STARTER: 'STARTER',
+  PRO: 'PRO',
+  BUSINESS: 'BUSINESS',
+  ENTERPRISE: 'ENTERPRISE',
+} as const;
+
+export interface PlanOption {
+  plan: PlanOptionPlan;
+  planName: string;
+  /** @nullable */
+  monthlyLimit: number | null;
+  /** @nullable */
+  priceChf: number | null;
+  description: string;
+}
+
+export interface UsageSummary {
+  plan: UsageSummaryPlan;
+  planName: string;
+  /** @nullable */
+  monthlyLimit: number | null;
+  usedChecks: number;
+  /** @nullable */
+  remainingChecks: number | null;
+  periodStart: string;
+  resetAt: string;
+  upgradeAvailable: boolean;
+  /** @nullable */
+  priceChf: number | null;
+  description: string;
+  availablePlans: PlanOption[];
+}
+
 export interface ApiError {
   error: string;
   code: string;
+  quota?: UsageSummary | null;
 }
 
 export interface ApiKeyInput {
@@ -233,6 +283,55 @@ export interface DashboardMetrics {
   checkCount: number;
   passRate: number;
   averageResponseTimeMs: number;
+}
+
+/**
+ * @nullable
+ */
+export type DeveloperPreActionFactorsLatestStatus = typeof DeveloperPreActionFactorsLatestStatus[keyof typeof DeveloperPreActionFactorsLatestStatus] | null;
+
+
+export const DeveloperPreActionFactorsLatestStatus = {
+  PASS: 'PASS',
+  FAIL: 'FAIL',
+  REVIEW: 'REVIEW',
+} as const;
+
+export interface DeveloperPreActionFactors {
+  /** @nullable */
+  trustScore: number | null;
+  /** @nullable */
+  latestStatus: DeveloperPreActionFactorsLatestStatus;
+  /** @nullable */
+  latestCheckAt: string | null;
+  /** @nullable */
+  latestResponseTimeMs: number | null;
+  /** @nullable */
+  latestReachable: boolean | null;
+  /** @nullable */
+  latestStructureMatch: boolean | null;
+  recentLiveChecks: number;
+  recentPasses: number;
+  recentFailures: number;
+  anomalies: string[];
+}
+
+export type DeveloperPreActionCheckDecision = typeof DeveloperPreActionCheckDecision[keyof typeof DeveloperPreActionCheckDecision];
+
+
+export const DeveloperPreActionCheckDecision = {
+  ALLOW: 'ALLOW',
+  CAUTION: 'CAUTION',
+  BLOCK: 'BLOCK',
+} as const;
+
+export interface DeveloperPreActionCheck {
+  serviceId: string;
+  serviceName: string;
+  decision: DeveloperPreActionCheckDecision;
+  reasons: string[];
+  factors: DeveloperPreActionFactors;
+  evaluatedAt: string;
 }
 
 export interface DemoService {

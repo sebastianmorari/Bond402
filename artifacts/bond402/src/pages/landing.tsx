@@ -40,24 +40,27 @@ export function Landing() {
         <div className="max-w-4xl w-full text-center space-y-8 relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
             <Activity className="h-4 w-4" />
-            <span>API-Zuverlässigkeit in Echtzeit messen</span>
+            <span>Trust Firewall for AI Agents</span>
           </div>
           
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-foreground">
-            Vertrauen ist gut.<br />
+            Agenten brauchen<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan-400">
-              Messbare APIs sind besser.
+              eine unabhängige Vertrauensschicht.
             </span>
           </h1>
           
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Bond402 ist die präzise Kontrollumgebung für maschinenlesbare Schnittstellen. 
-            Überwachen Sie Erreichbarkeit, Antwortzeiten und JSON-Strukturen Ihrer Dienste kontinuierlich und schaffen Sie transparentes Vertrauen.
+            Bond402 entscheidet vor der Nutzung eines externen Dienstes:
+            <strong className="text-foreground"> ALLOW</strong>,
+            <strong className="text-foreground"> CAUTION</strong> oder
+            <strong className="text-foreground"> BLOCK</strong>. Die Trust Firewall schützt
+            AI Agents, APIs und x402-/MCP-nahe Dienste mit nachvollziehbaren Prüf- und Risikodaten.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link href="/sign-up" className="w-full sm:w-auto text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3.5 rounded-lg shadow-xl shadow-primary/25 transition-all flex items-center justify-center gap-2">
-              Jetzt Dienste absichern
+              Kostenlos mit 100 Checks starten
             </Link>
             <Link href="/sign-in" className="w-full sm:w-auto text-base font-medium bg-card border border-border hover:bg-card/80 text-foreground px-8 py-3.5 rounded-lg transition-all flex items-center justify-center">
               Zum Dashboard
@@ -69,22 +72,22 @@ export function Landing() {
               <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold">Strukturprüfung</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">Stellen Sie sicher, dass Ihre APIs genau das JSON-Format zurückgeben, das andere Systeme erwarten.</p>
+              <h3 className="font-semibold">Vor jeder Aktion prüfen</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Agenten fragen Bond402, bevor sie einen externen Dienst verwenden.</p>
             </div>
             <div className="bg-card/50 border border-border/50 p-5 rounded-xl space-y-3">
               <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
                 <Activity className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold">Latenz-Monitoring</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">Erkennen Sie sofort, wenn Ihre Dienste die definierten Antwortzeiten überschreiten.</p>
+              <h3 className="font-semibold">ALLOW · CAUTION · BLOCK</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Maschinenlesbare Entscheidungen mit verständlichen Gründen und Faktoren.</p>
             </div>
             <div className="bg-card/50 border border-border/50 p-5 rounded-xl space-y-3">
               <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
                 <ShieldCheck className="h-5 w-5" />
               </div>
-              <h3 className="font-semibold">Trust Score</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">Bauen Sie Vertrauen durch einen nachvollziehbaren Zuverlässigkeits-Score für jeden Endpunkt auf.</p>
+              <h3 className="font-semibold">Unabhängige Risikoschicht</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">Erreichbarkeit, Schema, Historie und Trust Score an einem Ort – ohne Blockchain oder Zahlungszwang.</p>
             </div>
           </div>
         </div>

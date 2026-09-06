@@ -8,10 +8,14 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { UsageSummary } from './usageSummary';
 
-export interface ApiError {
-  error: string;
-  code: string;
-  quota?: UsageSummary | null;
-}
+export type UsageSummaryPlan = typeof UsageSummaryPlan[keyof typeof UsageSummaryPlan];
+
+
+export const UsageSummaryPlan = {
+  FREE: 'FREE',
+  STARTER: 'STARTER',
+  PRO: 'PRO',
+  BUSINESS: 'BUSINESS',
+  ENTERPRISE: 'ENTERPRISE',
+} as const;

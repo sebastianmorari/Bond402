@@ -18,6 +18,7 @@ import {
   toAuthUser,
   verifyPassword,
 } from "../lib/auth";
+import { ensureFreeUsage } from "../lib/usage";
 
 const router: IRouter = Router();
 const failedAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -117,6 +118,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     }
     throw error;
   }
+  await ensureFreeUsage(user.id);
   await createSession(user.id, res);
   res.status(201).json(RegisterAuthUserResponse.parse({ user: toAuthUser(user) }));
 });

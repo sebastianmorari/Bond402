@@ -23,6 +23,7 @@ import {
 import { X402Sandbox } from "@/components/x402-sandbox";
 import { BondSandbox } from "@/components/bond-sandbox";
 import { MobileNav } from "@/components/mobile-nav";
+import { QuotaCard } from "@/components/quota-card";
 
 export function Developer() {
   const { data: apiKeys = [], isLoading: isLoadingKeys, isError: isKeysError } = useListApiKeys();
@@ -108,11 +109,15 @@ export function Developer() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
         <div className="max-w-3xl">
-          <h2 className="text-3xl font-bold tracking-tight mb-2">Entwickler-Zugang</h2>
+          <h2 className="text-3xl font-bold tracking-tight mb-2">Trust Firewall für AI Agents</h2>
           <p className="text-muted-foreground text-lg">
-            Automatisieren Sie Ihre Zuverlässigkeitsprüfungen mit der Bond402 REST-API. Generieren Sie Schlüssel zur sicheren Authentifizierung in CI/CD-Pipelines oder Ihren eigenen Systemen.
+            Fragen Sie Bond402 vor jeder Nutzung eines externen Dienstes ab. Die unabhängige Risikoschicht liefert eine maschinenlesbare Entscheidung für Ihre Agenten.
           </p>
         </div>
+
+        <section className="my-8">
+          <QuotaCard />
+        </section>
 
         {newSecretData && (
           <Card className="border-primary bg-primary/5 shadow-md shadow-primary/10">
@@ -302,6 +307,26 @@ export function Developer() {
                       <br/>  -H <span className="text-green-600 dark:text-green-400">"Authorization: Bearer IHR_API_SCHLUESSEL"</span>
                     </pre>
                   </div>
+                </div>
+
+                <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-tight text-primary">
+                    <Shield className="h-4 w-4" />
+                    Pre-Action-Check für AI Agents
+                  </h3>
+                  <p className="text-sm leading-relaxed text-foreground/80">
+                    Lassen Sie Ihren Agenten Bond402 unmittelbar vor einer externen Aktion fragen.
+                    Die Antwort berücksichtigt aktuelle Erreichbarkeit, Antwortzeit, Strukturtreue,
+                    PASS-/FAIL-Historie, Trust Score und Auffälligkeiten.
+                  </p>
+                  <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-xl border border-border/50 bg-background/80 p-4 text-xs font-mono text-muted-foreground">
+                    <span className="text-primary font-bold">curl</span> -X POST {baseUrl}/api/developer/services/{activeServiceId}/pre-action-check \
+                    {"\n"}  -H <span className="text-green-600 dark:text-green-400">"Authorization: Bearer IHR_API_SCHLUESSEL"</span>
+                  </pre>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Ergebnis: <code>ALLOW</code>, <code>CAUTION</code> oder <code>BLOCK</code> mit verständlichen Gründen und maschinenlesbaren Faktoren.
+                    Jeder produktive Pre-Action-Check verbraucht ein Check aus dem Monatskontingent.
+                  </p>
                 </div>
                 
                 <div className="space-y-3">

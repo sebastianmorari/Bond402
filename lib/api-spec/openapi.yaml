@@ -16,6 +16,7 @@ tags:
   - name: auth
   - name: services
   - name: dashboard
+  - name: usage
   - name: developer
   - name: api-keys
 paths:
@@ -358,6 +359,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardMetrics"
+  /usage:
+    get:
+      operationId: getUsage
+      tags: [usage]
+      summary: Read the current monthly check quota
+      security:
+        - Bond402Session: []
+      responses:
+        "200":
+          description: Current plan and monthly usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageSummary"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /api-keys:
     get:
       operationId: listApiKeys
@@ -531,6 +552,44 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /developer/services/{id}/pre-action-check:
+    post:
+      operationId: developerPreActionCheck
+      tags: [developer]
+      summary: Decide whether an AI agent should use an owned service
+      description: |
+        Returns ALLOW, CAUTION, or BLOCK using the latest reachability,
+        latency, structure, PASS/FAIL history, Trust Score, freshness, and
+        detected anomalies. One product check is consumed from the monthly quota.
+      security:
+        - Bond402ApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      responses:
+        "200":
+          description: Machine-readable pre-action decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeveloperPreActionCheck"
+        "401":
+          description: Missing, invalid, or revoked API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Rate limit or monthly quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /demo-services:
     get:
       operationId: listDemoServices
@@ -653,6 +712,10 @@ components:
           type: string
         code:
           type: string
+        quota:
+          anyOf:
+            - $ref: "#/components/schemas/UsageSummary"
+            - type: "null"
       required: [error, code]
     ApiKeyInput:
       type: object
@@ -843,6 +906,100 @@ components:
         averageResponseTimeMs:
           type: number
       required: [serviceCount, checkCount, passRate, averageResponseTimeMs]
+    UsageSummary:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [FREE, STARTER, PRO, BUSINESS, ENTERPRISE]
+        planName:
+          type: string
+        monthlyLimit:
+          type: ["number", "null"]
+        usedChecks:
+          type: number
+        remainingChecks:
+          type: ["number", "null"]
+        periodStart:
+          type: string
+          format: date-time
+        resetAt:
+          type: string
+          format: date-time
+        upgradeAvailable:
+          type: boolean
+        priceChf:
+          type: ["number", "null"]
+        description:
+          type: string
+        availablePlans:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanOption"
+      required: [plan, planName, monthlyLimit, usedChecks, remainingChecks, periodStart, resetAt, upgradeAvailable, priceChf, description, availablePlans]
+    PlanOption:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [FREE, STARTER, PRO, BUSINESS, ENTERPRISE]
+        planName:
+          type: string
+        monthlyLimit:
+          type: ["number", "null"]
+        priceChf:
+          type: ["number", "null"]
+        description:
+          type: string
+      required: [plan, planName, monthlyLimit, priceChf, description]
+    DeveloperPreActionFactors:
+      type: object
+      properties:
+        trustScore:
+          type: ["number", "null"]
+        latestStatus:
+          type: ["string", "null"]
+          enum: [PASS, FAIL, REVIEW, null]
+        latestCheckAt:
+          type: ["string", "null"]
+          format: date-time
+        latestResponseTimeMs:
+          type: ["number", "null"]
+        latestReachable:
+          type: ["boolean", "null"]
+        latestStructureMatch:
+          type: ["boolean", "null"]
+        recentLiveChecks:
+          type: number
+        recentPasses:
+          type: number
+        recentFailures:
+          type: number
+        anomalies:
+          type: array
+          items:
+            type: string
+      required: [trustScore, latestStatus, latestCheckAt, latestResponseTimeMs, latestReachable, latestStructureMatch, recentLiveChecks, recentPasses, recentFailures, anomalies]
+    DeveloperPreActionCheck:
+      type: object
+      properties:
+        serviceId:
+          type: string
+        serviceName:
+          type: string
+        decision:
+          type: string
+          enum: [ALLOW, CAUTION, BLOCK]
+        reasons:
+          type: array
+          items:
+            type: string
+        factors:
+          $ref: "#/components/schemas/DeveloperPreActionFactors"
+        evaluatedAt:
+          type: string
+          format: date-time
+      required: [serviceId, serviceName, decision, reasons, factors, evaluatedAt]
     DemoService:
       type: object
       properties:

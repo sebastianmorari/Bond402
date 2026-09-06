@@ -35,6 +35,7 @@ import {
   toServiceResponse,
 } from "../lib/service-data";
 import { requireUserId } from "../lib/auth";
+import { requireCheckQuota } from "../lib/quota";
 
 const router: IRouter = Router();
 
@@ -245,6 +246,7 @@ router.post("/services/:id/checks", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;
   }
+  if (!(await requireCheckQuota(userId, res))) return;
   const outcome = await runLiveVerification(
     service.url,
     service.expectedStructure,
@@ -268,6 +270,7 @@ router.post("/services/:id/verify", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;
   }
+  if (!(await requireCheckQuota(userId, res))) return;
   const outcome = runManualVerification(service.expectedStructure, body.data.actualResponse);
   const check = await saveOutcome(service.id, "MANUAL", outcome);
   res.status(201).json(VerifyServiceResponseResponse.parse(toCheckResponse(check)));

@@ -6,6 +6,7 @@ import {
   DeveloperGetServiceResponse,
   DeveloperRunServiceCheckParams,
   DeveloperRunServiceCheckResponse,
+  DeveloperPreActionCheckResponse,
 } from "@workspace/api-zod";
 import { authenticateApiKey } from "../lib/api-key-auth";
 import { runLiveVerification } from "../lib/api-verifier";
@@ -16,6 +17,8 @@ import {
   saveOutcome,
   toCheckResponse,
 } from "../lib/service-data";
+import { requireCheckQuota } from "../lib/quota";
+import { evaluatePreAction } from "../lib/pre-action";
 
 const router: IRouter = Router();
 
@@ -50,7 +53,7 @@ async function authenticateAndFind(
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
     return null;
   }
-  return service;
+  return { service, ownerId: auth.ownerId };
 }
 
 router.get("/developer/services/:id", async (req, res): Promise<void> => {
@@ -59,9 +62,9 @@ router.get("/developer/services/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
     return;
   }
-  const service = await authenticateAndFind(req, res, "read", params.data.id);
-  if (!service) return;
-  res.json(DeveloperGetServiceResponse.parse(await buildResponse(service)));
+  const found = await authenticateAndFind(req, res, "read", params.data.id);
+  if (!found) return;
+  res.json(DeveloperGetServiceResponse.parse(await buildResponse(found.service)));
 });
 
 router.post("/developer/services/:id/checks", async (req, res): Promise<void> => {
@@ -70,8 +73,10 @@ router.post("/developer/services/:id/checks", async (req, res): Promise<void> =>
     res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
     return;
   }
-  const service = await authenticateAndFind(req, res, "check", params.data.id);
-  if (!service) return;
+  const found = await authenticateAndFind(req, res, "check", params.data.id);
+  if (!found) return;
+  if (!(await requireCheckQuota(found.ownerId, res))) return;
+  const service = found.service;
   const outcome = await runLiveVerification(
     service.url,
     service.expectedStructure,
@@ -87,14 +92,33 @@ router.get("/developer/services/:id/checks/latest", async (req, res): Promise<vo
     res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
     return;
   }
-  const service = await authenticateAndFind(req, res, "read", params.data.id);
-  if (!service) return;
-  const response = await buildResponse(service);
+  const found = await authenticateAndFind(req, res, "read", params.data.id);
+  if (!found) return;
+  const response = await buildResponse(found.service);
   if (!response.latestCheck) {
     res.status(404).json({ error: "Für diesen Dienst liegt noch keine Prüfung vor.", code: "NO_CHECK_FOUND" });
     return;
   }
   res.json(DeveloperGetLatestCheckResponse.parse(response));
+});
+
+router.post("/developer/services/:id/pre-action-check", async (req, res): Promise<void> => {
+  const params = DeveloperGetServiceParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Ungültige Dienst-ID.", code: "INVALID_ID" });
+    return;
+  }
+  const found = await authenticateAndFind(req, res, "check", params.data.id);
+  if (!found) return;
+  if (!(await requireCheckQuota(found.ownerId, res))) return;
+  const checks = await loadChecks(found.service.id);
+  res.json(
+    DeveloperPreActionCheckResponse.parse({
+      serviceId: found.service.id,
+      serviceName: found.service.name,
+      ...evaluatePreAction(found.service, checks),
+    }),
+  );
 });
 
 export default router;

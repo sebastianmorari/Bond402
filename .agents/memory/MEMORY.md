@@ -1,3 +1,4 @@
 - [Developer API ingress](developer-api-ingress.md) — IP limits assume Bond402 requests arrive through exactly one trusted Replit proxy hop.
 - [Dependency removal and lockfile sync](dependency-removal-lockfile.md) — verify package manifests and pnpm-lock.yaml after removing an integration.
 - [Bond402 frontend test runtime](frontend-test-runtime.md) — local Vite smoke tests require both PORT and BASE_PATH and must terminate the spawned process group.
+- [Bond402 usage model](usage-model.md) — productive checks consume the monthly plan quota; demo and sandbox simulations stay free and do not affect usage.

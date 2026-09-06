@@ -8,10 +8,12 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { UsageSummary } from './usageSummary';
 
-export interface ApiError {
-  error: string;
-  code: string;
-  quota?: UsageSummary | null;
-}
+export type DeveloperPreActionCheckDecision = typeof DeveloperPreActionCheckDecision[keyof typeof DeveloperPreActionCheckDecision];
+
+
+export const DeveloperPreActionCheckDecision = {
+  ALLOW: 'ALLOW',
+  CAUTION: 'CAUTION',
+  BLOCK: 'BLOCK',
+} as const;

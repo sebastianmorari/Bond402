@@ -8,10 +8,15 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { UsageSummary } from './usageSummary';
 
-export interface ApiError {
-  error: string;
-  code: string;
-  quota?: UsageSummary | null;
-}
+/**
+ * @nullable
+ */
+export type DeveloperPreActionFactorsLatestStatus = typeof DeveloperPreActionFactorsLatestStatus[keyof typeof DeveloperPreActionFactorsLatestStatus] | null;
+
+
+export const DeveloperPreActionFactorsLatestStatus = {
+  PASS: 'PASS',
+  FAIL: 'FAIL',
+  REVIEW: 'REVIEW',
+} as const;

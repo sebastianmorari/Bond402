@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { GuidedOnboarding } from "@/components/guided-onboarding";
 import { MobileNav } from "@/components/mobile-nav";
+import { QuotaCard } from "@/components/quota-card";
 
 export default function Dashboard() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
@@ -62,10 +63,10 @@ export default function Dashboard() {
         
         {/* Intro Section */}
         <section className="max-w-3xl">
-          <h2 className="text-3xl font-bold tracking-tight mb-2">Zuverlässigkeitsprüfung für API-Dienste</h2>
+          <h2 className="text-3xl font-bold tracking-tight mb-2">Trust Firewall for AI Agents</h2>
           <p className="text-muted-foreground text-lg">
-            Diese Plattform überwacht die Erreichbarkeit und Datenstruktur Ihrer Schnittstellen. 
-            Maschinenlesbare Dienste benötigen Vertrauen – wir machen es messbar und dauerhaft nachweisbar.
+            Bond402 ist die unabhängige Vertrauens- und Risikoschicht für AI Agents, APIs sowie x402-/MCP-nahe Dienste.
+            Prüfen Sie einen Dienst, bevor ein Agent ihn verwendet.
           </p>
         </section>
 
@@ -76,6 +77,10 @@ export default function Dashboard() {
         {/* Metrics */}
         <section>
           <DashboardMetrics />
+        </section>
+
+        <section className="my-8">
+          <QuotaCard />
         </section>
 
         {/* Main Content Layout */}

@@ -37,9 +37,11 @@ import type {
   CreatedApiKey,
   DashboardMetrics,
   DemoService,
+  DeveloperPreActionCheck,
   DeveloperServiceResult,
   HealthStatus,
   ReadinessStatus,
+  UsageSummary,
   VerificationInput
 } from './api.schemas';
 
@@ -1175,6 +1177,83 @@ export function useGetDashboard<TData = Awaited<ReturnType<typeof getDashboard>>
 
 
 
+export const getGetUsageUrl = () => {
+
+
+
+
+  return `/api/usage`
+}
+
+/**
+ * @summary Read the current monthly check quota
+ */
+export const getUsage = async ( options?: Parameters<typeof customFetch>[1]): Promise<UsageSummary> => {
+
+  return customFetch<UsageSummary>(getGetUsageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUsageQueryKey = () => {
+    return [
+    `/api/usage`
+    ] as const;
+    }
+
+
+export const getGetUsageQueryOptions = <TData = Awaited<ReturnType<typeof getUsage>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUsageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUsage>>> = ({ signal }) => getUsage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUsage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUsageQueryResult = NonNullable<Awaited<ReturnType<typeof getUsage>>>
+export type GetUsageQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Read the current monthly check quota
+ */
+
+export function useGetUsage<TData = Awaited<ReturnType<typeof getUsage>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUsage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUsageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListApiKeysUrl = () => {
 
 
@@ -1618,6 +1697,80 @@ export function useDeveloperGetLatestCheck<TData = Awaited<ReturnType<typeof dev
 
 
 
+
+export const getDeveloperPreActionCheckUrl = (id: string,) => {
+
+
+
+
+  return `/api/developer/services/${id}/pre-action-check`
+}
+
+/**
+ * Returns ALLOW, CAUTION, or BLOCK using the latest reachability,
+ * latency, structure, PASS/FAIL history, Trust Score, freshness, and
+ * detected anomalies. One product check is consumed from the monthly quota.
+ * @summary Decide whether an AI agent should use an owned service
+ */
+export const developerPreActionCheck = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<DeveloperPreActionCheck> => {
+
+  return customFetch<DeveloperPreActionCheck>(getDeveloperPreActionCheckUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeveloperPreActionCheckMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof developerPreActionCheck>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof developerPreActionCheck>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['developerPreActionCheck'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof developerPreActionCheck>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  developerPreActionCheck(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeveloperPreActionCheckMutationResult = NonNullable<Awaited<ReturnType<typeof developerPreActionCheck>>>
+
+    export type DeveloperPreActionCheckMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Decide whether an AI agent should use an owned service
+ */
+export const useDeveloperPreActionCheck = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof developerPreActionCheck>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof developerPreActionCheck>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeveloperPreActionCheckMutationOptions(options));
+    }
 
 export const getListDemoServicesUrl = () => {
 

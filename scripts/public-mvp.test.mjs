@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { once } from "node:events";
 import { test, before, after } from "node:test";
@@ -38,6 +38,8 @@ function cleanupTestData() {
     WHERE owner_id IN (SELECT id FROM bond402_users WHERE email LIKE '${emailFilter}');
     DELETE FROM bond402_api_services
     WHERE owner_id IN (SELECT id FROM bond402_users WHERE email LIKE '${emailFilter}');
+    DELETE FROM bond402_usage
+      WHERE user_id IN (SELECT id FROM bond402_users WHERE email LIKE '${emailFilter}');
     DELETE FROM bond402_users WHERE email LIKE '${emailFilter}';
   `);
 }
@@ -285,6 +287,80 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const keysB = await request("/api/api-keys", { jar: jarB });
   assert.equal(keysB.response.status, 200);
   assert.deepEqual(keysB.data, []);
+
+  const initialUsage = await request("/api/usage", { jar: jarA });
+  assert.equal(initialUsage.response.status, 200);
+  assert.equal(initialUsage.data.plan, "FREE");
+  assert.equal(initialUsage.data.monthlyLimit, 100);
+  assert.equal(initialUsage.data.usedChecks, 2);
+  assert.equal(initialUsage.data.remainingChecks, 98);
+
+  runSql(`
+    UPDATE bond402_usage
+    SET used_checks = 0, period_start = DATE_TRUNC('month', NOW())
+    WHERE user_id = '${registeredA.data.user.id}';
+    DELETE FROM bond402_api_checks
+    WHERE service_id = '${serviceId}' AND check_type = 'LIVE';
+  `);
+  const checkSql = (status, reachable, responseTimeMs, structureMatch, errorCode = null) => `
+    INSERT INTO bond402_api_checks
+      (id, service_id, checked_at, status, check_type, reachable, response_time_ms,
+       structure_match, http_status, error_code, summary, found_fields, missing_fields)
+    VALUES
+      ('${randomUUID()}', '${serviceId}', NOW(), '${status}', 'LIVE', ${reachable},
+       ${responseTimeMs}, ${structureMatch}, ${reachable ? 200 : "NULL"},
+       ${errorCode ? `'${errorCode}'` : "NULL"}, 'Testprüfung', '[]'::jsonb, '[]'::jsonb);
+  `;
+  runSql(checkSql("PASS", true, 120, true));
+  const allowDecision = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${createdKey.data.secret}` },
+  });
+  assert.equal(allowDecision.response.status, 200);
+  assert.equal(allowDecision.data.decision, "ALLOW");
+  assert.equal(allowDecision.data.factors.latestReachable, true);
+
+  runSql(checkSql("REVIEW", true, 120, true));
+  const cautionDecision = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${createdKey.data.secret}` },
+  });
+  assert.equal(cautionDecision.response.status, 200);
+  assert.equal(cautionDecision.data.decision, "CAUTION");
+  assert.ok(cautionDecision.data.reasons.length > 0);
+
+  runSql(checkSql("FAIL", false, 0, false, "TIMEOUT"));
+  runSql(checkSql("FAIL", false, 0, false, "TIMEOUT"));
+  const blockDecision = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${createdKey.data.secret}` },
+  });
+  assert.equal(blockDecision.response.status, 200);
+  assert.equal(blockDecision.data.decision, "BLOCK");
+  assert.ok(blockDecision.data.factors.anomalies.includes("REPEATED_FAILURES"));
+
+  runSql(`
+    UPDATE bond402_usage
+    SET used_checks = 100, period_start = DATE_TRUNC('month', NOW())
+    WHERE user_id = '${registeredA.data.user.id}';
+  `);
+  const quotaExceeded = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${createdKey.data.secret}` },
+  });
+  assert.equal(quotaExceeded.response.status, 429);
+  assert.equal(quotaExceeded.data.code, "QUOTA_EXCEEDED");
+  assert.equal(quotaExceeded.data.quota.remainingChecks, 0);
+
+  runSql(`
+    UPDATE bond402_usage
+    SET period_start = DATE_TRUNC('month', NOW()) - INTERVAL '1 month'
+    WHERE user_id = '${registeredA.data.user.id}';
+  `);
+  const resetUsage = await request("/api/usage", { jar: jarA });
+  assert.equal(resetUsage.response.status, 200);
+  assert.equal(resetUsage.data.usedChecks, 0);
+  assert.equal(resetUsage.data.remainingChecks, 100);
 
   const developerRead = await request(`/api/developer/services/${serviceId}`, {
     headers: { Authorization: `Bearer ${createdKey.data.secret}` },

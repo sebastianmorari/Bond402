@@ -8,10 +8,14 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { UsageSummary } from './usageSummary';
+import type { PlanOptionPlan } from './planOptionPlan';
 
-export interface ApiError {
-  error: string;
-  code: string;
-  quota?: UsageSummary | null;
+export interface PlanOption {
+  plan: PlanOptionPlan;
+  planName: string;
+  /** @nullable */
+  monthlyLimit: number | null;
+  /** @nullable */
+  priceChf: number | null;
+  description: string;
 }

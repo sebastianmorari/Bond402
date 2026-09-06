@@ -11,6 +11,9 @@ const writeEndpoints = [
   ["POST", "/developer/services/{id}/checks", "Eine Live-Prüfung starten und das Ergebnis speichern."],
 ];
 
+const agentEndpoints = [
+  ["POST", "/developer/services/{id}/pre-action-check", "Vor einer externen Agentenaktion ALLOW, CAUTION oder BLOCK abrufen."],
+];
 function Code({ children }: { children: string }) {
   return (
     <code className="break-all rounded-md border border-border/60 bg-background/80 px-2 py-1 font-mono text-xs text-primary">
@@ -79,13 +82,13 @@ export function ApiDocsPage() {
         <section className="max-w-3xl">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
             <BookOpen className="h-4 w-4" />
-            Öffentliche REST-API · OpenAPI 3.1
+            Trust Firewall für AI Agents · OpenAPI 3.1
           </div>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Bond402 Developer-API</h1>
           <p className="mt-4 text-base leading-7 text-muted-foreground">
-            Automatisieren Sie Prüfungen Ihrer eigenen, öffentlich erreichbaren API-Dienste.
-            Die API speichert nur Dienste und Prüfresultate Ihres eigenen Kontos und führt
-            keine Zahlungen oder Blockchain-Transaktionen aus.
+            Fragen Sie Bond402 vor der Nutzung eines externen Dienstes ab.
+            Die unabhängige Trust Firewall verbindet Prüfresultate, Historie und Trust Score
+            zu einer maschinenlesbaren Risikoklarheit für AI Agents, APIs und x402-/MCP-nahe Dienste.
           </p>
         </section>
 
@@ -159,6 +162,58 @@ export function ApiDocsPage() {
 
         <EndpointTable title="Lesen und letzte Ergebnisse" endpoints={readEndpoints} />
         <EndpointTable title="Live-Prüfung" endpoints={writeEndpoints} />
+        <EndpointTable title="AI-Agenten vor einer Aktion schützen" endpoints={agentEndpoints} />
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Pre-Action-Entscheidung</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Der Pre-Action-Check bewertet die aktuellste Erreichbarkeit, Antwortzeit,
+            Schema-/Strukturtreue, PASS-/FAIL-Historie, Trust Score, Aktualität und
+            erkennbare Auffälligkeiten. Die Antwort enthält immer eine Entscheidung,
+            verständliche Gründe und die berücksichtigten Faktoren.
+          </p>
+          <pre className="overflow-x-auto rounded-xl border border-border/60 bg-card/70 p-4 text-xs leading-6 text-muted-foreground">
+            <code>{`{
+  "decision": "ALLOW",
+  "reasons": [
+    "Aktuelle Erreichbarkeit, Antwortzeit, Struktur und Historie sprechen für eine Nutzung."
+  ],
+  "factors": {
+    "trustScore": 94,
+    "latestReachable": true,
+    "latestStructureMatch": true,
+    "recentFailures": 0,
+    "anomalies": []
+  }
+}`}</code>
+          </pre>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Ein Pre-Action-Check ist ein produktiver Check und wird vom Monatskontingent abgezogen.
+            Sandbox- und Demo-Abläufe bleiben simuliert und kostenlos.
+          </p>
+        </section>
+
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold">Monatliche Pakete</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              ["Free", "100 Checks", "0 CHF"],
+              ["Starter", "2.500 Checks", "19 CHF / Monat"],
+              ["Pro", "15.000 Checks", "69 CHF / Monat"],
+              ["Business", "75.000 Checks", "199 CHF / Monat"],
+              ["Enterprise", "Individuell", "Auf Anfrage"],
+            ].map(([name, checks, price]) => (
+              <div key={name} className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="font-semibold">{name}</p>
+                <p className="mt-2 text-sm text-primary">{checks}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{price}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Das Paketmodell ist vorbereitet, aber noch nicht buchbar. Es werden keine Zahlungen ausgelöst.
+          </p>
+        </section>
 
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Antworten und Fehler</h2>

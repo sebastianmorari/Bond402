@@ -397,6 +397,30 @@ export const GetDashboardResponse = zod.object({
 
 
 /**
+ * @summary Read the current monthly check quota
+ */
+export const GetUsageResponse = zod.object({
+  "plan": zod.enum(['FREE', 'STARTER', 'PRO', 'BUSINESS', 'ENTERPRISE']),
+  "planName": zod.string(),
+  "monthlyLimit": zod.number().nullable(),
+  "usedChecks": zod.number(),
+  "remainingChecks": zod.number().nullable(),
+  "periodStart": zod.coerce.date(),
+  "resetAt": zod.coerce.date(),
+  "upgradeAvailable": zod.boolean(),
+  "priceChf": zod.number().nullable(),
+  "description": zod.string(),
+  "availablePlans": zod.array(zod.object({
+  "plan": zod.enum(['FREE', 'STARTER', 'PRO', 'BUSINESS', 'ENTERPRISE']),
+  "planName": zod.string(),
+  "monthlyLimit": zod.number().nullable(),
+  "priceChf": zod.number().nullable(),
+  "description": zod.string()
+}))
+})
+
+
+/**
  * @summary List API key metadata for the signed-in user
  */
 export const ListApiKeysResponseItem = zod.object({
@@ -615,6 +639,40 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "foundFields": zod.array(zod.string()),
   "missingFields": zod.array(zod.string())
 })).max(developerGetLatestCheckResponseChecksMax)
+})
+
+
+/**
+ * Returns ALLOW, CAUTION, or BLOCK using the latest reachability,
+ * latency, structure, PASS/FAIL history, Trust Score, freshness, and
+ * detected anomalies. One product check is consumed from the monthly quota.
+ * @summary Decide whether an AI agent should use an owned service
+ */
+
+
+
+export const DeveloperPreActionCheckParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const DeveloperPreActionCheckResponse = zod.object({
+  "serviceId": zod.string(),
+  "serviceName": zod.string(),
+  "decision": zod.enum(['ALLOW', 'CAUTION', 'BLOCK']),
+  "reasons": zod.array(zod.string()),
+  "factors": zod.object({
+  "trustScore": zod.number().nullable(),
+  "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "latestResponseTimeMs": zod.number().nullable(),
+  "latestReachable": zod.boolean().nullable(),
+  "latestStructureMatch": zod.boolean().nullable(),
+  "recentLiveChecks": zod.number(),
+  "recentPasses": zod.number(),
+  "recentFailures": zod.number(),
+  "anomalies": zod.array(zod.string())
+}),
+  "evaluatedAt": zod.coerce.date()
 })
 
 
