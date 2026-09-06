@@ -102,7 +102,12 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
         </p>
         <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-center text-xs leading-relaxed text-muted-foreground">
           Passwort-Wiederherstellung und E-Mail-Verifizierung sind derzeit bewusst nicht aktiviert.
-          Verwenden Sie ein Passwort, das Sie sicher aufbewahren können.
+          Verwenden Sie ein Passwort, das Sie sicher aufbewahren können. Wenn Sie den Zugang verlieren,
+          wenden Sie sich an den Beta-Support unter{" "}
+          <a className="font-medium text-primary hover:underline" href="mailto:sseby17@gmail.com">
+            sseby17@gmail.com
+          </a>
+          . Senden Sie niemals Ihr Passwort.
         </div>
         <PublicFooter />
       </div>

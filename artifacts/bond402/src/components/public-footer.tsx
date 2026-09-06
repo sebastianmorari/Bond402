@@ -15,6 +15,9 @@ export function PublicFooter() {
           <Link href="/api-docs" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
             API-Doku
           </Link>
+          <Link href="/status" className="font-medium text-primary transition-colors hover:text-primary/80 hover:underline">
+            Status
+          </Link>
         </nav>
       </div>
     </footer>

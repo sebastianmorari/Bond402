@@ -61,6 +61,7 @@ test("öffentliche SPA-Routen bleiben direkt erreichbar", async () => {
   const routes = [
     "/",
     "/api-docs",
+    "/status",
     "/sign-in",
     "/sign-up",
     "/impressum",

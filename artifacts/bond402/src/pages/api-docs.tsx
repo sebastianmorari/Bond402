@@ -5,6 +5,7 @@ import { PublicFooter } from "@/components/public-footer";
 const readEndpoints = [
   ["GET", "/developer/services/{id}", "Eigenen Dienst, Trust Score und Prüfhistorie abrufen."],
   ["GET", "/developer/services/{id}/checks/latest", "Die letzte gespeicherte Prüfung abrufen."],
+  ["GET", "/usage", "Monatliches Paket, Verbrauch, Restkontingent und Reset-Zeit abrufen."],
 ];
 
 const writeEndpoints = [
@@ -160,6 +161,53 @@ export function ApiDocsPage() {
           </pre>
         </section>
 
+        <section className="space-y-5 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6">
+          <div>
+            <h2 className="text-lg font-semibold">5-Minuten-Quickstart</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              In fünf Schritten prüfen Sie einen eigenen Dienst und lassen vor einer Agentenaktion
+              eine maschinenlesbare Vertrauensentscheidung treffen.
+            </p>
+          </div>
+          <ol className="grid gap-4 text-sm leading-6 text-muted-foreground">
+            <li className="rounded-xl border border-border/60 bg-background/70 p-4">
+              <strong className="text-foreground">1. Konto und Dienst anlegen.</strong>{" "}
+              Registrieren Sie sich, legen Sie im Dashboard einen eigenen HTTPS-Dienst an und kopieren Sie seine Service-ID.
+            </li>
+            <li className="rounded-xl border border-border/60 bg-background/70 p-4">
+              <strong className="text-foreground">2. Developer-Key erstellen.</strong>{" "}
+              Öffnen Sie den Developer-Bereich, erstellen Sie einen Schlüssel und speichern Sie das Geheimnis sicher.
+            </li>
+            <li className="rounded-xl border border-border/60 bg-background/70 p-4">
+              <strong className="text-foreground">3. Dienst abrufen.</strong>
+              <pre className="mt-3 overflow-x-auto rounded-lg border border-border/50 bg-card/80 p-3 text-xs leading-5">
+                <code>{`curl "${browserBase}/developer/services/IHRE_SERVICE_ID" \\
+  -H "Authorization: Bearer b402_IHR_SCHLUESSEL"`}</code>
+              </pre>
+            </li>
+            <li className="rounded-xl border border-border/60 bg-background/70 p-4">
+              <strong className="text-foreground">4. Live-Check starten.</strong>{" "}
+              Bond402 ruft den registrierten Dienst auf, prüft Erreichbarkeit, Antwortzeit und Struktur und speichert das Ergebnis.
+              <pre className="mt-3 overflow-x-auto rounded-lg border border-border/50 bg-card/80 p-3 text-xs leading-5">
+                <code>{`curl -X POST "${browserBase}/developer/services/IHRE_SERVICE_ID/checks" \\
+  -H "Authorization: Bearer b402_IHR_SCHLUESSEL"`}</code>
+              </pre>
+            </li>
+            <li className="rounded-xl border border-border/60 bg-background/70 p-4">
+              <strong className="text-foreground">5. Vor der Agentenaktion entscheiden.</strong>{" "}
+              Fragen Sie den Pre-Action-Check ab. Er bewertet die gespeicherten aktuellen Daten und liefert ALLOW, CAUTION oder BLOCK.
+              <pre className="mt-3 overflow-x-auto rounded-lg border border-border/50 bg-card/80 p-3 text-xs leading-5">
+                <code>{`curl -X POST "${browserBase}/developer/services/IHRE_SERVICE_ID/pre-action-check" \\
+  -H "Authorization: Bearer b402_IHR_SCHLUESSEL"`}</code>
+              </pre>
+            </li>
+          </ol>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Alle gezeigten Aufrufe verwenden die Produktionsbasis <Code>{browserBase}</Code>.
+            API-Schlüssel gehören ausschließlich in Ihre Secret-Verwaltung und niemals in URLs, Logs oder Browser-Code.
+          </p>
+        </section>
+
         <EndpointTable title="Lesen und letzte Ergebnisse" endpoints={readEndpoints} />
         <EndpointTable title="Live-Prüfung" endpoints={writeEndpoints} />
         <EndpointTable title="AI-Agenten vor einer Aktion schützen" endpoints={agentEndpoints} />
@@ -191,6 +239,18 @@ export function ApiDocsPage() {
             Ein Pre-Action-Check ist ein produktiver Check und wird vom Monatskontingent abgezogen.
             Sandbox- und Demo-Abläufe bleiben simuliert und kostenlos.
           </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              ["ALLOW", "Die aktuellen Daten sprechen für die Nutzung. Der Agent kann fortfahren, sollte aber seine eigene fachliche Prüfung behalten."],
+              ["CAUTION", "Es gibt Unsicherheiten, zum Beispiel eine schwächere Historie, erhöhte Latenz oder veraltete Prüfdaten. Der Agent sollte vorsichtig fortfahren oder einen Fallback nutzen."],
+              ["BLOCK", "Die Daten zeigen ein relevantes Risiko, etwa Nichterreichbarkeit oder wiederholte Fehler. Der Agent sollte die externe Aktion nicht ausführen."],
+            ].map(([decision, explanation]) => (
+              <div key={decision} className="rounded-xl border border-border/60 bg-card/50 p-4">
+                <p className="font-bold text-primary">{decision}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{explanation}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="space-y-4">
@@ -221,7 +281,7 @@ export function ApiDocsPage() {
             Erfolgreiche Antworten sind JSON. Bei Fehlern liefert Bond402 eine neutrale,
             maschinenlesbare Antwort mit <Code>error</Code> und <Code>code</Code>.
             Häufige Codes sind <Code>INVALID_API_KEY</Code>, <Code>NOT_FOUND</Code>,
-            <Code>RATE_LIMITED</Code> und <Code>INTERNAL_ERROR</Code>. Bei <Code>429</Code>
+            <Code>RATE_LIMITED</Code>, <Code>QUOTA_EXCEEDED</Code> und <Code>INTERNAL_ERROR</Code>. Bei <Code>429</Code>
             beachten Sie den Header <Code>Retry-After</Code>.
           </p>
           <pre className="overflow-x-auto rounded-xl border border-border/60 bg-card/70 p-4 text-xs leading-6 text-muted-foreground">
@@ -251,6 +311,11 @@ export function ApiDocsPage() {
           Passwort-Wiederherstellung und E-Mail-Verifizierung sind im MVP nicht live.
           Dafür ist ein E-Mail-Anbieter mit sicherem Secret und verifizierten Zustellwegen nötig.
           Es gibt deshalb keine unsicheren Reset-Links oder Fake-Bestätigungen.
+          Wenn Sie den Zugang verlieren, kontaktieren Sie den Beta-Support unter{" "}
+          <a className="font-medium text-primary hover:underline" href="mailto:sseby17@gmail.com">
+            sseby17@gmail.com
+          </a>
+          . Senden Sie niemals Ihr Passwort.
         </section>
       </main>
 

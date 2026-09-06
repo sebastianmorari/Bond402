@@ -106,6 +106,38 @@ export function Landing() {
         </div>
       </section>
 
+      <section className="border-t border-border/40 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-10 text-center">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-primary">Öffentliche Beta</p>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Starten Sie mit 100 kostenlosen Checks</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+              Produktive Live-, manuelle und Pre-Action-Checks werden transparent pro UTC-Monat gezählt.
+              Demo- und Sandbox-Abläufe bleiben kostenlos simuliert.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              ["Free", "100 Checks", "kostenlos"],
+              ["Starter", "2.500 Checks", "19 CHF / Monat"],
+              ["Pro", "15.000 Checks", "69 CHF / Monat"],
+              ["Business", "75.000 Checks", "199 CHF / Monat"],
+              ["Enterprise", "individuell", "auf Anfrage"],
+            ].map(([name, checks, price]) => (
+              <div key={name} className="rounded-xl border border-border/60 bg-card/50 p-4 text-center">
+                <p className="font-semibold">{name}</p>
+                <p className="mt-2 text-sm font-medium text-primary">{checks}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{price}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 text-center text-xs leading-5 text-muted-foreground">
+            Das Paketmodell ist für die Beta vorbereitet, aber nicht buchbar. Es gibt keinen Checkout,
+            keine Zahlung, keine Wallet und keine Blockchain-Transaktion.
+          </p>
+        </div>
+      </section>
+
       <PublicFooter />
     </div>
   );
