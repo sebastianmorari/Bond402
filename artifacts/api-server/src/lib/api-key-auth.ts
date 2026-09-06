@@ -88,6 +88,14 @@ export async function consumeOwnerRateLimit(
   return consumeRateLimit(`owner:${ownerId}`, scope, limit);
 }
 
+export async function consumePublicRateLimit(
+  ip: string,
+  scope: string,
+  limit: number,
+): Promise<{ allowed: boolean; retryAfter: number }> {
+  return consumeRateLimit(`public:${ip}`, scope, limit);
+}
+
 export async function authenticateApiKey(
   req: Request,
   res: Response,

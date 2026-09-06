@@ -9,19 +9,16 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { ActionContext } from './actionContext';
-import type { DeveloperPreActionCheckDecision } from './developerPreActionCheckDecision';
-import type { DeveloperPreActionFactors } from './developerPreActionFactors';
+import type { DeveloperPreActionCheck } from './developerPreActionCheck';
 import type { Freshness } from './freshness';
 import type { PreActionPolicy } from './preActionPolicy';
+import type { PublicPreActionCheckAccess } from './publicPreActionCheckAccess';
+import type { PublicPreActionCheckUsage } from './publicPreActionCheckUsage';
 
-export interface DeveloperPreActionCheck {
-  serviceId: string;
-  serviceName: string;
-  decision: DeveloperPreActionCheckDecision;
-  reasons: string[];
-  factors: DeveloperPreActionFactors;
-  actionContext: ActionContext;
-  freshness: Freshness;
-  policy: PreActionPolicy;
-  evaluatedAt: Date;
-}
+export type PublicPreActionCheck = DeveloperPreActionCheck & {
+  actionContext?: ActionContext;
+  freshness?: Freshness;
+  policy?: PreActionPolicy;
+  access?: PublicPreActionCheckAccess;
+  usage?: PublicPreActionCheckUsage;
+};

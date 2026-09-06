@@ -109,9 +109,47 @@ export async function toServiceResponse(service: ApiServiceRow) {
     url: service.url,
     expectedStructure: service.expectedStructure,
     maxResponseTime: service.maxResponseTime,
+    visibility: service.visibility as "PRIVATE" | "LISTED",
+    listedAt: service.listedAt?.toISOString() ?? null,
     createdAt: service.createdAt.toISOString(),
     trustScore: trust.score,
     trustExplanation: trust.explanation,
     checks: checks.map(toCheckResponse),
+  };
+}
+
+export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheckRow[]) {
+  const trust = calculateTrust(checks, service.maxResponseTime);
+  const latestCheck = checks.find((check) => check.checkType === "LIVE");
+  return {
+    id: service.id,
+    name: service.name,
+    url: service.url,
+    visibility: "LISTED" as const,
+    listedAt: service.listedAt?.toISOString() ?? null,
+    trustScore: trust.score,
+    trustExplanation: trust.explanation,
+    latestStatus: latestCheck?.status as "PASS" | "FAIL" | "REVIEW" | undefined ?? null,
+    latestCheckAt: latestCheck?.checkedAt.toISOString() ?? null,
+    latestCheck: latestCheck
+      ? {
+          checkedAt: latestCheck.checkedAt.toISOString(),
+          status: latestCheck.status as "PASS" | "FAIL" | "REVIEW",
+          reachable: latestCheck.reachable,
+          responseTimeMs: latestCheck.responseTimeMs,
+          structureMatch: latestCheck.structureMatch,
+          httpStatus: latestCheck.httpStatus,
+        }
+      : null,
+    access: {
+      publicCatalog: true,
+      preActionRequiresDeveloperKey: false,
+      liveCheckRequiresDeveloperKey: true,
+    },
+    links: {
+      detail: `/api/public/services/${encodeURIComponent(service.id)}`,
+      preActionCheck: `/api/public/services/${encodeURIComponent(service.id)}/pre-action-check`,
+      privilegedPreActionCheck: `/api/developer/services/${encodeURIComponent(service.id)}/pre-action-check`,
+    },
   };
 }

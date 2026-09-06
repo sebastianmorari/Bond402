@@ -126,6 +126,7 @@ router.post("/services", async (req, res): Promise<void> => {
       url: parsed.data.url,
       expectedStructure: normalizedStructure,
       maxResponseTime: parsed.data.maxResponseTime,
+      visibility: "PRIVATE",
     })
     .returning();
   res.status(201).json(CreateServiceResponse.parse(await toServiceResponse(service)));
@@ -164,6 +165,9 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
       ? { expectedStructure: body.data.expectedStructure.trim() }
       : {}),
   };
+  if (body.data.visibility !== undefined) {
+    changes.visibility = body.data.visibility;
+  }
   if (changes.name !== undefined && changes.name.length < 2) {
     res.status(400).json({ error: "Der Dienstname ist zu kurz.", code: "INVALID_INPUT" });
     return;
@@ -194,7 +198,14 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
 
   const [service] = await db
     .update(apiServicesTable)
-    .set(changes)
+    .set({
+      ...changes,
+      ...(body.data.visibility === "LISTED"
+        ? { listedAt: new Date() }
+        : body.data.visibility === "PRIVATE"
+          ? { listedAt: null }
+          : {}),
+    })
     .where(
       and(
         eq(apiServicesTable.id, params.data.id),

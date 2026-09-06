@@ -8,6 +8,7 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceUpdateVisibility } from './apiServiceUpdateVisibility';
 
 export interface ApiServiceUpdate {
   /**
@@ -30,4 +31,5 @@ export interface ApiServiceUpdate {
      * @maximum 15000
      */
   maxResponseTime?: number;
+  visibility?: ApiServiceUpdateVisibility;
 }

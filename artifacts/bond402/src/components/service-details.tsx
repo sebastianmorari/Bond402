@@ -66,7 +66,8 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
     name: "",
     url: "",
     maxResponseTime: 1000,
-    expectedStructure: ""
+    expectedStructure: "",
+    visibility: "PRIVATE" as "PRIVATE" | "LISTED",
   });
 
   const { data: service, isLoading, isError } = useGetService(serviceId || "", {
@@ -82,7 +83,8 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
         name: service.name,
         url: service.url,
         maxResponseTime: service.maxResponseTime,
-        expectedStructure: service.expectedStructure
+        expectedStructure: service.expectedStructure,
+        visibility: service.visibility,
       });
     }
   }, [service, isEditing]);
@@ -173,6 +175,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
           url: editForm.url,
           maxResponseTime: Number(editForm.maxResponseTime),
           expectedStructure: editForm.expectedStructure
+          ,visibility: editForm.visibility
         } 
       },
       {
@@ -220,6 +223,9 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                   <SheetDescription className="font-mono text-xs mt-1 text-primary">
                     {service.url}
                   </SheetDescription>
+                  <Badge variant={service.visibility === "LISTED" ? "default" : "outline"} className="mt-3">
+                    {service.visibility === "LISTED" ? "Öffentlich gelistet" : "Privat"}
+                  </Badge>
                 </div>
                 <div className="flex gap-2">
                   <AlertDialog>
@@ -475,6 +481,20 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                           onChange={(e) => setEditForm(f => ({ ...f, expectedStructure: e.target.value }))}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Sichtbarkeit</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          value={editForm.visibility}
+                          onChange={(e) => setEditForm((f) => ({ ...f, visibility: e.target.value as "PRIVATE" | "LISTED" }))}
+                        >
+                          <option value="PRIVATE">Privat – nicht im öffentlichen Katalog</option>
+                          <option value="LISTED">Gelistet – öffentliche Trust-Daten</option>
+                        </select>
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          Gelistet bedeutet: Name, URL, Trust Score und gespeicherte Prüfmetadaten sind öffentlich. Besitzer- und Schlüsselangaben bleiben privat.
+                        </p>
+                      </div>
                       <div className="flex justify-end pt-2">
                         <Button variant="ghost" onClick={() => setIsEditing(false)}>
                           Abbrechen
@@ -483,6 +503,12 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Sichtbarkeit</p>
+                        <p className="text-sm bg-muted/30 p-2 rounded border border-border/50">
+                          {service.visibility === "LISTED" ? "Öffentlich gelistet" : "Privat"}
+                        </p>
+                      </div>
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">URL</p>
                         <p className="font-mono text-sm break-all bg-muted/30 p-2 rounded border border-border/50">{service.url}</p>

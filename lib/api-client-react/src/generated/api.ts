@@ -45,7 +45,13 @@ import type {
   DeveloperPreActionCheck,
   DeveloperServiceResult,
   HealthStatus,
+  PublicDiscovery,
+  PublicPreActionBody,
+  PublicPreActionCheck,
+  PublicService,
+  PublicServiceCatalog,
   ReadinessStatus,
+  SearchPublicServicesParams,
   UsageSummary,
   VerificationInput
 } from './api.schemas';
@@ -2060,6 +2066,474 @@ export const useDeveloperPreActionCheck = <TError = ErrorType<ApiError>,
       > => {
       return useMutation(getDeveloperPreActionCheckMutationOptions(options));
     }
+
+export const getGetPublicDiscoveryUrl = () => {
+
+
+
+
+  return `/api/public/discovery`
+}
+
+/**
+ * @summary Discover public Bond402 agent endpoints
+ */
+export const getPublicDiscovery = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublicDiscovery> => {
+
+  return customFetch<PublicDiscovery>(getGetPublicDiscoveryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicDiscoveryQueryKey = () => {
+    return [
+    `/api/public/discovery`
+    ] as const;
+    }
+
+
+export const getGetPublicDiscoveryQueryOptions = <TData = Awaited<ReturnType<typeof getPublicDiscovery>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicDiscovery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicDiscoveryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicDiscovery>>> = ({ signal }) => getPublicDiscovery({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicDiscovery>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicDiscoveryQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicDiscovery>>>
+export type GetPublicDiscoveryQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Discover public Bond402 agent endpoints
+ */
+
+export function useGetPublicDiscovery<TData = Awaited<ReturnType<typeof getPublicDiscovery>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicDiscovery>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicDiscoveryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSearchPublicServicesUrl = (params?: SearchPublicServicesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/public/services?${stringifiedParams}` : `/api/public/services`
+}
+
+/**
+ * @summary Search the public catalog of operator-listed services
+ */
+export const searchPublicServices = async (params?: SearchPublicServicesParams, options?: Parameters<typeof customFetch>[1]): Promise<PublicServiceCatalog> => {
+
+  return customFetch<PublicServiceCatalog>(getSearchPublicServicesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSearchPublicServicesQueryKey = (params?: SearchPublicServicesParams,) => {
+    return [
+    `/api/public/services`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSearchPublicServicesQueryOptions = <TData = Awaited<ReturnType<typeof searchPublicServices>>, TError = ErrorType<ApiError>>(params?: SearchPublicServicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchPublicServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSearchPublicServicesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof searchPublicServices>>> = ({ signal }) => searchPublicServices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof searchPublicServices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SearchPublicServicesQueryResult = NonNullable<Awaited<ReturnType<typeof searchPublicServices>>>
+export type SearchPublicServicesQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Search the public catalog of operator-listed services
+ */
+
+export function useSearchPublicServices<TData = Awaited<ReturnType<typeof searchPublicServices>>, TError = ErrorType<ApiError>>(
+ params?: SearchPublicServicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof searchPublicServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSearchPublicServicesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPublicServiceUrl = (id: string,) => {
+
+
+
+
+  return `/api/public/services/${id}`
+}
+
+/**
+ * @summary Read public trust metadata for one listed service
+ */
+export const getPublicService = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicService> => {
+
+  return customFetch<PublicService>(getGetPublicServiceUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicServiceQueryKey = (id: string,) => {
+    return [
+    `/api/public/services/${id}`
+    ] as const;
+    }
+
+
+export const getGetPublicServiceQueryOptions = <TData = Awaited<ReturnType<typeof getPublicService>>, TError = ErrorType<ApiError>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicService>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicServiceQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicService>>> = ({ signal }) => getPublicService(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicService>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicServiceQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicService>>>
+export type GetPublicServiceQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Read public trust metadata for one listed service
+ */
+
+export function useGetPublicService<TData = Awaited<ReturnType<typeof getPublicService>>, TError = ErrorType<ApiError>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicService>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicServiceQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPublicPreActionCheckUrl = (id: string,) => {
+
+
+
+
+  return `/api/public/services/${id}/pre-action-check`
+}
+
+/**
+ * Returns ALLOW, CAUTION, or BLOCK from stored checks for an operator-listed
+ * service. This public read-only result does not run a live check and does not
+ * consume the owner's monthly product quota. Live checks and owner actions still
+ * require a Developer API key.
+ * @summary Get a read-only decision for a listed service before an action
+ */
+export const getPublicPreActionCheck = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicPreActionCheck> => {
+
+  return customFetch<PublicPreActionCheck>(getGetPublicPreActionCheckUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicPreActionCheckQueryKey = (id: string,) => {
+    return [
+    `/api/public/services/${id}/pre-action-check`
+    ] as const;
+    }
+
+
+export const getGetPublicPreActionCheckQueryOptions = <TData = Awaited<ReturnType<typeof getPublicPreActionCheck>>, TError = ErrorType<ApiError>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicPreActionCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicPreActionCheckQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicPreActionCheck>>> = ({ signal }) => getPublicPreActionCheck(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicPreActionCheck>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicPreActionCheckQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicPreActionCheck>>>
+export type GetPublicPreActionCheckQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Get a read-only decision for a listed service before an action
+ */
+
+export function useGetPublicPreActionCheck<TData = Awaited<ReturnType<typeof getPublicPreActionCheck>>, TError = ErrorType<ApiError>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicPreActionCheck>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicPreActionCheckQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPostPublicPreActionCheckUrl = (id: string,) => {
+
+
+
+
+  return `/api/public/services/${id}/pre-action-check`
+}
+
+/**
+ * @summary Get a public pre-action decision with explicit action context
+ */
+export const postPublicPreActionCheck = async (id: string,
+    publicPreActionBody?: PublicPreActionBody, options?: Parameters<typeof customFetch>[1]): Promise<PublicPreActionCheck> => {
+
+  return customFetch<PublicPreActionCheck>(getPostPublicPreActionCheckUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(publicPreActionBody)
+  }
+);}
+
+
+
+
+
+export const getPostPublicPreActionCheckMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPublicPreActionCheck>>, TError,{id: string;data?: BodyType<PublicPreActionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postPublicPreActionCheck>>, TError,{id: string;data?: BodyType<PublicPreActionBody>}, TContext> => {
+
+const mutationKey = ['postPublicPreActionCheck'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postPublicPreActionCheck>>, {id: string;data?: BodyType<PublicPreActionBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postPublicPreActionCheck(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostPublicPreActionCheckMutationResult = NonNullable<Awaited<ReturnType<typeof postPublicPreActionCheck>>>
+    export type PostPublicPreActionCheckMutationBody = BodyType<PublicPreActionBody> | undefined
+    export type PostPublicPreActionCheckMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Get a public pre-action decision with explicit action context
+ */
+export const usePostPublicPreActionCheck = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPublicPreActionCheck>>, TError,{id: string;data?: BodyType<PublicPreActionBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof postPublicPreActionCheck>>,
+        TError,
+        {id: string;data?: BodyType<PublicPreActionBody>},
+        TContext
+      > => {
+      return useMutation(getPostPublicPreActionCheckMutationOptions(options));
+    }
+
+export const getGetPublicOpenApiUrl = () => {
+
+
+
+
+  return `/api/openapi.json`
+}
+
+/**
+ * @summary Download the public Bond402 OpenAPI document
+ */
+export const getPublicOpenApi = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getGetPublicOpenApiUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicOpenApiQueryKey = () => {
+    return [
+    `/api/openapi.json`
+    ] as const;
+    }
+
+
+export const getGetPublicOpenApiQueryOptions = <TData = Awaited<ReturnType<typeof getPublicOpenApi>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicOpenApi>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicOpenApiQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicOpenApi>>> = ({ signal }) => getPublicOpenApi({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicOpenApi>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicOpenApiQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicOpenApi>>>
+export type GetPublicOpenApiQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Download the public Bond402 OpenAPI document
+ */
+
+export function useGetPublicOpenApi<TData = Awaited<ReturnType<typeof getPublicOpenApi>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicOpenApi>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicOpenApiQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListDemoServicesUrl = () => {
 

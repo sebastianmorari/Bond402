@@ -1,0 +1,30 @@
+{
+  "name": "Bond402",
+  "version": "public-beta",
+  "description": "Öffentliche Trust- und Risiko-Metadaten für operator-gelistete API-Dienste.",
+  "catalog": "https://bond402.com/catalog",
+  "discovery": "https://bond402.com/api/public/discovery",
+  "openapi": "https://bond402.com/api/openapi.json",
+  "apiBase": "https://bond402.com/api",
+  "workflow": [
+    "GET /api/public/services?q={search}&page={page}&pageSize={pageSize}",
+    "GET /api/public/services/{id}",
+    "GET /api/public/services/{id}/pre-action-check",
+    "POST /api/public/services/{id}/pre-action-check with {\"actionContext\":\"READ|WRITE|PAYMENT|CREDENTIAL_USE\"}",
+    "POST /api/developer/services/{id}/pre-action-check (owner key only for quota-counted checks)"
+  ],
+  "decisions": ["ALLOW", "CAUTION", "BLOCK"],
+  "actionContexts": ["GENERAL", "READ", "WRITE", "PAYMENT", "CREDENTIAL_USE"],
+  "authentication": {
+    "publicCatalog": "none",
+    "publicPreActionCheck": "none",
+    "developerOperations": "Bearer Bond402 API key",
+    "pilotKeyModel": "owner-bound; no cross-account delegation, scope selection, or expiry in public beta; rotate by create-new then revoke-old"
+  },
+  "limits": {
+    "publicCatalogRequestsPerMinutePerIp": 60,
+    "publicResponsesDoNotConsumeMonthlyPlanQuota": true,
+    "retryAfterHeaderOn429": true
+  },
+  "disclaimer": "Bond402 ist kein universelles Agentenverzeichnis. ALLOW ist keine Sicherheitsgarantie; Agenten müssen ihre eigene fachliche und sicherheitsbezogene Prüfung durchführen."
+}

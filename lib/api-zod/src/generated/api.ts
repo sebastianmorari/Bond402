@@ -219,6 +219,8 @@ export const ListServicesResponseItem = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "visibility": zod.enum(['PRIVATE', 'LISTED']),
+  "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
@@ -271,6 +273,8 @@ export const CreateServiceResponse = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "visibility": zod.enum(['PRIVATE', 'LISTED']),
+  "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
@@ -308,6 +312,8 @@ export const GetServiceResponse = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "visibility": zod.enum(['PRIVATE', 'LISTED']),
+  "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
@@ -370,7 +376,8 @@ export const UpdateServiceBody = zod.object({
   "name": zod.string().min(updateServiceBodyNameMin).max(updateServiceBodyNameMax).optional(),
   "url": zod.string().max(updateServiceBodyUrlMax).regex(updateServiceBodyUrlRegExp).optional(),
   "expectedStructure": zod.string().min(1).max(updateServiceBodyExpectedStructureMax).optional(),
-  "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional()
+  "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional(),
+  "visibility": zod.enum(['PRIVATE', 'LISTED']).optional()
 })
 
 export const UpdateServiceResponse = zod.object({
@@ -379,6 +386,8 @@ export const UpdateServiceResponse = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "visibility": zod.enum(['PRIVATE', 'LISTED']),
+  "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
@@ -749,8 +758,292 @@ export const DeveloperPreActionCheckResponse = zod.object({
   "recentFailures": zod.number(),
   "anomalies": zod.array(zod.string())
 }),
+  "actionContext": zod.enum(['GENERAL', 'READ', 'WRITE', 'PAYMENT', 'CREDENTIAL_USE']),
+  "freshness": zod.object({
+  "state": zod.enum(['FRESH', 'STALE', 'UNKNOWN']),
+  "ageSeconds": zod.number().nullable(),
+  "maxAgeSeconds": zod.number()
+}),
+  "policy": zod.object({
+  "id": zod.string(),
+  "version": zod.string(),
+  "maxFreshnessSeconds": zod.number()
+}),
   "evaluatedAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary Discover public Bond402 agent endpoints
+ */
+export const GetPublicDiscoveryResponse = zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "version": zod.string(),
+  "disclaimer": zod.string(),
+  "authentication": zod.object({
+  "publicCatalog": zod.string(),
+  "publicPreActionCheck": zod.string(),
+  "developerApi": zod.string(),
+  "privilegedActions": zod.string()
+}),
+  "endpoints": zod.object({
+  "catalog": zod.string(),
+  "serviceDetail": zod.string(),
+  "publicPreActionCheck": zod.string(),
+  "openapi": zod.string(),
+  "humanDocs": zod.string(),
+  "wellKnown": zod.string(),
+  "llms": zod.string()
+}),
+  "publicResponseFields": zod.array(zod.string()),
+  "limits": zod.object({
+  "publicCatalogRequestsPerMinutePerIp": zod.number(),
+  "publicPreActionCountsAgainstMonthlyDeveloperQuota": zod.boolean(),
+  "developerPreActionRequiresKey": zod.boolean()
+}),
+  "policy": zod.object({
+  "id": zod.string(),
+  "version": zod.string(),
+  "maxFreshnessSeconds": zod.number()
+})
+})
+
+
+/**
+ * @summary Search the public catalog of operator-listed services
+ */
+export const searchPublicServicesQueryQMax = 120;
+
+export const searchPublicServicesQueryPageDefault = 1;
+
+export const searchPublicServicesQueryPageSizeDefault = 20;
+export const searchPublicServicesQueryPageSizeMax = 50;
+
+
+
+export const SearchPublicServicesQueryParams = zod.object({
+  "q": zod.coerce.string().max(searchPublicServicesQueryQMax).optional(),
+  "page": zod.coerce.number().int().min(1).default(searchPublicServicesQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(searchPublicServicesQueryPageSizeMax).default(searchPublicServicesQueryPageSizeDefault)
+})
+
+export const SearchPublicServicesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "url": zod.string(),
+  "visibility": zod.enum(['LISTED']),
+  "listedAt": zod.coerce.date().nullable(),
+  "trustScore": zod.number().nullable(),
+  "trustExplanation": zod.string(),
+  "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "latestCheck": zod.union([zod.object({
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable()
+}),zod.null()]),
+  "access": zod.object({
+  "publicCatalog": zod.boolean(),
+  "preActionRequiresDeveloperKey": zod.boolean(),
+  "liveCheckRequiresDeveloperKey": zod.boolean()
+}),
+  "links": zod.object({
+  "detail": zod.string(),
+  "preActionCheck": zod.string(),
+  "privilegedPreActionCheck": zod.string()
+})
+})),
+  "query": zod.string(),
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "total": zod.number(),
+  "hasNextPage": zod.boolean(),
+  "sort": zod.string()
+})
+
+
+/**
+ * @summary Read public trust metadata for one listed service
+ */
+
+
+
+export const GetPublicServiceParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const GetPublicServiceResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "url": zod.string(),
+  "visibility": zod.enum(['LISTED']),
+  "listedAt": zod.coerce.date().nullable(),
+  "trustScore": zod.number().nullable(),
+  "trustExplanation": zod.string(),
+  "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "latestCheck": zod.union([zod.object({
+  "checkedAt": zod.coerce.date(),
+  "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "reachable": zod.boolean(),
+  "responseTimeMs": zod.number(),
+  "structureMatch": zod.boolean(),
+  "httpStatus": zod.number().nullable()
+}),zod.null()]),
+  "access": zod.object({
+  "publicCatalog": zod.boolean(),
+  "preActionRequiresDeveloperKey": zod.boolean(),
+  "liveCheckRequiresDeveloperKey": zod.boolean()
+}),
+  "links": zod.object({
+  "detail": zod.string(),
+  "preActionCheck": zod.string(),
+  "privilegedPreActionCheck": zod.string()
+})
+})
+
+
+/**
+ * Returns ALLOW, CAUTION, or BLOCK from stored checks for an operator-listed
+ * service. This public read-only result does not run a live check and does not
+ * consume the owner's monthly product quota. Live checks and owner actions still
+ * require a Developer API key.
+ * @summary Get a read-only decision for a listed service before an action
+ */
+
+
+
+export const GetPublicPreActionCheckParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const GetPublicPreActionCheckResponse = zod.object({
+  "serviceId": zod.string(),
+  "serviceName": zod.string(),
+  "decision": zod.enum(['ALLOW', 'CAUTION', 'BLOCK']),
+  "reasons": zod.array(zod.string()),
+  "factors": zod.object({
+  "trustScore": zod.number().nullable(),
+  "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "latestResponseTimeMs": zod.number().nullable(),
+  "latestReachable": zod.boolean().nullable(),
+  "latestStructureMatch": zod.boolean().nullable(),
+  "recentLiveChecks": zod.number(),
+  "recentPasses": zod.number(),
+  "recentFailures": zod.number(),
+  "anomalies": zod.array(zod.string())
+}),
+  "actionContext": zod.enum(['GENERAL', 'READ', 'WRITE', 'PAYMENT', 'CREDENTIAL_USE']),
+  "freshness": zod.object({
+  "state": zod.enum(['FRESH', 'STALE', 'UNKNOWN']),
+  "ageSeconds": zod.number().nullable(),
+  "maxAgeSeconds": zod.number()
+}),
+  "policy": zod.object({
+  "id": zod.string(),
+  "version": zod.string(),
+  "maxFreshnessSeconds": zod.number()
+}),
+  "evaluatedAt": zod.coerce.date()
+}).and(zod.object({
+  "actionContext": zod.enum(['GENERAL', 'READ', 'WRITE', 'PAYMENT', 'CREDENTIAL_USE']),
+  "freshness": zod.object({
+  "state": zod.enum(['FRESH', 'STALE', 'UNKNOWN']),
+  "ageSeconds": zod.number().nullable(),
+  "maxAgeSeconds": zod.number()
+}),
+  "policy": zod.object({
+  "id": zod.string(),
+  "version": zod.string(),
+  "maxFreshnessSeconds": zod.number()
+}),
+  "access": zod.object({
+  "requiresDeveloperKey": zod.boolean(),
+  "liveCheckRequiresDeveloperKey": zod.boolean()
+}).optional(),
+  "usage": zod.object({
+  "countsAgainstMonthlyPlan": zod.boolean(),
+  "rateLimit": zod.string()
+}).optional()
+}))
+
+
+/**
+ * @summary Get a public pre-action decision with explicit action context
+ */
+
+
+
+export const PostPublicPreActionCheckParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const PostPublicPreActionCheckBody = zod.object({
+  "actionContext": zod.enum(['GENERAL', 'READ', 'WRITE', 'PAYMENT', 'CREDENTIAL_USE']).optional()
+})
+
+export const PostPublicPreActionCheckResponse = zod.object({
+  "serviceId": zod.string(),
+  "serviceName": zod.string(),
+  "decision": zod.enum(['ALLOW', 'CAUTION', 'BLOCK']),
+  "reasons": zod.array(zod.string()),
+  "factors": zod.object({
+  "trustScore": zod.number().nullable(),
+  "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
+  "latestCheckAt": zod.coerce.date().nullable(),
+  "latestResponseTimeMs": zod.number().nullable(),
+  "latestReachable": zod.boolean().nullable(),
+  "latestStructureMatch": zod.boolean().nullable(),
+  "recentLiveChecks": zod.number(),
+  "recentPasses": zod.number(),
+  "recentFailures": zod.number(),
+  "anomalies": zod.array(zod.string())
+}),
+  "actionContext": zod.enum(['GENERAL', 'READ', 'WRITE', 'PAYMENT', 'CREDENTIAL_USE']),
+  "freshness": zod.object({
+  "state": zod.enum(['FRESH', 'STALE', 'UNKNOWN']),
+  "ageSeconds": zod.number().nullable(),
+  "maxAgeSeconds": zod.number()
+}),
+  "policy": zod.object({
+  "id": zod.string(),
+  "version": zod.string(),
+  "maxFreshnessSeconds": zod.number()
+}),
+  "evaluatedAt": zod.coerce.date()
+}).and(zod.object({
+  "actionContext": zod.enum(['GENERAL', 'READ', 'WRITE', 'PAYMENT', 'CREDENTIAL_USE']),
+  "freshness": zod.object({
+  "state": zod.enum(['FRESH', 'STALE', 'UNKNOWN']),
+  "ageSeconds": zod.number().nullable(),
+  "maxAgeSeconds": zod.number()
+}),
+  "policy": zod.object({
+  "id": zod.string(),
+  "version": zod.string(),
+  "maxFreshnessSeconds": zod.number()
+}),
+  "access": zod.object({
+  "requiresDeveloperKey": zod.boolean(),
+  "liveCheckRequiresDeveloperKey": zod.boolean()
+}).optional(),
+  "usage": zod.object({
+  "countsAgainstMonthlyPlan": zod.boolean(),
+  "rateLimit": zod.string()
+}).optional()
+}))
+
+
+/**
+ * @summary Download the public Bond402 OpenAPI document
+ */
+export const GetPublicOpenApiResponse = zod.unknown()
 
 
 /**

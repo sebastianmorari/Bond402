@@ -51,7 +51,7 @@ export function ImpressumPage() {
   return (
     <LegalPageLayout
       title="Impressum"
-      intro="Angaben zum privaten Betreiber von Bond402 und Kontaktmöglichkeit."
+      intro="Angaben zum privaten Betreiber der Bond402 Public Beta und Kontaktmöglichkeit."
     >
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-foreground">Betreiber</h2>
@@ -79,9 +79,9 @@ export function ImpressumPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-foreground">Hinweis zum Angebot</h2>
         <p>
-          Bond402 wird privat betrieben und befindet sich im MVP-Stadium. Die Anwendung
-          dient der Prüfung und Veranschaulichung der Zuverlässigkeit maschinenlesbarer
-          API-Dienste.
+          Bond402 wird privat betrieben und befindet sich in einer öffentlichen Beta.
+          Neben geschützten Betreiberfunktionen bietet Bond402 ein öffentliches, vom
+          Betreiber freigegebenes Verzeichnis maschinenlesbarer API-Trust-Daten.
         </p>
       </section>
 
@@ -101,7 +101,7 @@ export function DatenschutzPage() {
   return (
     <LegalPageLayout
       title="Datenschutzerklärung"
-      intro="Diese Erklärung beschreibt die Datenverarbeitung in der aktuell betriebenen Bond402-MVP-Anwendung."
+      intro="Diese Erklärung beschreibt die Datenverarbeitung in der aktuell betriebenen Bond402 Public Beta."
     >
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-foreground">1. Verantwortliche Stelle</h2>
@@ -153,6 +153,13 @@ export function DatenschutzPage() {
             Prüfverläufe.
           </li>
           <li>
+            Wenn ein Betreiber einen Dienst ausdrücklich auf „Gelistet“ stellt, werden
+            ausgewählte öffentliche Dienstdaten wie Name, URL, Trust Score, Prüfstatus,
+            Prüfzeitpunkt und maschinenlesbare Risikometadaten im öffentlichen Katalog
+            veröffentlicht. Kontodaten, Besitzerinformationen, API-Schlüssel und
+            interne Prüfdaten werden nicht veröffentlicht.
+          </li>
+          <li>
             Technische Betriebs- und Sicherheitsdaten, soweit sie für den sicheren
             Betrieb, die Fehlersuche und den Schutz der Anwendung erforderlich sind.
           </li>
@@ -163,8 +170,9 @@ export function DatenschutzPage() {
         <h2 className="text-xl font-semibold text-foreground">3. Zweck der Verarbeitung</h2>
         <p>
           Die Verarbeitung erfolgt, um Konten bereitzustellen, Nutzerzugriffe zu
-          schützen, API-Schlüssel zu verwalten, registrierte Dienste zu prüfen und
-          Prüfresultate sowie den Prüfverlauf innerhalb des Kontos anzuzeigen.
+          schützen, API-Schlüssel zu verwalten, registrierte Dienste zu prüfen,
+          Prüfresultate innerhalb des Kontos anzuzeigen und ausdrücklich gelistete
+          Trust-Metadaten öffentlich für Agenten bereitzustellen.
         </p>
       </section>
 

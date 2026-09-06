@@ -18,7 +18,7 @@ import {
   toCheckResponse,
 } from "../lib/service-data";
 import { requireCheckQuota } from "../lib/quota";
-import { evaluatePreAction } from "../lib/pre-action";
+import { evaluatePreAction, type ActionContext } from "../lib/pre-action";
 
 const router: IRouter = Router();
 
@@ -112,11 +112,22 @@ router.post("/developer/services/:id/pre-action-check", async (req, res): Promis
   if (!found) return;
   if (!(await requireCheckQuota(found.ownerId, res))) return;
   const checks = await loadChecks(found.service.id);
+  const requestedContext = req.body?.actionContext ?? "GENERAL";
+  const validContexts = ["GENERAL", "READ", "WRITE", "PAYMENT", "CREDENTIAL_USE"] as const;
+  if (
+    typeof requestedContext !== "string" ||
+    !validContexts.includes(requestedContext as (typeof validContexts)[number])
+  ) {
+    res.status(400).json({ error: "Ungültiger actionContext.", code: "INVALID_ACTION_CONTEXT" });
+    return;
+  }
   res.json(
     DeveloperPreActionCheckResponse.parse({
       serviceId: found.service.id,
       serviceName: found.service.name,
-      ...evaluatePreAction(found.service, checks),
+      ...evaluatePreAction(found.service, checks, requestedContext as ActionContext),
+      access: { requiresDeveloperKey: true, liveCheckRequiresDeveloperKey: true },
+      usage: { countsAgainstMonthlyPlan: true, rateLimit: "developer key and monthly quota" },
     }),
   );
 });

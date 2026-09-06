@@ -174,6 +174,40 @@ function tokenFromEmail(email, path) {
   return match[1];
 }
 
+test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async () => {
+  const discovery = await request("/api/public/discovery");
+  assert.equal(discovery.response.status, 200);
+  assert.equal(discovery.data.version, "public-beta");
+  assert.equal(discovery.data.authentication.publicCatalog, "none");
+  assert.equal(discovery.data.limits.publicCatalogRequestsPerMinutePerIp, 60);
+  assert.match(discovery.data.endpoints.catalog, /\/api\/public\/services$/);
+
+  const catalog = await request("/api/public/services?page=1&pageSize=2");
+  assert.equal(catalog.response.status, 200);
+  assert.equal(catalog.data.page, 1);
+  assert.equal(catalog.data.pageSize, 2);
+  assert.equal(catalog.data.sort, "name.asc,id.asc");
+  assert.equal("ownerId" in catalog.data, false);
+  assert.equal("keyHash" in catalog.data, false);
+  assert.doesNotMatch(JSON.stringify(catalog.data), /api[_-]?key|session|password|ownerId|keyHash/i);
+
+  const invalidPage = await request("/api/public/services?pageSize=51");
+  assert.equal(invalidPage.response.status, 400);
+  assert.equal(invalidPage.data.code, "INVALID_QUERY");
+
+  const hiddenDetail = await request("/api/public/services/not-listed-in-public-beta");
+  assert.equal(hiddenDetail.response.status, 404);
+  assert.equal(hiddenDetail.data.code, "NOT_FOUND");
+
+  const openApi = await request("/api/openapi.json");
+  assert.equal(openApi.response.status, 200);
+  assert.equal(openApi.data.openapi, "3.1.0");
+  assert.ok(openApi.data.paths["/public/discovery"]);
+  assert.ok(openApi.data.paths["/public/services"]);
+  assert.ok(openApi.data.paths["/public/services/{id}/pre-action-check"].post);
+  assert.ok(openApi.data.components.schemas.PublicPreActionCheck);
+});
+
 test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const emailA = `${testPrefix}-a@example.test`;
   const emailB = `${testPrefix}-b@example.test`;

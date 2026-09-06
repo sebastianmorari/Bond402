@@ -8,6 +8,7 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceVisibility } from './apiServiceVisibility';
 import type { CheckResult } from './checkResult';
 
 export interface ApiService {
@@ -16,6 +17,9 @@ export interface ApiService {
   url: string;
   expectedStructure: string;
   maxResponseTime: number;
+  visibility: ApiServiceVisibility;
+  /** @nullable */
+  listedAt: Date | null;
   createdAt: Date;
   /** @nullable */
   trustScore: number | null;

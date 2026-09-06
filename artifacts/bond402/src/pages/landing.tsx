@@ -21,6 +21,9 @@ export function Landing() {
             <Link href="/api-docs" className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline">
               API-Doku
             </Link>
+            <Link href="/catalog" className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline">
+              Katalog
+            </Link>
             <Link href="/sign-in" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Anmelden
             </Link>

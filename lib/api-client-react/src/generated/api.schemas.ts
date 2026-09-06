@@ -274,6 +274,14 @@ export interface ApiServiceInput {
   maxResponseTime: number;
 }
 
+export type ApiServiceUpdateVisibility = typeof ApiServiceUpdateVisibility[keyof typeof ApiServiceUpdateVisibility];
+
+
+export const ApiServiceUpdateVisibility = {
+  PRIVATE: 'PRIVATE',
+  LISTED: 'LISTED',
+} as const;
+
 export interface ApiServiceUpdate {
   /**
      * @minLength 2
@@ -295,7 +303,16 @@ export interface ApiServiceUpdate {
      * @maximum 15000
      */
   maxResponseTime?: number;
+  visibility?: ApiServiceUpdateVisibility;
 }
+
+export type ApiServiceVisibility = typeof ApiServiceVisibility[keyof typeof ApiServiceVisibility];
+
+
+export const ApiServiceVisibility = {
+  PRIVATE: 'PRIVATE',
+  LISTED: 'LISTED',
+} as const;
 
 export interface ApiService {
   id: string;
@@ -303,6 +320,9 @@ export interface ApiService {
   url: string;
   expectedStructure: string;
   maxResponseTime: number;
+  visibility: ApiServiceVisibility;
+  /** @nullable */
+  listedAt: string | null;
   createdAt: string;
   /** @nullable */
   trustScore: number | null;
@@ -365,13 +385,185 @@ export const DeveloperPreActionCheckDecision = {
   BLOCK: 'BLOCK',
 } as const;
 
+export type ActionContext = typeof ActionContext[keyof typeof ActionContext];
+
+
+export const ActionContext = {
+  GENERAL: 'GENERAL',
+  READ: 'READ',
+  WRITE: 'WRITE',
+  PAYMENT: 'PAYMENT',
+  CREDENTIAL_USE: 'CREDENTIAL_USE',
+} as const;
+
+export type FreshnessState = typeof FreshnessState[keyof typeof FreshnessState];
+
+
+export const FreshnessState = {
+  FRESH: 'FRESH',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface Freshness {
+  state: FreshnessState;
+  /** @nullable */
+  ageSeconds: number | null;
+  maxAgeSeconds: number;
+}
+
+export interface PreActionPolicy {
+  id: string;
+  version: string;
+  maxFreshnessSeconds: number;
+}
+
 export interface DeveloperPreActionCheck {
   serviceId: string;
   serviceName: string;
   decision: DeveloperPreActionCheckDecision;
   reasons: string[];
   factors: DeveloperPreActionFactors;
+  actionContext: ActionContext;
+  freshness: Freshness;
+  policy: PreActionPolicy;
   evaluatedAt: string;
+}
+
+export type PublicServiceVisibility = typeof PublicServiceVisibility[keyof typeof PublicServiceVisibility];
+
+
+export const PublicServiceVisibility = {
+  LISTED: 'LISTED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type PublicServiceLatestStatus = typeof PublicServiceLatestStatus[keyof typeof PublicServiceLatestStatus] | null;
+
+
+export const PublicServiceLatestStatus = {
+  PASS: 'PASS',
+  FAIL: 'FAIL',
+  REVIEW: 'REVIEW',
+} as const;
+
+export type PublicServiceLatestCheckStatus = typeof PublicServiceLatestCheckStatus[keyof typeof PublicServiceLatestCheckStatus];
+
+
+export const PublicServiceLatestCheckStatus = {
+  PASS: 'PASS',
+  FAIL: 'FAIL',
+  REVIEW: 'REVIEW',
+} as const;
+
+export type PublicServiceLatestCheck = {
+  checkedAt: string;
+  status: PublicServiceLatestCheckStatus;
+  reachable: boolean;
+  responseTimeMs: number;
+  structureMatch: boolean;
+  /** @nullable */
+  httpStatus: number | null;
+} | null;
+
+export type PublicServiceAccess = {
+  publicCatalog: boolean;
+  preActionRequiresDeveloperKey: boolean;
+  liveCheckRequiresDeveloperKey: boolean;
+};
+
+export type PublicServiceLinks = {
+  detail: string;
+  preActionCheck: string;
+  privilegedPreActionCheck: string;
+};
+
+export interface PublicService {
+  id: string;
+  name: string;
+  url: string;
+  visibility: PublicServiceVisibility;
+  /** @nullable */
+  listedAt: string | null;
+  /** @nullable */
+  trustScore: number | null;
+  trustExplanation: string;
+  /** @nullable */
+  latestStatus: PublicServiceLatestStatus;
+  /** @nullable */
+  latestCheckAt: string | null;
+  latestCheck: PublicServiceLatestCheck;
+  access: PublicServiceAccess;
+  links: PublicServiceLinks;
+}
+
+export interface PublicServiceCatalog {
+  items: PublicService[];
+  query: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+  sort: string;
+}
+
+export type PublicDiscoveryAuthentication = {
+  publicCatalog: string;
+  publicPreActionCheck: string;
+  developerApi: string;
+  privilegedActions: string;
+};
+
+export type PublicDiscoveryEndpoints = {
+  catalog: string;
+  serviceDetail: string;
+  publicPreActionCheck: string;
+  openapi: string;
+  humanDocs: string;
+  wellKnown: string;
+  llms: string;
+};
+
+export type PublicDiscoveryLimits = {
+  publicCatalogRequestsPerMinutePerIp: number;
+  publicPreActionCountsAgainstMonthlyDeveloperQuota: boolean;
+  developerPreActionRequiresKey: boolean;
+};
+
+export interface PublicDiscovery {
+  name: string;
+  description: string;
+  version: string;
+  disclaimer: string;
+  authentication: PublicDiscoveryAuthentication;
+  endpoints: PublicDiscoveryEndpoints;
+  publicResponseFields: string[];
+  limits: PublicDiscoveryLimits;
+  policy: PreActionPolicy;
+}
+
+export type PublicPreActionCheckAccess = {
+  requiresDeveloperKey: boolean;
+  liveCheckRequiresDeveloperKey: boolean;
+};
+
+export type PublicPreActionCheckUsage = {
+  countsAgainstMonthlyPlan: boolean;
+  rateLimit: string;
+};
+
+export type PublicPreActionCheck = DeveloperPreActionCheck & {
+  actionContext?: ActionContext;
+  freshness?: Freshness;
+  policy?: PreActionPolicy;
+  access?: PublicPreActionCheckAccess;
+  usage?: PublicPreActionCheckUsage;
+};
+
+export interface PublicPreActionBody {
+  actionContext?: ActionContext;
 }
 
 export interface DemoService {
@@ -381,4 +573,20 @@ export interface DemoService {
   maxResponseTime: number;
   explanation: string;
 }
+
+export type SearchPublicServicesParams = {
+/**
+ * @maxLength 120
+ */
+q?: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 50
+ */
+pageSize?: number;
+};
 

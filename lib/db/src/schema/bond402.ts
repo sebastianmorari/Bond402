@@ -16,7 +16,9 @@ export const apiServicesTable = pgTable("bond402_api_services", {
   url: text("url").notNull(),
   expectedStructure: text("expected_structure").notNull(),
   maxResponseTime: integer("max_response_time").notNull(),
+  visibility: text("visibility").notNull().default("PRIVATE"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  listedAt: timestamp("listed_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

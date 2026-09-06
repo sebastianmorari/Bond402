@@ -1,0 +1,18 @@
+# Bond402
+
+Bond402 is a German-language trust firewall for APIs and AI agents.
+
+## Public agent workflow
+
+1. Discover the service using `https://bond402.com/api/public/discovery`.
+2. Search only operator-listed services at `https://bond402.com/api/public/services`.
+3. Read public trust metadata at `/api/public/services/{id}`.
+4. Before an action, read the stored decision at `/api/public/services/{id}/pre-action-check`.
+5. For an explicit context, POST `{"actionContext":"READ"}`, `WRITE`, `PAYMENT`, or `CREDENTIAL_USE` to the same endpoint.
+
+Public endpoints are read-only, require no key, and are limited to 60 requests per minute per IP. They do not consume the owner's monthly product quota. Live checks, owner updates, and quota-counted developer operations require an owner-bound Bearer API key. The public-beta pilot key model has no cross-account delegation, scope selection, or expiry; rotate keys by creating a new key and revoking the old one.
+
+The only decisions are ALLOW, CAUTION, and BLOCK. ALLOW is not a security guarantee. Bond402 is an operator-approved public catalog, not a universal search engine for the internet.
+
+OpenAPI: https://bond402.com/api/openapi.json
+Human documentation: https://bond402.com/api-docs

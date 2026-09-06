@@ -5,6 +5,7 @@ import apiKeysRouter from "./api-keys";
 import developerRouter from "./developer";
 import authRouter from "./auth";
 import usageRouter from "./usage";
+import publicRouter from "./public";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(apiKeysRouter);
 router.use(developerRouter);
 router.use(authRouter);
 router.use(usageRouter);
+router.use(publicRouter);
 
 export default router;

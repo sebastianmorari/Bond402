@@ -13,6 +13,9 @@ const writeEndpoints = [
 ];
 
 const agentEndpoints = [
+  ["GET", "/public/discovery", "Öffentliche Agent-Discovery und Produktionslinks ohne Schlüssel."],
+  ["GET", "/public/services?q=...", "Operator-gelistete Dienste durchsuchen; Pagination bis 50 Einträge."],
+  ["GET", "/public/services/{id}/pre-action-check", "Gespeicherte öffentliche ALLOW-, CAUTION- oder BLOCK-Entscheidung lesen."],
   ["POST", "/developer/services/{id}/pre-action-check", "Vor einer externen Agentenaktion ALLOW, CAUTION oder BLOCK abrufen."],
 ];
 function Code({ children }: { children: string }) {
@@ -112,7 +115,7 @@ export function ApiDocsPage() {
             <Timer className="mb-3 h-5 w-5 text-primary" />
             <h2 className="font-semibold">MVP-Limits</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Lesen: 60 pro Schlüssel/Minute. Live-Prüfungen: 10 pro Schlüssel/Minute.
+               Öffentlich: 60 pro IP/Minute. Lesen: 60 pro Schlüssel/Minute. Live-Prüfungen: 10 pro Schlüssel/Minute.
             </p>
           </div>
         </section>
@@ -135,12 +138,38 @@ export function ApiDocsPage() {
           </p>
         </section>
 
+        <section className="space-y-4 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+          <div>
+            <h2 className="text-lg font-semibold">Für AI Agents: Discovery bis Entscheidung</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Agenten können ohne Konto und ohne API-Key ausschließlich Dienste verwenden, die von ihrem Betreiber öffentlich gelistet wurden.
+              Beginnen Sie mit <Code>/.well-known/bond402-agent.json</Code> oder <Code>/api/public/discovery</Code>, suchen Sie anschließend im Katalog
+              und lesen Sie die Trust-Daten sowie die gespeicherte Pre-Action-Entscheidung.
+            </p>
+          </div>
+          <pre className="overflow-x-auto rounded-xl border border-border/60 bg-background/80 p-4 text-xs leading-6 text-muted-foreground">
+            <code>{`curl "https://bond402.com/api/public/services?q=wetter&page=1&pageSize=20"
+curl -X POST "https://bond402.com/api/public/services/SERVICE_ID/pre-action-check" \\
+  -H "Content-Type: application/json" \\
+  -d '{"actionContext":"READ"}'`}</code>
+          </pre>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Diese öffentliche Abfrage löst keine Live-Prüfung aus und belastet kein Monatskontingent. Live-Checks,
+            Änderungen und ownergebundene Developer-Pre-Action-Checks benötigen weiterhin den passenden Bearer-Key.
+          </p>
+        </section>
+
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Authentifizierung und API-Schlüssel</h2>
           <div className="space-y-3 text-sm leading-6 text-muted-foreground">
             <p>
               1. Erstellen Sie im eingeloggten Bereich unter <strong className="text-foreground">Developer</strong> einen Schlüssel.
               Das vollständige Geheimnis wird nur einmal angezeigt und anschließend nicht mehr gespeichert.
+            </p>
+            <p>
+              Die Public-Beta-Variante verwendet ownergebundene Schlüssel ohne Cross-Account-Delegation,
+              Scope-Auswahl oder Ablaufdatum. Rotation erfolgt sicher durch einen neuen Schlüssel und
+              das sofortige Widerrufen des alten Schlüssels.
             </p>
             <p>
               2. Übergeben Sie ihn ausschließlich über den HTTPS-Header
@@ -236,8 +265,9 @@ export function ApiDocsPage() {
 }`}</code>
           </pre>
           <p className="text-xs leading-5 text-muted-foreground">
-            Ein Pre-Action-Check ist ein produktiver Check und wird vom Monatskontingent abgezogen.
-            Sandbox- und Demo-Abläufe bleiben simuliert und kostenlos.
+             Der öffentliche Pre-Action-Check liest gespeicherte Daten und ist kostenlos innerhalb des öffentlichen IP-Limits.
+             Der ownergebundene Developer-Pre-Action-Check ist ein produktiver Check und wird vom Monatskontingent abgezogen.
+             Sandbox- und Demo-Abläufe bleiben simuliert und kostenlos.
           </p>
           <div className="grid gap-3 sm:grid-cols-3">
             {[

@@ -9,12 +9,15 @@
  * OpenAPI spec version: 0.2.0
  */
 
+export * from './actionContext';
 export * from './apiError';
 export * from './apiKey';
 export * from './apiKeyInput';
 export * from './apiService';
 export * from './apiServiceInput';
 export * from './apiServiceUpdate';
+export * from './apiServiceUpdateVisibility';
+export * from './apiServiceVisibility';
 export * from './authChangePasswordBody';
 export * from './authEmailBody';
 export * from './authLoginBody';
@@ -37,11 +40,31 @@ export * from './developerPreActionFactors';
 export * from './developerPreActionFactorsLatestStatus';
 export * from './developerService';
 export * from './developerServiceResult';
+export * from './freshness';
+export * from './freshnessState';
 export * from './healthStatus';
 export * from './planOption';
 export * from './planOptionPlan';
+export * from './preActionPolicy';
+export * from './publicDiscovery';
+export * from './publicDiscoveryAuthentication';
+export * from './publicDiscoveryEndpoints';
+export * from './publicDiscoveryLimits';
+export * from './publicPreActionBody';
+export * from './publicPreActionCheck';
+export * from './publicPreActionCheckAccess';
+export * from './publicPreActionCheckUsage';
+export * from './publicService';
+export * from './publicServiceAccess';
+export * from './publicServiceCatalog';
+export * from './publicServiceLatestCheck';
+export * from './publicServiceLatestCheckStatus';
+export * from './publicServiceLatestStatus';
+export * from './publicServiceLinks';
+export * from './publicServiceVisibility';
 export * from './readinessStatus';
 export * from './readinessStatusStatus';
+export * from './searchPublicServicesParams';
 export * from './usageSummary';
 export * from './usageSummaryPlan';
 export * from './verificationInput';
