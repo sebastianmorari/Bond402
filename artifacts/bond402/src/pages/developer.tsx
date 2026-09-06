@@ -24,6 +24,7 @@ import { X402Sandbox } from "@/components/x402-sandbox";
 import { BondSandbox } from "@/components/bond-sandbox";
 import { MobileNav } from "@/components/mobile-nav";
 import { QuotaCard } from "@/components/quota-card";
+import { PreActionTester } from "@/components/pre-action-tester";
 
 export function Developer() {
   const { data: apiKeys = [], isLoading: isLoadingKeys, isError: isKeysError } = useListApiKeys();
@@ -117,6 +118,10 @@ export function Developer() {
 
         <section className="my-8">
           <QuotaCard />
+        </section>
+
+        <section className="my-8">
+          <PreActionTester services={services} />
         </section>
 
         {newSecretData && (
