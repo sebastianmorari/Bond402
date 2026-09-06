@@ -100,6 +100,10 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
           Lokale Bond402-Anmeldung für den MVP. Keine externen Authentifizierungsdienste und keine kostenpflichtigen Anbieter.
         </p>
+        <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-center text-xs leading-relaxed text-muted-foreground">
+          Passwort-Wiederherstellung und E-Mail-Verifizierung sind derzeit bewusst nicht aktiviert.
+          Verwenden Sie ein Passwort, das Sie sicher aufbewahren können.
+        </div>
         <PublicFooter />
       </div>
     </div>

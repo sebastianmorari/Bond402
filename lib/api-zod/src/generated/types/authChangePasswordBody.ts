@@ -9,15 +9,15 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export interface AuthLoginBody {
-  /**
-     * @maxLength 320
-     * @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$
-     */
-  email: string;
+export interface AuthChangePasswordBody {
   /**
      * @minLength 8
      * @maxLength 128
      */
-  password: string;
+  currentPassword: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  newPassword: string;
 }

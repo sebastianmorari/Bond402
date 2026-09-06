@@ -13,7 +13,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-md md:hidden"
+      className="mobile-nav fixed inset-x-3 z-30 grid grid-cols-3 rounded-2xl border border-border/70 bg-card/95 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-md md:hidden"
     >
       {items.map(({ href, label, icon: Icon }) => {
         const active = location === href;

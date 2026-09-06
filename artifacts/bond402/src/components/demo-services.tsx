@@ -12,7 +12,7 @@ interface DemoServicesProps {
 }
 
 export function DemoServices({ readOnly = false }: DemoServicesProps) {
-  const { data: demoServices, isLoading } = useListDemoServices();
+  const { data: demoServices, isLoading, isError } = useListDemoServices();
   const createService = useCreateService();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -54,6 +54,14 @@ export function DemoServices({ readOnly = false }: DemoServicesProps) {
       <div className="space-y-4">
         <div className="h-24 bg-card/50 rounded-lg animate-pulse" />
         <div className="h-24 bg-card/50 rounded-lg animate-pulse" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-5 text-sm text-destructive">
+        Demo-Dienste konnten nicht geladen werden. Bitte versuchen Sie es später erneut.
       </div>
     );
   }

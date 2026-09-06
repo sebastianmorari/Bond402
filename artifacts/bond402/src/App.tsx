@@ -12,6 +12,7 @@ import { X402SandboxPage } from '@/pages/x402-sandbox';
 import { BondSandboxPage } from '@/pages/bond-sandbox';
 import { AuthPage } from '@/pages/auth';
 import { DatenschutzPage, ImpressumPage } from '@/pages/legal';
+import { ApiDocsPage } from '@/pages/api-docs';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import {
   Route,
@@ -81,6 +82,7 @@ function Router() {
         <Route path="/profile" component={ProfileProtect} />
         <Route path="/impressum" component={ImpressumPage} />
         <Route path="/datenschutz" component={DatenschutzPage} />
+        <Route path="/api-docs" component={ApiDocsPage} />
         <Route path="/sign-in/*?" component={() => <AuthPage mode="signIn" />} />
         <Route path="/sign-up/*?" component={() => <AuthPage mode="signUp" />} />
         <Route component={NotFound} />

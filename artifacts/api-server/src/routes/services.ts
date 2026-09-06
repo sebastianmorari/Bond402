@@ -38,6 +38,16 @@ import { requireUserId } from "../lib/auth";
 
 const router: IRouter = Router();
 
+function publicUrlErrorMessage(code: string) {
+  if (code === "UNSAFE_URL") {
+    return "Nur öffentliche HTTP- oder HTTPS-Adressen ohne Zugangsdaten sind erlaubt.";
+  }
+  if (code === "PRIVATE_ADDRESS") {
+    return "Private oder interne Adressen dürfen nicht geprüft werden.";
+  }
+  return "Die URL ist ungültig.";
+}
+
 const DEMO_SERVICES = [
   {
     name: "JSONPlaceholder – Beispielbeitrag",
@@ -100,7 +110,7 @@ router.post("/services", async (req, res): Promise<void> => {
         ? String(error.code)
         : "INVALID_URL";
     res.status(400).json({
-      error: error instanceof Error ? error.message : "Die URL ist ungültig.",
+      error: publicUrlErrorMessage(code),
       code,
     });
     return;
@@ -174,7 +184,7 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
           ? String(error.code)
           : "INVALID_URL";
       res.status(400).json({
-        error: error instanceof Error ? error.message : "Die URL ist ungültig.",
+        error: publicUrlErrorMessage(code),
         code,
       });
       return;

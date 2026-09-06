@@ -42,6 +42,12 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "32kb" }));
 app.use(express.urlencoded({ extended: true, limit: "32kb" }));
 
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  next();
+});
+
 app.use("/api", router);
 
 app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -56,7 +62,17 @@ app.use((error: unknown, _req: express.Request, res: express.Response, next: exp
     });
     return;
   }
-  logger.error({ err: error }, "Unhandled request error");
+  if (typeof error === "object" && error && "type" in error && error.type === "entity.parse.failed") {
+    res.status(400).json({
+      error: "Die Anfrage enthält kein gültiges JSON.",
+      code: "INVALID_JSON",
+    });
+    return;
+  }
+  logger.error(
+    { errorType: error instanceof Error ? error.name : typeof error },
+    "Unhandled request error",
+  );
   res.status(500).json({
     error: "Der Server konnte die Anfrage nicht verarbeiten.",
     code: "INTERNAL_ERROR",

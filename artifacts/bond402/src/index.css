@@ -118,6 +118,20 @@
   }
 }
 
+.mobile-content-safe {
+  padding-bottom: 7rem;
+}
+
+.mobile-nav {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .mobile-content-safe {
+    padding-bottom: 0;
+  }
+}
+
 /* Authentication form refinements */
 .cl-formFieldInput::placeholder { 
   color: hsl(var(--muted-foreground)); 

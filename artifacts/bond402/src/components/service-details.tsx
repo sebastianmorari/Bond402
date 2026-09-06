@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { checkStatusLabel, checkTypeLabel } from "@/lib/presentation";
 
 interface ServiceDetailsProps {
   serviceId: string | null;
@@ -259,7 +260,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                   <div>
                     {service.checks[0] ? (
                       <Badge variant={service.checks[0].status === "PASS" ? "default" : service.checks[0].status === "FAIL" ? "destructive" : "secondary"}>
-                        {service.checks[0].status}
+                        {checkStatusLabel(service.checks[0].status)}
                       </Badge>
                     ) : (
                       <span className="text-sm text-muted-foreground">Nie</span>
@@ -330,9 +331,9 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                                 ) : (
                                   <ShieldAlert className="h-4 w-4 text-warning" />
                                 )}
-                                <span className="font-semibold">{check.status}</span>
+                                 <span className="font-semibold">{checkStatusLabel(check.status)}</span>
                                 <span className="text-muted-foreground text-xs bg-muted px-2 py-0.5 rounded">
-                                  {check.checkType}
+                                   {checkTypeLabel(check.checkType)}
                                 </span>
                               </div>
                               <span className="text-xs text-muted-foreground font-mono">

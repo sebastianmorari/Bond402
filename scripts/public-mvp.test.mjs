@@ -128,6 +128,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
 
   const health = await request("/api/healthz");
   assert.equal(health.response.status, 200);
+  assert.equal(health.response.headers.get("cache-control"), "no-store");
   assert.equal(health.response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(health.response.headers.get("referrer-policy"), "strict-origin-when-cross-origin");
   assert.equal(health.response.headers.get("permissions-policy"), "camera=(), microphone=(), geolocation=(), payment=()");
@@ -135,6 +136,16 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const readiness = await request("/api/readyz");
   assert.equal(readiness.response.status, 200);
   assert.deepEqual(readiness.data, { status: "ok" });
+
+  // The helper sends no body here; send a deliberately malformed payload directly.
+  const malformedResponse = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{\"email\":",
+  });
+  const malformedData = await malformedResponse.json();
+  assert.equal(malformedResponse.status, 400);
+  assert.equal(malformedData.code, "INVALID_JSON");
 
   const invalidRegister = await request("/api/auth/register", {
     body: { name: " ", email: `${testPrefix}-invalid@example.test`, password: "short" },
@@ -182,6 +193,32 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(meA.response.status, 200);
   assert.equal(meA.data.user.email, emailA);
 
+  const wrongPasswordChange = await request("/api/auth/password", {
+    method: "PUT",
+    jar: jarA,
+    body: { currentPassword: "wrong-password", newPassword: "New-Public-Mvp-123!" },
+  });
+  assert.equal(wrongPasswordChange.response.status, 401);
+
+  const changedPassword = await request("/api/auth/password", {
+    method: "PUT",
+    jar: jarA,
+    body: { currentPassword: passwordA, newPassword: "New-Public-Mvp-123!" },
+  });
+  assert.equal(changedPassword.response.status, 204);
+
+  const oldPasswordLogin = await request("/api/auth/login", {
+    body: { email: emailA, password: passwordA },
+    headers: { "X-Forwarded-For": "203.0.113.5" },
+  });
+  assert.equal(oldPasswordLogin.response.status, 401);
+
+  const newPasswordLogin = await request("/api/auth/login", {
+    jar: jarA,
+    body: { email: emailA, password: "New-Public-Mvp-123!" },
+  });
+  assert.equal(newPasswordLogin.response.status, 200);
+
   const wrongLogin = await request("/api/auth/login", {
     body: { email: emailA, password: "wrong-password" },
     headers: { "X-Forwarded-For": "203.0.113.2" },
@@ -201,6 +238,21 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(serviceCreated.response.status, 201);
   const serviceId = serviceCreated.data.id;
   assert.ok(serviceId);
+
+  const liveCheck = await request(`/api/services/${serviceId}/checks`, {
+    method: "POST",
+    jar: jarA,
+  });
+  assert.equal(liveCheck.response.status, 201);
+  assert.ok(["PASS", "FAIL", "REVIEW"].includes(liveCheck.data.status));
+
+  const manualCheck = await request(`/api/services/${serviceId}/verify`, {
+    method: "POST",
+    jar: jarA,
+    body: { actualResponse: "<html><body>Bond402 test</body></html>" },
+  });
+  assert.equal(manualCheck.response.status, 201);
+  assert.equal(manualCheck.data.checkType, "MANUAL");
 
   const servicesB = await request("/api/services", { jar: jarB });
   assert.equal(servicesB.response.status, 200);
@@ -270,7 +322,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const loggedInAgain = await request("/api/auth/login", {
     method: "POST",
     jar: jarA,
-    body: { email: emailA, password: passwordA },
+    body: { email: emailA, password: "New-Public-Mvp-123!" },
   });
   assert.equal(loggedInAgain.response.status, 200);
   const sessionHash = createHash("sha256").update(jarA.value, "utf8").digest("hex");

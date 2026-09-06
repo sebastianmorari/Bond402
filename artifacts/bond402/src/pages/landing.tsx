@@ -18,6 +18,9 @@ export function Landing() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/api-docs" className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline">
+              API-Doku
+            </Link>
             <Link href="/sign-in" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Anmelden
             </Link>

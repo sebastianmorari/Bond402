@@ -18,6 +18,25 @@ export type VerificationOutcome = {
   missingFields: string[];
 };
 
+function publicVerificationSummary(code: string) {
+  switch (code) {
+    case "TIMEOUT":
+      return "Der Dienst hat nicht innerhalb des sicheren Zeitlimits geantwortet.";
+    case "PRIVATE_ADDRESS":
+      return "Die Zieladresse ist nicht öffentlich erreichbar.";
+    case "RESPONSE_TOO_LARGE":
+      return "Die Antwort des Dienstes ist größer als 1 MB.";
+    case "TOO_MANY_REDIRECTS":
+      return "Der Dienst hat zu viele Weiterleitungen verwendet.";
+    case "INVALID_JSON":
+      return "Der Dienst ist erreichbar, lieferte aber kein gültiges JSON.";
+    case "HTTP_ERROR":
+      return "Der Dienst antwortete mit einem nicht erfolgreichen HTTP-Status.";
+    default:
+      return "Der Dienst konnte nicht sicher erreicht werden.";
+  }
+}
+
 function isBlockedIpv4(address: string): boolean {
   const [a, b, c] = address.split(".").map(Number);
   return (
@@ -368,12 +387,6 @@ export async function runLiveVerification(
       typeof error === "object" && error && "code" in error
         ? String(error.code)
         : "UNREACHABLE";
-    const summary =
-      code === "TIMEOUT"
-        ? "Der Dienst hat nicht innerhalb des sicheren Zeitlimits geantwortet."
-        : error instanceof Error
-          ? error.message
-          : "Der Dienst konnte nicht erreicht werden.";
     return {
       status: "FAIL",
       reachable: false,
@@ -381,7 +394,7 @@ export async function runLiveVerification(
       structureMatch: false,
       httpStatus: null,
       errorCode: code,
-      summary,
+      summary: publicVerificationSummary(code),
       foundFields: [],
       missingFields: parseExpectedFields(expectedStructure),
     };

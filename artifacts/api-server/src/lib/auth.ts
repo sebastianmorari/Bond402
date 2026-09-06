@@ -95,12 +95,16 @@ export async function getCurrentUser(req: Request): Promise<Bond402UserRow | nul
 
 export async function destroyCurrentSession(req: Request, res: Response) {
   const token = req.cookies?.[SESSION_COOKIE];
-  if (typeof token === "string" && token.length >= 32) {
-    await db
-      .delete(bond402SessionsTable)
-      .where(eq(bond402SessionsTable.tokenHash, hashSessionToken(token)));
+  try {
+    if (typeof token === "string" && token.length >= 32) {
+      await db
+        .delete(bond402SessionsTable)
+        .where(eq(bond402SessionsTable.tokenHash, hashSessionToken(token)));
+    }
+  } finally {
+    // Always remove the browser token, even if the database is temporarily unavailable.
+    res.clearCookie(SESSION_COOKIE, { ...cookieOptions(), maxAge: undefined });
   }
-  res.clearCookie(SESSION_COOKIE, { ...cookieOptions(), maxAge: undefined });
 }
 
 export async function pruneExpiredSessions() {

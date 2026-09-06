@@ -1,11 +1,16 @@
 openapi: 3.1.0
 info:
-  title: Api
+  title: Bond402 API
   version: 0.2.0
-  description: Bond402 API service verification
+  description: |
+    Öffentliche Bond402-API zur Prüfung eigener API-Dienste.
+    Die Browser-Anwendung verwendet /api über den Vercel-Proxy.
+    Für direkte Server-zu-Server-Aufrufe steht die Render-Produktionsbasis ebenfalls zur Verfügung.
 servers:
   - url: /api
-    description: Base API path
+    description: Öffentliche Basis über die Bond402-Webanwendung (empfohlen)
+  - url: https://bond402-api.onrender.com/api
+    description: Direkte Produktionsbasis des Bond402-API-Servers
 tags:
   - name: health
   - name: auth
@@ -51,6 +56,8 @@ paths:
       operationId: getAuthMe
       tags: [auth]
       summary: Read the current local session user
+      security:
+        - Bond402Session: []
       responses:
         "200":
           description: Current user
@@ -129,14 +136,52 @@ paths:
       operationId: logoutAuthUser
       tags: [auth]
       summary: End the current local session
+      security:
+        - Bond402Session: []
       responses:
         "204":
           description: Signed out
+  /auth/password:
+    put:
+      operationId: changeAuthPassword
+      tags: [auth]
+      summary: Change the password for the current local session
+      security:
+        - Bond402Session: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthChangePasswordBody"
+      responses:
+        "204":
+          description: Password changed and all previous sessions revoked
+        "400":
+          description: Invalid password data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Not signed in or current password is invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many password change attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /services:
     get:
       operationId: listServices
       tags: [services]
       summary: List all registered API services with their checks
+      security:
+        - Bond402Session: []
       responses:
         "200":
           description: Registered services
@@ -150,6 +195,8 @@ paths:
       operationId: createService
       tags: [services]
       summary: Register an API service
+      security:
+        - Bond402Session: []
       requestBody:
         required: true
         content:
@@ -174,6 +221,8 @@ paths:
       operationId: getService
       tags: [services]
       summary: Get one service and its check history
+      security:
+        - Bond402Session: []
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       responses:
@@ -193,6 +242,8 @@ paths:
       operationId: deleteService
       tags: [services]
       summary: Delete a registered service and its checks
+      security:
+        - Bond402Session: []
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       responses:
@@ -208,6 +259,8 @@ paths:
       operationId: updateService
       tags: [services]
       summary: Update a registered service owned by the current user
+      security:
+        - Bond402Session: []
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       requestBody:
@@ -240,6 +293,8 @@ paths:
       operationId: runServiceCheck
       tags: [services]
       summary: Run a safe external verification
+      security:
+        - Bond402Session: []
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       responses:
@@ -260,6 +315,8 @@ paths:
       operationId: verifyServiceResponse
       tags: [services]
       summary: Compare a supplied response with the expected structure
+      security:
+        - Bond402Session: []
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       requestBody:
@@ -292,6 +349,8 @@ paths:
       operationId: getDashboard
       tags: [dashboard]
       summary: Get Bond402 dashboard metrics
+      security:
+        - Bond402Session: []
       responses:
         "200":
           description: Dashboard metrics
@@ -304,6 +363,8 @@ paths:
       operationId: listApiKeys
       tags: [api-keys]
       summary: List API key metadata for the signed-in user
+      security:
+        - Bond402Session: []
       responses:
         "200":
           description: API keys
@@ -317,6 +378,8 @@ paths:
       operationId: createApiKey
       tags: [api-keys]
       summary: Create an API key and reveal its secret once
+      security:
+        - Bond402Session: []
       requestBody:
         required: true
         content:
@@ -347,6 +410,8 @@ paths:
       operationId: revokeApiKey
       tags: [api-keys]
       summary: Revoke an API key owned by the signed-in user
+      security:
+        - Bond402Session: []
       parameters:
         - $ref: "#/components/parameters/ApiKeyId"
       responses:
@@ -486,6 +551,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: Bond402 API key
+      description: "API-Schlüssel aus dem Developer-Bereich. Nur als Authorization: Bearer b402_… senden und niemals in URLs, Logs oder Frontend-Code eintragen."
+    Bond402Session:
+      type: apiKey
+      in: cookie
+      name: bond402_session
+      description: HttpOnly-Session-Cookie der lokalen Web-Anmeldung. Nicht für die Developer-API verwenden.
   parameters:
     ServiceId:
       name: id
@@ -543,6 +614,18 @@ components:
           minLength: 8
           maxLength: 128
       required: [email, password]
+    AuthChangePasswordBody:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required: [currentPassword, newPassword]
     AuthUser:
       type: object
       properties:

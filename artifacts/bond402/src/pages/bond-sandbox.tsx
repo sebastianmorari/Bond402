@@ -8,7 +8,7 @@ export function BondSandboxPage() {
   const { data: services = [] } = useListServices();
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground pb-28">
+    <div className="mobile-content-safe min-h-[100dvh] bg-background text-foreground pb-28">
       <header className="sticky top-0 z-20 border-b border-border/40 bg-card/30 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">

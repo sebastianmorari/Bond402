@@ -25,8 +25,8 @@ import { BondSandbox } from "@/components/bond-sandbox";
 import { MobileNav } from "@/components/mobile-nav";
 
 export function Developer() {
-  const { data: apiKeys = [], isLoading: isLoadingKeys } = useListApiKeys();
-  const { data: services = [] } = useListServices();
+  const { data: apiKeys = [], isLoading: isLoadingKeys, isError: isKeysError } = useListApiKeys();
+  const { data: services = [], isError: isServicesError } = useListServices();
   const createApiKey = useCreateApiKey();
   const revokeApiKey = useRevokeApiKey();
   const queryClient = useQueryClient();
@@ -89,7 +89,7 @@ export function Developer() {
   const baseUrl = window.location.origin;
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground pb-28">
+    <div className="mobile-content-safe min-h-[100dvh] bg-background text-foreground pb-28">
       <header className="border-b border-border/40 bg-card/30 sticky top-0 z-20 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -207,6 +207,10 @@ export function Developer() {
                 {isLoadingKeys ? (
                   <div className="flex justify-center py-12">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  </div>
+                ) : isKeysError ? (
+                  <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-5 text-sm text-destructive">
+                    API-Schlüssel konnten nicht geladen werden. Bitte versuchen Sie es später erneut.
                   </div>
                 ) : apiKeys.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground border border-dashed border-border/60 rounded-xl bg-muted/10">
@@ -339,6 +343,11 @@ export function Developer() {
         </div>
 
         <div className="space-y-8">
+          {isServicesError && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+              Ihre Dienste konnten für die API-Beispiele nicht geladen werden.
+            </div>
+          )}
           <X402Sandbox services={services} />
           <BondSandbox services={services} />
         </div>

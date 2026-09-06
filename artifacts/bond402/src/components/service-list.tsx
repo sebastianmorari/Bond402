@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShieldCheck, ShieldAlert, Globe, Clock, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { checkStatusLabel } from "@/lib/presentation";
 
 interface ServiceListProps {
   onSelectService: (id: string) => void;
@@ -51,10 +52,19 @@ export function ServiceList({ onSelectService }: ServiceListProps) {
         const lastCheck = service.checks[0];
         
         return (
-          <Card 
+          <Card
             key={service.id} 
             className="group cursor-pointer hover:border-primary/50 transition-all bg-card/50 hover:bg-card hover:shadow-md"
+            role="button"
+            tabIndex={0}
+            aria-label={`${service.name} öffnen`}
             onClick={() => onSelectService(service.id)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelectService(service.id);
+              }
+            }}
           >
             <CardContent className="p-4 sm:p-5 flex items-center gap-4">
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -75,7 +85,7 @@ export function ServiceList({ onSelectService }: ServiceListProps) {
                       variant={lastCheck.status === "PASS" ? "default" : lastCheck.status === "FAIL" ? "destructive" : "secondary"}
                       className="shrink-0"
                     >
-                      {lastCheck.status}
+                      {checkStatusLabel(lastCheck.status)}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="shrink-0">Neu</Badge>
