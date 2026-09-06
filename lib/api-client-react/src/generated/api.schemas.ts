@@ -68,16 +68,56 @@ export interface AuthChangePasswordBody {
   newPassword: string;
 }
 
+export interface AuthEmailBody {
+  /**
+     * @maxLength 320
+     * @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$
+     */
+  email: string;
+}
+
+export interface AuthVerifyEmailBody {
+  /**
+     * @minLength 32
+     * @maxLength 200
+     */
+  token: string;
+}
+
+export interface AuthResetPasswordBody {
+  /**
+     * @minLength 32
+     * @maxLength 200
+     */
+  token: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  newPassword: string;
+}
+
+export interface AuthMessage {
+  message: string;
+}
+
 export interface AuthUser {
   id: string;
   /** @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$ */
   email: string;
   name: string;
   createdAt: string;
+  emailVerified: boolean;
 }
 
 export interface AuthSession {
   user: AuthUser;
+}
+
+export interface AuthRegistrationResponse {
+  user: AuthUser;
+  message: string;
+  verificationRequired: boolean;
 }
 
 export type UsageSummaryPlan = typeof UsageSummaryPlan[keyof typeof UsageSummaryPlan];

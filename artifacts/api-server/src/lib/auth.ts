@@ -28,6 +28,7 @@ export function toAuthUser(user: Bond402UserRow) {
     email: user.email,
     name: user.displayName,
     createdAt: user.createdAt.toISOString(),
+    emailVerified: !user.emailVerificationRequired || Boolean(user.emailVerifiedAt),
   };
 }
 

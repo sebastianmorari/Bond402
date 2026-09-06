@@ -8,12 +8,10 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { AuthUser } from './authUser';
 
-export interface AuthUser {
-  id: string;
-  /** @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$ */
-  email: string;
-  name: string;
-  createdAt: Date;
-  emailVerified: boolean;
+export interface AuthRegistrationResponse {
+  user: AuthUser;
+  message: string;
+  verificationRequired: boolean;
 }

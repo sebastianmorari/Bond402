@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { once } from "node:events";
+import { createServer } from "node:http";
 import { test, before, after } from "node:test";
 import { spawn } from "node:child_process";
 
@@ -10,6 +11,8 @@ const port = Number(process.env.BOND402_TEST_PORT || 18123);
 const baseUrl = `http://127.0.0.1:${port}`;
 const testPrefix = `bond402-public-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 let server;
+let emailMockServer;
+const mockEmails = [];
 
 function runSql(sql) {
   if (!databaseUrl) throw new Error("DATABASE_URL ist für die öffentlichen MVP-Tests erforderlich.");
@@ -39,6 +42,8 @@ function cleanupTestData() {
     DELETE FROM bond402_api_services
     WHERE owner_id IN (SELECT id FROM bond402_users WHERE email LIKE '${emailFilter}');
     DELETE FROM bond402_usage
+      WHERE user_id IN (SELECT id FROM bond402_users WHERE email LIKE '${emailFilter}');
+    DELETE FROM bond402_auth_tokens
       WHERE user_id IN (SELECT id FROM bond402_users WHERE email LIKE '${emailFilter}');
     DELETE FROM bond402_users WHERE email LIKE '${emailFilter}';
   `);
@@ -102,8 +107,38 @@ before(async () => {
     throw new Error("DATABASE_URL ist für die öffentlichen MVP-Tests erforderlich.");
   }
   cleanupTestData();
+  emailMockServer = createServer((req, res) => {
+    let body = "";
+    req.on("data", (chunk) => { body += chunk; });
+    req.on("end", () => {
+      let parsedBody;
+      try {
+        parsedBody = JSON.parse(body);
+        if (parsedBody.to?.[0]?.includes("-delivery-fail@")) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "mock delivery failure" }));
+          return;
+        }
+        mockEmails.push(parsedBody);
+      } catch {
+        // The API test fails later if the mock payload is not valid JSON.
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ id: "mock-email-id" }));
+    });
+  });
+  emailMockServer.listen(port + 1, "127.0.0.1");
+  await once(emailMockServer, "listening");
   server = spawn("node", ["--enable-source-maps", "artifacts/api-server/dist/index.mjs"], {
-    env: { ...process.env, NODE_ENV: "test", PORT: String(port) },
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      PORT: String(port),
+      RESEND_API_KEY: "test-resend-key",
+      RESEND_API_URL: `http://127.0.0.1:${port + 1}/emails`,
+      PUBLIC_BASE_URL: baseUrl,
+      RESEND_FROM_EMAIL: "onboarding@resend.dev",
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
   server.stderr.on("data", (chunk) => {
@@ -117,8 +152,27 @@ after(async () => {
     server.kill("SIGTERM");
     await once(server, "exit").catch(() => {});
   }
+  if (emailMockServer) {
+    emailMockServer.close();
+    await once(emailMockServer, "close").catch(() => {});
+  }
   cleanupTestData();
 });
+
+async function waitForEmail(subject, startIndex = 0) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const email = mockEmails.slice(startIndex).find((candidate) => candidate.subject === subject);
+    if (email) return email;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Keine Test-E-Mail mit Betreff "${subject}" erhalten.`);
+}
+
+function tokenFromEmail(email, path) {
+  const match = String(email.text || "").match(new RegExp(`${path.replace("/", "\\/")}\\?token=([^\\s]+)`));
+  if (!match) throw new Error(`Kein Token für ${path} in Test-E-Mail gefunden.`);
+  return match[1];
+}
 
 test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const emailA = `${testPrefix}-a@example.test`;
@@ -156,6 +210,13 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(invalidRegister.response.status, 400);
   assert.equal(invalidRegister.data.code, "INVALID_INPUT");
 
+  const deliveryFailure = await request("/api/auth/register", {
+    body: { name: "Versandfehler", email: `${testPrefix}-delivery-fail@example.test`, password: "Delivery-Fail-123!" },
+    headers: { "X-Forwarded-For": "203.0.113.3" },
+  });
+  assert.equal(deliveryFailure.response.status, 503);
+  assert.equal(deliveryFailure.data.code, "EMAIL_DELIVERY_FAILED");
+
   for (let index = 0; index < 5; index += 1) {
     const registration = await request("/api/auth/register", {
       body: {
@@ -177,11 +238,65 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   });
   assert.equal(rateLimitedRegistration.response.status, 429);
 
+  const verificationEmailIndex = mockEmails.length;
   const registeredA = await request("/api/auth/register", {
     jar: jarA,
     body: { name: "Testkonto A", email: emailA, password: passwordA },
   });
   assert.equal(registeredA.response.status, 201);
+  assert.equal(jarA.value, "");
+  assert.equal(registeredA.data.verificationRequired, true);
+  assert.equal(registeredA.data.user.emailVerified, false);
+
+  const verificationEmail = await waitForEmail("Bond402: E-Mail-Adresse bestätigen", verificationEmailIndex);
+  const verificationToken = tokenFromEmail(verificationEmail, "/verify-email");
+
+  const unverifiedLogin = await request("/api/auth/login", {
+    body: { email: emailA, password: passwordA },
+    headers: { "X-Forwarded-For": "203.0.113.10" },
+  });
+  assert.equal(unverifiedLogin.response.status, 403);
+  assert.equal(unverifiedLogin.data.code, "EMAIL_NOT_VERIFIED");
+
+  const verificationTokenHash = createHash("sha256").update(verificationToken, "utf8").digest("hex");
+  assert.equal(
+    runSql(`SELECT COUNT(*) FROM bond402_auth_tokens WHERE token_hash = '${verificationTokenHash}'`).trim(),
+    "1",
+  );
+  runSql(`UPDATE bond402_auth_tokens SET expires_at = NOW() - INTERVAL '1 minute' WHERE token_hash = '${verificationTokenHash}'`);
+  const expiredVerification = await request("/api/auth/verify-email", {
+    body: { token: verificationToken },
+  });
+  assert.equal(expiredVerification.response.status, 400);
+  assert.equal(expiredVerification.data.code, "INVALID_TOKEN");
+
+  const resendStart = mockEmails.length;
+  const resendVerification = await request("/api/auth/resend-verification", {
+    body: { email: emailA },
+  });
+  const resendUnknown = await request("/api/auth/resend-verification", {
+    body: { email: `${testPrefix}-unknown@example.test` },
+  });
+  assert.equal(resendVerification.response.status, 202);
+  assert.equal(resendUnknown.response.status, 202);
+  assert.deepEqual(resendVerification.data, resendUnknown.data);
+  const resentVerificationEmail = await waitForEmail("Bond402: E-Mail-Adresse bestätigen", resendStart);
+  const resentVerificationToken = tokenFromEmail(resentVerificationEmail, "/verify-email");
+  const verified = await request("/api/auth/verify-email", {
+    body: { token: resentVerificationToken },
+  });
+  assert.equal(verified.response.status, 200);
+  const reusedVerification = await request("/api/auth/verify-email", {
+    body: { token: resentVerificationToken },
+  });
+  assert.equal(reusedVerification.response.status, 400);
+  assert.equal(reusedVerification.data.code, "INVALID_TOKEN");
+
+  const verifiedLogin = await request("/api/auth/login", {
+    jar: jarA,
+    body: { email: emailA, password: passwordA },
+  });
+  assert.equal(verifiedLogin.response.status, 200);
   assert.ok(jarA.value);
 
   const registeredB = await request("/api/auth/register", {
@@ -189,6 +304,13 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     body: { name: "Testkonto B", email: emailB, password: passwordB },
   });
   assert.equal(registeredB.response.status, 201);
+  assert.equal(jarB.value, "");
+  runSql(`UPDATE bond402_users SET email_verification_required = false WHERE email = '${emailB}'`);
+  const existingAccountLogin = await request("/api/auth/login", {
+    jar: jarB,
+    body: { email: emailB, password: passwordB },
+  });
+  assert.equal(existingAccountLogin.response.status, 200);
   assert.ok(jarB.value);
 
   const meA = await request("/api/auth/me", { jar: jarA });
@@ -226,6 +348,61 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     headers: { "X-Forwarded-For": "203.0.113.2" },
   });
   assert.equal(wrongLogin.response.status, 401);
+
+  const forgotStart = mockEmails.length;
+  const forgotPassword = await request("/api/auth/password/forgot", {
+    body: { email: emailA },
+    headers: { "X-Forwarded-For": "203.0.113.11" },
+  });
+  const forgotUnknown = await request("/api/auth/password/forgot", {
+    body: { email: `${testPrefix}-not-registered@example.test` },
+    headers: { "X-Forwarded-For": "203.0.113.11" },
+  });
+  assert.equal(forgotPassword.response.status, 202);
+  assert.equal(forgotUnknown.response.status, 202);
+  assert.deepEqual(forgotPassword.data, forgotUnknown.data);
+  const resetEmail = await waitForEmail("Bond402: Passwort zurücksetzen", forgotStart);
+  const resetToken = tokenFromEmail(resetEmail, "/reset-password");
+  const invalidReset = await request("/api/auth/password/reset", {
+    body: { token: "invalid-reset-token-invalid-reset-token", newPassword: "Reset-Public-123!" },
+  });
+  assert.equal(invalidReset.response.status, 400);
+  assert.equal(invalidReset.data.code, "INVALID_TOKEN");
+  const resetPassword = await request("/api/auth/password/reset", {
+    body: { token: resetToken, newPassword: "Reset-Public-123!" },
+  });
+  assert.equal(resetPassword.response.status, 204);
+  const reusedReset = await request("/api/auth/password/reset", {
+    body: { token: resetToken, newPassword: "Reset-Public-456!" },
+  });
+  assert.equal(reusedReset.response.status, 400);
+  assert.equal(reusedReset.data.code, "INVALID_TOKEN");
+  const oldResetPasswordLogin = await request("/api/auth/login", {
+    body: { email: emailA, password: "New-Public-Mvp-123!" },
+    headers: { "X-Forwarded-For": "203.0.113.12" },
+  });
+  assert.equal(oldResetPasswordLogin.response.status, 401);
+  const resetPasswordLogin = await request("/api/auth/login", {
+    jar: jarA,
+    body: { email: emailA, password: "Reset-Public-123!" },
+    headers: { "X-Forwarded-For": "203.0.113.13" },
+  });
+  assert.equal(resetPasswordLogin.response.status, 200);
+
+  const expiredResetStart = mockEmails.length;
+  await request("/api/auth/password/forgot", {
+    body: { email: emailA },
+    headers: { "X-Forwarded-For": "203.0.113.14" },
+  });
+  const expiredResetEmail = await waitForEmail("Bond402: Passwort zurücksetzen", expiredResetStart);
+  const expiredResetToken = tokenFromEmail(expiredResetEmail, "/reset-password");
+  const expiredResetTokenHash = createHash("sha256").update(expiredResetToken, "utf8").digest("hex");
+  runSql(`UPDATE bond402_auth_tokens SET expires_at = NOW() - INTERVAL '1 minute' WHERE token_hash = '${expiredResetTokenHash}'`);
+  const expiredReset = await request("/api/auth/password/reset", {
+    body: { token: expiredResetToken, newPassword: "Expired-Reset-123!" },
+  });
+  assert.equal(expiredReset.response.status, 400);
+  assert.equal(expiredReset.data.code, "INVALID_TOKEN");
 
   const serviceCreated = await request("/api/services", {
     method: "POST",
@@ -398,7 +575,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const loggedInAgain = await request("/api/auth/login", {
     method: "POST",
     jar: jarA,
-    body: { email: emailA, password: "New-Public-Mvp-123!" },
+    body: { email: emailA, password: "Reset-Public-123!" },
   });
   assert.equal(loggedInAgain.response.status, 200);
   const sessionHash = createHash("sha256").update(jarA.value, "utf8").digest("hex");

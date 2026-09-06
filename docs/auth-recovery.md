@@ -2,21 +2,20 @@
 
 ## Status
 
-Diese Funktionen sind im öffentlichen Bond402-MVP bewusst **nicht aktiviert**.
-Registrierung, Anmeldung, Logout, Sessions und Passwortänderung funktionieren lokal
-mit PostgreSQL und serverseitigen Sessions. Es werden keine scheinbaren
-Bestätigungs-E-Mails und keine unsicheren Passwort-Reset-Links erzeugt.
+E-Mail-Verifizierung und Passwort-Wiederherstellung sind für den öffentlichen
+Beta-Launch aktiv. Neue Konten bestätigen ihre E-Mail-Adresse über einen
+24 Stunden gültigen Einmal-Link. Passwort-Reset-Links sind 30 Minuten gültig.
 
-## Provider-neutrale Grundlage
+Die Auth-Mail-Implementierung verwendet Resend ausschließlich serverseitig.
+Tokens werden kryptografisch sicher erzeugt und in PostgreSQL nur als Hash
+gespeichert. Ein Token wird bei der ersten erfolgreichen Nutzung atomar
+verbraucht. Verifizierungs- und Reset-Anfragen verwenden neutrale Antworten
+und Rate-Limits, damit weder Konten aufgelistet noch Mailboxen missbraucht
+werden können.
 
-Eine spätere Aktivierung benötigt einen E-Mail-Anbieter mit:
+Die benötigte Konfiguration ist in `docs/auth-mail.md` dokumentiert:
 
-- einem verwalteten Secret außerhalb des Quellcodes,
-- zeitlich begrenzten, einmal verwendbaren Tokens,
-- serverseitigem Hashing der Tokens,
-- Rate-Limits für Anforderung und Einlösung,
-- neutralen Antworten, damit keine Konten aufgelistet werden,
-- auditierbarer Widerrufs- und Ablaufbehandlung.
-
-Bis diese Voraussetzungen erfüllt sind, bleibt der Status bewusst offen. Ein
-E-Mail-Anbieter, API-Key oder unsicherer Workaround wird nicht automatisch ergänzt.
+- `RESEND_API_KEY` als Server-Secret,
+- `PUBLIC_BASE_URL` als öffentliche HTTPS-Basis,
+- optional `RESEND_FROM_EMAIL`, bis zur Domain-Verifizierung standardmäßig
+  `onboarding@resend.dev`.

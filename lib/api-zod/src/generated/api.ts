@@ -40,7 +40,8 @@ export const GetAuthMeResponse = zod.object({
   "id": zod.string(),
   "email": zod.string().regex(getAuthMeResponseUserEmailRegExp),
   "name": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "emailVerified": zod.boolean()
 })
 })
 
@@ -73,8 +74,11 @@ export const RegisterAuthUserResponse = zod.object({
   "id": zod.string(),
   "email": zod.string().regex(registerAuthUserResponseUserEmailRegExp),
   "name": zod.string(),
-  "createdAt": zod.coerce.date()
-})
+  "createdAt": zod.coerce.date(),
+  "emailVerified": zod.boolean()
+}),
+  "message": zod.string(),
+  "verificationRequired": zod.boolean()
 })
 
 
@@ -103,7 +107,8 @@ export const LoginAuthUserResponse = zod.object({
   "id": zod.string(),
   "email": zod.string().regex(loginAuthUserResponseUserEmailRegExp),
   "name": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "emailVerified": zod.boolean()
 })
 })
 
@@ -131,6 +136,78 @@ export const ChangeAuthPasswordBody = zod.object({
 })
 
 export const ChangeAuthPasswordResponse = zod.void()
+
+
+/**
+ * @summary Verify an email address with a one-time token
+ */
+export const verifyAuthEmailBodyTokenMin = 32;
+export const verifyAuthEmailBodyTokenMax = 200;
+
+
+
+export const VerifyAuthEmailBody = zod.object({
+  "token": zod.string().min(verifyAuthEmailBodyTokenMin).max(verifyAuthEmailBodyTokenMax)
+})
+
+export const VerifyAuthEmailResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Send an email verification link
+ */
+export const resendAuthVerificationBodyEmailMax = 320;
+
+
+export const resendAuthVerificationBodyEmailRegExp = new RegExp('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+
+
+export const ResendAuthVerificationBody = zod.object({
+  "email": zod.string().max(resendAuthVerificationBodyEmailMax).regex(resendAuthVerificationBodyEmailRegExp)
+})
+
+export const ResendAuthVerificationResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Request a password reset email
+ */
+export const requestAuthPasswordResetBodyEmailMax = 320;
+
+
+export const requestAuthPasswordResetBodyEmailRegExp = new RegExp('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+
+
+export const RequestAuthPasswordResetBody = zod.object({
+  "email": zod.string().max(requestAuthPasswordResetBodyEmailMax).regex(requestAuthPasswordResetBodyEmailRegExp)
+})
+
+export const RequestAuthPasswordResetResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Set a new password with a one-time reset token
+ */
+export const resetAuthPasswordBodyTokenMin = 32;
+export const resetAuthPasswordBodyTokenMax = 200;
+
+export const resetAuthPasswordBodyNewPasswordMin = 8;
+export const resetAuthPasswordBodyNewPasswordMax = 128;
+
+
+
+export const ResetAuthPasswordBody = zod.object({
+  "token": zod.string().min(resetAuthPasswordBodyTokenMin).max(resetAuthPasswordBodyTokenMax),
+  "newPassword": zod.string().min(resetAuthPasswordBodyNewPasswordMin).max(resetAuthPasswordBodyNewPasswordMax)
+})
+
+export const ResetAuthPasswordResponse = zod.void()
 
 
 /**

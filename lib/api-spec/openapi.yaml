@@ -89,7 +89,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthSession"
+                $ref: "#/components/schemas/AuthRegistrationResponse"
         "400":
           description: Invalid registration data
           content:
@@ -160,6 +160,98 @@ paths:
           description: Password changed and all previous sessions revoked
         "400":
           description: Invalid password data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/verify-email:
+    post:
+      operationId: verifyAuthEmail
+      tags: [auth]
+      summary: Verify an email address with a one-time token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthVerifyEmailBody"
+      responses:
+        "200":
+          description: Email verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMessage"
+        "400":
+          description: Token is invalid, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/resend-verification:
+    post:
+      operationId: resendAuthVerification
+      tags: [auth]
+      summary: Send an email verification link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthEmailBody"
+      responses:
+        "202":
+          description: Generic response that does not reveal account existence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMessage"
+        "429":
+          description: Too many verification requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/password/forgot:
+    post:
+      operationId: requestAuthPasswordReset
+      tags: [auth]
+      summary: Request a password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthEmailBody"
+      responses:
+        "202":
+          description: Generic response that does not reveal account existence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMessage"
+        "429":
+          description: Too many password reset requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /auth/password/reset:
+    post:
+      operationId: resetAuthPassword
+      tags: [auth]
+      summary: Set a new password with a one-time reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthResetPasswordBody"
+      responses:
+        "204":
+          description: Password changed and all sessions revoked
+        "400":
+          description: Token is invalid, expired, or already used
           content:
             application/json:
               schema:
@@ -685,6 +777,40 @@ components:
           minLength: 8
           maxLength: 128
       required: [currentPassword, newPassword]
+    AuthEmailBody:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 320
+          pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+      required: [email]
+    AuthVerifyEmailBody:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 200
+      required: [token]
+    AuthResetPasswordBody:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 200
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required: [token, newPassword]
+    AuthMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
     AuthUser:
       type: object
       properties:
@@ -698,13 +824,25 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, email, name, createdAt]
+        emailVerified:
+          type: boolean
+      required: [id, email, name, createdAt, emailVerified]
     AuthSession:
       type: object
       properties:
         user:
           $ref: "#/components/schemas/AuthUser"
       required: [user]
+    AuthRegistrationResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/AuthUser"
+        message:
+          type: string
+        verificationRequired:
+          type: boolean
+      required: [user, message, verificationRequired]
     ApiError:
       type: object
       properties:

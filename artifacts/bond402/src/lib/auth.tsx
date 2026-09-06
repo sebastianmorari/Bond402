@@ -6,6 +6,7 @@ export type LocalAuthUser = {
   email: string;
   name: string;
   createdAt: string;
+  emailVerified: boolean;
 };
 
 type AuthContextValue = {
@@ -30,7 +31,7 @@ async function parseAuthResponse(response: Response) {
     throw new Error(message);
   }
   if (response.status === 204) return null;
-  return response.json() as Promise<{ user: LocalAuthUser }>;
+  return response.json() as Promise<{ user: LocalAuthUser; message?: string; verificationRequired?: boolean }>;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -83,8 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
-      const result = await parseAuthResponse(response);
-      setUser(result?.user ?? null);
+      await parseAuthResponse(response);
       queryClient.clear();
     },
     signOut: async () => {

@@ -14,6 +14,7 @@ import { AuthPage } from '@/pages/auth';
 import { DatenschutzPage, ImpressumPage } from '@/pages/legal';
 import { ApiDocsPage } from '@/pages/api-docs';
 import { StatusPage } from '@/pages/status';
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from '@/pages/auth-mail';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import {
   Route,
@@ -85,6 +86,9 @@ function Router() {
         <Route path="/datenschutz" component={DatenschutzPage} />
         <Route path="/api-docs" component={ApiDocsPage} />
         <Route path="/status" component={StatusPage} />
+        <Route path="/verify-email" component={VerifyEmailPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/sign-in/*?" component={() => <AuthPage mode="signIn" />} />
         <Route path="/sign-up/*?" component={() => <AuthPage mode="signUp" />} />
         <Route component={NotFound} />

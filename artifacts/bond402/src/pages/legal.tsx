@@ -186,6 +186,10 @@ export function DatenschutzPage() {
             <strong>Neon / PostgreSQL:</strong> Speicherung der Produktionsdatenbank
             für Konten, Sessions, API-Schlüssel, Dienste und Prüfresultate.
           </li>
+           <li>
+             <strong>Resend:</strong> Versand von E-Mail-Bestätigungen und Passwort-Reset-Links.
+             Resend erhält dafür die E-Mail-Adresse, den Anzeigenamen und die jeweilige Nachricht.
+           </li>
           <li>
             <strong>Google Fonts:</strong> Einbindung der für die Oberfläche verwendeten
             Schriftarten über Google Fonts.
@@ -207,9 +211,9 @@ export function DatenschutzPage() {
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-foreground">5. Keine Analyse- oder Zahlungsdienste</h2>
         <p>
-          Bond402 verwendet aktuell kein Analytics- oder Werbetracking, kein Sentry
-          oder anderes externes Fehlertracking, keinen E-Mail-Versanddienst und keine
-          echte Zahlungsabwicklung wie Stripe. Es werden keine Wallets, Kryptowährungen
+           Bond402 verwendet aktuell kein Analytics- oder Werbetracking, kein Sentry
+           oder anderes externes Fehlertracking. Der E-Mail-Versand für Authentifizierung
+           erfolgt über Resend. Es gibt keine echte Zahlungsabwicklung wie Stripe und keine Wallets, Kryptowährungen
           oder Blockchain-Transaktionen eingesetzt.
         </p>
         <p>

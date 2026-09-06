@@ -300,22 +300,29 @@ export function ApiDocsPage() {
             sichere HttpOnly-Session-Cookie der Webanwendung und sind nicht für Bearer-Schlüssel gedacht.
           </p>
           <div className="flex flex-wrap gap-2 text-xs">
-            {["/auth/register", "/auth/login", "/auth/logout", "/auth/password", "/services", "/dashboard", "/api-keys"].map((path) => (
+            {["/auth/register", "/auth/login", "/auth/logout", "/auth/verify-email", "/auth/resend-verification", "/auth/password/forgot", "/auth/password/reset", "/auth/password", "/services", "/dashboard", "/api-keys"].map((path) => (
               <Code key={path}>{path}</Code>
             ))}
           </div>
         </section>
 
-        <section className="rounded-xl border border-warning/30 bg-warning/10 p-5 text-sm leading-6">
-          <strong className="text-warning">Bewusst nicht aktiviert:</strong>{" "}
-          Passwort-Wiederherstellung und E-Mail-Verifizierung sind im MVP nicht live.
-          Dafür ist ein E-Mail-Anbieter mit sicherem Secret und verifizierten Zustellwegen nötig.
-          Es gibt deshalb keine unsicheren Reset-Links oder Fake-Bestätigungen.
-          Wenn Sie den Zugang verlieren, kontaktieren Sie den Beta-Support unter{" "}
-          <a className="font-medium text-primary hover:underline" href="mailto:sseby17@gmail.com">
-            sseby17@gmail.com
-          </a>
-          . Senden Sie niemals Ihr Passwort.
+        <section className="rounded-xl border border-primary/25 bg-primary/5 p-5 text-sm leading-6">
+          <strong className="text-primary">Sicherer E-Mail-Auth-Flow:</strong>{" "}
+          Neue Konten bestätigen ihre E-Mail-Adresse über einen 24 Stunden gültigen Einmal-Link.
+          Passwort-Reset-Links sind 30 Minuten gültig, werden serverseitig nur als Hash gespeichert
+          und nach der ersten Nutzung verbraucht. Resend erhält ausschließlich den serverseitigen
+          Versandauftrag; API-Schlüssel und Token werden nie im Frontend oder in Logs ausgegeben.
+        </section>
+
+        <section className="space-y-3 rounded-2xl border border-border/60 bg-card/40 p-5 sm:p-6">
+          <h2 className="text-lg font-semibold">Server-Konfiguration für Auth-E-Mails</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Der API-Server benötigt <Code>RESEND_API_KEY</Code> als Secret,
+            <Code>PUBLIC_BASE_URL</Code> als öffentliche HTTPS-Basis für Links und optional
+            <Code>RESEND_FROM_EMAIL</Code>. Bis zur Domain-Verifizierung ist
+            <Code>onboarding@resend.dev</Code> der kompatible Standard-Absender.
+            Der Resend-Key wird niemals an Browser oder API-Clients ausgeliefert.
+          </p>
         </section>
       </main>
 

@@ -95,6 +95,14 @@ export function Profile() {
                 </p>
                 <p className="font-medium bg-muted/30 p-3 rounded-lg border border-border/50">{user.email}</p>
               </div>
+              <div className="space-y-1 sm:col-span-2">
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Mail className="h-4 w-4" /> E-Mail-Status
+                </p>
+                <p className="font-medium bg-emerald-500/10 p-3 rounded-lg border border-emerald-500/25 text-emerald-400">
+                  {user.emailVerified ? "E-Mail-Adresse bestätigt" : "E-Mail-Adresse noch nicht bestätigt"}
+                </p>
+              </div>
               {createdAt && (
                 <div className="space-y-1 sm:col-span-2">
                   <p className="text-sm text-muted-foreground flex items-center gap-1">

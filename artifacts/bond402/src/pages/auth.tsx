@@ -22,9 +22,13 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
     setError(null);
     setIsSubmitting(true);
     try {
-      if (isSignUp) await signUp(name, email, password);
-      else await signIn(email, password);
-      setLocation("/dashboard");
+      if (isSignUp) {
+        await signUp(name, email, password);
+        setLocation("/verify-email");
+      } else {
+        await signIn(email, password);
+        setLocation("/dashboard");
+      }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Die Anmeldung ist fehlgeschlagen.");
     } finally {
@@ -55,7 +59,7 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
             <h1 className="text-2xl font-bold">{isSignUp ? "Konto erstellen" : "Bei Bond402 anmelden"}</h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {isSignUp
-                ? "Erstellen Sie ein kostenloses lokales Konto für Ihre eigenen API-Dienste."
+                ? "Erstellen Sie ein kostenloses Konto. Ihre E-Mail-Adresse wird vor der ersten Anmeldung bestätigt."
                 : "Melden Sie sich an, um Ihre Dienste und Developer-Schlüssel zu verwalten."}
             </p>
           </div>
@@ -71,6 +75,13 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
               <Label htmlFor="auth-email">E-Mail-Adresse</Label>
               <Input id="auth-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={320} autoComplete="email" />
             </div>
+            {!isSignUp && (
+              <div className="text-right text-sm">
+                <Link href="/forgot-password" className="font-medium text-primary hover:underline">
+                  Passwort vergessen?
+                </Link>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="auth-password">Passwort</Label>
               <Input id="auth-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={8} maxLength={128} autoComplete={isSignUp ? "new-password" : "current-password"} />
@@ -98,17 +109,8 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
         </div>
 
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
-          Lokale Bond402-Anmeldung für den MVP. Keine externen Authentifizierungsdienste und keine kostenpflichtigen Anbieter.
+          Bond402 sendet Bestätigungs- und Reset-Links über Resend. Die Links sind zeitlich begrenzt und nur einmal verwendbar.
         </p>
-        <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-center text-xs leading-relaxed text-muted-foreground">
-          Passwort-Wiederherstellung und E-Mail-Verifizierung sind derzeit bewusst nicht aktiviert.
-          Verwenden Sie ein Passwort, das Sie sicher aufbewahren können. Wenn Sie den Zugang verlieren,
-          wenden Sie sich an den Beta-Support unter{" "}
-          <a className="font-medium text-primary hover:underline" href="mailto:sseby17@gmail.com">
-            sseby17@gmail.com
-          </a>
-          . Senden Sie niemals Ihr Passwort.
-        </div>
         <PublicFooter />
       </div>
     </div>
