@@ -9,6 +9,7 @@ import {
   type ActionContext,
 } from "../lib/pre-action";
 import { getPublicOpenApiDocument } from "../lib/public-openapi";
+import { publicBaseUrl } from "../lib/public-sitemap";
 
 const router: IRouter = Router();
 const PUBLIC_RATE_LIMIT = 60;
@@ -34,13 +35,6 @@ function parseCatalogQuery(query: Request["query"]) {
     return null;
   }
   return { q, page, pageSize };
-}
-
-function publicBaseUrl(req: { protocol: string; get(name: string): string | undefined }) {
-  const configured = process.env.PUBLIC_BASE_URL?.trim().replace(/\/+$/, "");
-  if (configured) return configured;
-  if (process.env.NODE_ENV === "production") return "https://bond402.com";
-  return `${req.protocol}://${req.get("host") || "localhost"}`;
 }
 
 async function requirePublicRateLimit(req: Request, res: Response) {

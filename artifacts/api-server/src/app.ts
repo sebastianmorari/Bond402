@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
 import router from "./routes";
+import sitemapRouter from "./routes/sitemap";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -27,6 +28,7 @@ app.use(
   }),
 );
 app.use(cookieParser());
+app.use(sitemapRouter);
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");

@@ -23,6 +23,10 @@ function runSql(sql) {
   );
 }
 
+function sqlLiteral(value) {
+  return `'${String(value).replaceAll("'", "''")}'`;
+}
+
 function cleanupTestData() {
   if (!databaseUrl) return;
   const emailFilter = `${testPrefix}%@example.test`;
@@ -209,6 +213,56 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.ok(openApi.data.components.schemas.TrustMetrics);
   assert.ok(openApi.data.components.schemas.SecurityHeaders);
   assert.ok(openApi.data.components.schemas.DomainVerification);
+});
+
+test("öffentliche Sitemap enthält nur ausdrücklich gelistete Dienste", async () => {
+  const listedId = `${testPrefix}-sitemap-listed`;
+  const excludedIds = [
+    `${testPrefix}-sitemap-private`,
+    `${testPrefix}-sitemap-internal`,
+    `${testPrefix}-sitemap-draft`,
+    `${testPrefix}-sitemap-unlisted`,
+  ];
+  const rows = [
+    [listedId, "LISTED"],
+    [excludedIds[0], "PRIVATE"],
+    [excludedIds[1], "INTERNAL"],
+    [excludedIds[2], "DRAFT"],
+    [excludedIds[3], "UNLISTED"],
+  ];
+
+  runSql(`
+    INSERT INTO bond402_api_services
+      (id, owner_id, name, url, expected_structure, max_response_time, visibility)
+    VALUES
+      ${rows
+        .map(
+          ([id, visibility]) =>
+            `(${sqlLiteral(id)}, ${sqlLiteral("sitemap-test-owner")}, ${sqlLiteral(
+              `Sitemap ${visibility}`,
+            )}, ${sqlLiteral(`https://${String(id)}.example.test`)}, ${sqlLiteral(
+              "{}",
+            )}, 1000, ${sqlLiteral(visibility)})`,
+        )
+        .join(",\n      ")};
+  `);
+
+  try {
+    const sitemap = await request("/sitemap.xml");
+    assert.equal(sitemap.response.status, 200);
+    assert.match(sitemap.response.headers.get("content-type") ?? "", /application\/xml/);
+    assert.match(sitemap.response.headers.get("cache-control") ?? "", /max-age=300/);
+    assert.match(sitemap.data, /<loc>http:\/\/127\.0\.0\.1:\d+\/catalog<\/loc>/);
+    assert.match(sitemap.data, new RegExp(`<loc>${baseUrl}/catalog/${listedId}</loc>`));
+    for (const excludedId of excludedIds) {
+      assert.doesNotMatch(sitemap.data, new RegExp(excludedId));
+    }
+  } finally {
+    runSql(`
+      DELETE FROM bond402_api_services
+      WHERE id IN (${[listedId, ...excludedIds].map(sqlLiteral).join(", ")});
+    `);
+  }
 });
 
 test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
