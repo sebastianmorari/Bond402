@@ -56,10 +56,10 @@ for (const [route, metadata] of Object.entries(pages)) {
   html = setMeta(html, "name", "twitter:title", metadata.title);
   html = setMeta(html, "name", "twitter:description", metadata.description);
   html = setMeta(html, "name", "twitter:card", "summary");
-  html = setTag(html, '<link\\s+rel=["\\']canonical["\\'][^>]*>', `<link rel="canonical" href="${url}" />`);
+  html = setTag(html, "<link\\s+rel=[\"']canonical[\"'][^>]*>", `<link rel="canonical" href="${url}" />`);
   html = setTag(
     html,
-    '<script\\s+type=["\\']application/ld\\+json["\\'][^>]*>[^<]*</script>',
+    "<script\\s+type=[\"']application/ld\\+json[\"'][^>]*>[\\s\\S]*?</script>",
     `<script type="application/ld+json">${template.match(/<script\s+type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/i)?.[0]?.replace(/^[\s\S]*?>/, "").replace(/<\/script>[\s\S]*$/, "") ?? ""}</script>\n    <script type="application/ld+json" data-bond402-route-schema>${routeSchema(metadata, url)}</script>`,
   );
   const outputDir = path.join(publicDir, route.slice(1));
