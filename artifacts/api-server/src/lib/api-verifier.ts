@@ -35,6 +35,11 @@ export type SecurityHeadersSnapshot = {
   missing: string[];
 };
 
+export type DomainChallengeFetcher = (
+  url: string,
+  timeoutMs: number,
+) => Promise<{ status: number; body: string }>;
+
 const DEFAULT_SECURITY_HEADERS: SecurityHeadersSnapshot = {
   status: "NOT_EVALUATED",
   evaluated: [],
@@ -548,6 +553,7 @@ export async function runLiveVerification(
 export async function verifyDomainChallenge(
   serviceUrl: string,
   expectedTokenHash: string,
+  fetchChallenge: DomainChallengeFetcher = safeGet,
 ): Promise<{ verified: boolean; reason: string }> {
   let baseUrl: URL;
   try {
@@ -560,7 +566,7 @@ export async function verifyDomainChallenge(
   }
   try {
     const challengeUrl = new URL("/.well-known/bond402-verification.txt", baseUrl);
-    const response = await safeGet(challengeUrl.toString(), 5_000);
+      const response = await fetchChallenge(challengeUrl.toString(), 5_000);
     if (response.status !== 200) {
       return { verified: false, reason: `Die Verifizierungsdatei antwortete mit HTTP ${response.status}.` };
     }
