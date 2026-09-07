@@ -17,6 +17,7 @@ import { StatusPage } from '@/pages/status';
 import { PublicCatalogPage, PublicServicePage } from '@/pages/public-catalog';
 import { AboutPage, SecurityPage } from '@/pages/security';
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from '@/pages/auth-mail';
+import { RouteSeo } from '@/components/route-seo';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import {
   Route,
@@ -112,6 +113,7 @@ function AppRuntime() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <RouteSeo />
         <Router />
       </AuthProvider>
     </QueryClientProvider>

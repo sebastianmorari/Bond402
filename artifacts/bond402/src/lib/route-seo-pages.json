@@ -1,0 +1,26 @@
+{
+  "/security": {
+    "title": "Bond402 Security & Trust – Beobachtbare API-Signale",
+    "description": "Bond402 beschreibt beobachtbare API-Trust-Signale wie HTTPS, TLS, Header, Uptime und Latenz. ALLOW ist keine Sicherheitsgarantie.",
+    "keywords": "Bond402 Security Trust, API Trust-Signale, HTTPS, TLS, Security-Header, Uptime, p95, p99",
+    "section": "Security & Trust"
+  },
+  "/about": {
+    "title": "Bond402 – Über die Trust-Schicht für APIs",
+    "description": "Bond402 macht gespeicherte Prüfungen registrierter APIs für Menschen und AI Agents nachvollziehbar. Kein Audit und keine Sicherheitsgarantie.",
+    "keywords": "Bond402, API Trust, AI Agents, öffentliche API-Prüfungen, Trust-Signale",
+    "section": "About"
+  },
+  "/impressum": {
+    "title": "Bond402 Impressum – Betreiber und Kontakt",
+    "description": "Impressum der privaten Bond402 Public Beta mit Betreiberangaben und Kontakt. Bond402 bietet beobachtbare API-Trust-Daten, keine Sicherheitszertifizierung.",
+    "keywords": "Bond402 Impressum, Betreiber, Kontakt, Public Beta, API Trust",
+    "section": "Impressum"
+  },
+  "/datenschutz": {
+    "title": "Bond402 Datenschutzerklärung – Datenverarbeitung",
+    "description": "Datenschutzerklärung der Bond402 Public Beta: Konten, API-Keys, Prüfdaten und öffentliche Trust-Metadaten – ohne Wallets oder echte Zahlungen.",
+    "keywords": "Bond402 Datenschutz, API-Keys, Trust-Metadaten, Public Beta, keine Wallets",
+    "section": "Datenschutz"
+  }
+}
