@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { calculateTrustMetrics } from "../artifacts/api-server/src/lib/service-data.ts";
+import { calculateTrustMetrics } from "../artifacts/api-server/src/lib/trust-metrics.ts";
 
 const referenceNow = new Date("2026-09-07T00:00:00.000Z");
 const halfLifeAgo = new Date("2026-08-24T00:00:00.000Z");
@@ -45,7 +45,7 @@ test("Trust-Metriken liefern p95, p99, Zielwertanteil und Historienwerte transpa
   const checks = Array.from({ length: 20 }, (_, index) =>
     makeCheck({
       id: `percentile-${index}`,
-      checkedAt: index === 0 ? referenceNow : oldestCheck,
+      checkedAt: referenceNow,
       responseTimeMs: (index + 1) * 100,
     }),
   );
@@ -59,7 +59,7 @@ test("Trust-Metriken liefern p95, p99, Zielwertanteil und Historienwerte transpa
   assert.equal(metrics.p99ResponseTimeMs, 2_000);
   assert.equal(metrics.uptimePercent, 100);
   assert.equal(metrics.withinTargetPercent, 50);
-  assert.equal(metrics.windowStartAt, oldestCheck.toISOString());
+  assert.equal(metrics.windowStartAt, referenceNow.toISOString());
   assert.equal(metrics.latestCheckAt, referenceNow.toISOString());
   assert.deepEqual(metrics.weighting, {
     method: "EXPONENTIAL_DECAY",
@@ -92,5 +92,7 @@ test("Neuere Live-Checks erhalten gegenüber 14 Tage alten Checks das stärkere 
   assert.equal(metrics.uptimePercent, 66.7);
   assert.equal(metrics.timedSampleCount, 1);
   assert.equal(metrics.withinTargetPercent, 100);
+  assert.equal(metrics.windowStartAt, halfLifeAgo.toISOString());
+  assert.equal(metrics.latestCheckAt, referenceNow.toISOString());
   assert.equal(metrics.weighting.halfLifeDays, 14);
 });
