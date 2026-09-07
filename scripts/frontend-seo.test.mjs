@@ -11,24 +11,37 @@ const seoSource = fs.readFileSync(
 const expected = {
   "/security": {
     title: "Bond402 Security & Trust – Beobachtbare API-Signale",
-    description: "ALLOW ist keine Sicherheitsgarantie.",
+    description:
+      "Bond402 beschreibt beobachtbare API-Trust-Signale wie HTTPS, TLS, Header, Uptime und Latenz. ALLOW ist keine Sicherheitsgarantie.",
   },
   "/about": {
     title: "Bond402 – Über die Trust-Schicht für APIs",
-    description: "Kein Audit und keine Sicherheitsgarantie.",
+    description:
+      "Bond402 macht gespeicherte Prüfungen registrierter APIs für Menschen und AI Agents nachvollziehbar. Kein Audit und keine Sicherheitsgarantie.",
   },
   "/impressum": {
     title: "Bond402 Impressum – Betreiber und Kontakt",
-    description: "keine Sicherheitszertifizierung.",
+    description:
+      "Impressum der privaten Bond402 Public Beta mit Betreiberangaben und Kontakt. Bond402 bietet beobachtbare API-Trust-Daten, keine Sicherheitszertifizierung.",
   },
   "/datenschutz": {
     title: "Bond402 Datenschutzerklärung – Datenverarbeitung",
-    description: "ohne Wallets oder echte Zahlungen.",
+    description:
+      "Datenschutzerklärung der Bond402 Public Beta: Konten, API-Keys, Prüfdaten und öffentliche Trust-Metadaten – ohne Wallets oder echte Zahlungen.",
   },
 };
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function decodeHtml(value) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 function metaContent(html, attribute, key) {
@@ -38,7 +51,7 @@ function metaContent(html, attribute, key) {
   );
   const match = html.match(pattern);
   assert.ok(match, `meta ${attribute}=${key}`);
-  return match[1];
+  return decodeHtml(match[1]);
 }
 
 function linkHref(html, relation) {
