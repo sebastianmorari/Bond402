@@ -712,6 +712,112 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   });
   assert.equal(revokedKeyAccess.response.status, 401);
 
+  runSql(`
+    DELETE FROM bond402_api_checks
+    WHERE service_id = '${serviceId}' AND check_type = 'LIVE';
+    ${checkSql(
+      "PASS",
+      true,
+      120,
+      true,
+      null,
+      "eu-west",
+      "TIMESTAMPTZ '2026-09-01T00:00:00Z'",
+    )}
+    ${checkSql(
+      "PASS",
+      true,
+      140,
+      true,
+      null,
+      "us-east",
+      "TIMESTAMPTZ '2026-09-01T00:01:00Z'",
+    )}
+  `);
+
+  const multipleRegionsDetail = await request(`/api/public/services/${serviceId}`);
+  assert.equal(multipleRegionsDetail.response.status, 200);
+  const multipleRegionsAggregation =
+    multipleRegionsDetail.data.trustMetrics.regionalAggregation;
+  assert.equal(multipleRegionsAggregation.state, "MULTIPLE_REGIONS");
+  assert.equal(multipleRegionsAggregation.regionCount, 2);
+  assert.deepEqual(multipleRegionsAggregation.regions, ["eu-west", "us-east"]);
+  assert.deepEqual(multipleRegionsAggregation.contradictorySignals, []);
+  assert.equal(multipleRegionsAggregation.observationBasis, "STORED_LIVE_CHECKS");
+  assert.equal(multipleRegionsAggregation.continuousMonitoring, false);
+  assert.match(
+    multipleRegionsAggregation.description,
+    /keine kontinuierliche Mehrregionen-Überwachung/i,
+  );
+  assert.doesNotMatch(
+    JSON.stringify(multipleRegionsDetail.data),
+    /Sicherheitsgarantie|security guarantee/i,
+  );
+
+  const multipleRegionsPreAction = await request(
+    `/api/public/services/${serviceId}/pre-action-check`,
+    {
+      method: "POST",
+      body: { actionContext: "READ" },
+    },
+  );
+  assert.equal(multipleRegionsPreAction.response.status, 200);
+  assert.equal(
+    multipleRegionsPreAction.data.factors.trustMetrics.regionalAggregation.state,
+    "MULTIPLE_REGIONS",
+  );
+  assert.deepEqual(
+    multipleRegionsPreAction.data.factors.trustMetrics.regionalAggregation,
+    multipleRegionsAggregation,
+  );
+
+  runSql(
+    checkSql(
+      "FAIL",
+      false,
+      0,
+      false,
+      "TIMEOUT",
+      "us-east",
+      "TIMESTAMPTZ '2026-09-01T00:02:00Z'",
+    ),
+  );
+
+  const contradictoryDetail = await request(`/api/public/services/${serviceId}`);
+  assert.equal(contradictoryDetail.response.status, 200);
+  const contradictoryAggregation =
+    contradictoryDetail.data.trustMetrics.regionalAggregation;
+  assert.equal(contradictoryAggregation.state, "CONTRADICTORY_REGIONAL_RESULTS");
+  assert.equal(contradictoryAggregation.regionCount, 2);
+  assert.deepEqual(contradictoryAggregation.regions, ["eu-west", "us-east"]);
+  assert.deepEqual(contradictoryAggregation.contradictorySignals, [
+    "status",
+    "reachability",
+  ]);
+  assert.equal(contradictoryAggregation.observationBasis, "STORED_LIVE_CHECKS");
+  assert.equal(contradictoryAggregation.continuousMonitoring, false);
+  assert.match(
+    contradictoryAggregation.description,
+    /keine kontinuierliche Mehrregionen-Überwachung/i,
+  );
+  assert.doesNotMatch(
+    JSON.stringify(contradictoryDetail.data),
+    /Sicherheitsgarantie|security guarantee/i,
+  );
+
+  const contradictoryPreAction = await request(
+    `/api/public/services/${serviceId}/pre-action-check`,
+  );
+  assert.equal(contradictoryPreAction.response.status, 200);
+  assert.equal(
+    contradictoryPreAction.data.factors.trustMetrics.regionalAggregation.state,
+    "CONTRADICTORY_REGIONAL_RESULTS",
+  );
+  assert.deepEqual(
+    contradictoryPreAction.data.factors.trustMetrics.regionalAggregation,
+    contradictoryAggregation,
+  );
+
   const loggedOut = await request("/api/auth/logout", { method: "POST", jar: jarA });
   assert.equal(loggedOut.response.status, 204);
   const afterLogout = await request("/api/auth/me", { jar: jarA });
