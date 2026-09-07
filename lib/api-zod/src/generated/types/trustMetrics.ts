@@ -8,9 +8,11 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { RegionalAggregation } from './regionalAggregation';
 import type { TrustMetricsWeighting } from './trustMetricsWeighting';
 
 export interface TrustMetrics {
+  regionalAggregation: RegionalAggregation;
   sampleCount: number;
   timedSampleCount: number;
   /** @nullable */

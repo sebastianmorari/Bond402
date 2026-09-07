@@ -225,6 +225,25 @@ export const ListServicesResponseItem = zod.object({
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -315,6 +334,25 @@ export const CreateServiceResponse = zod.object({
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -390,6 +428,25 @@ export const GetServiceResponse = zod.object({
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -500,6 +557,25 @@ export const UpdateServiceResponse = zod.object({
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -1032,6 +1108,25 @@ export const DeveloperPreActionCheckResponse = zod.object({
   "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -1132,6 +1227,25 @@ export const SearchPublicServicesResponse = zod.object({
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -1216,6 +1330,25 @@ export const GetPublicServiceResponse = zod.object({
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -1307,6 +1440,25 @@ export const GetPublicPreActionCheckResponse = zod.object({
   "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),
@@ -1395,6 +1547,25 @@ export const PostPublicPreActionCheckResponse = zod.object({
   "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "trustMetrics": zod.object({
+  "regionalAggregation": zod.object({
+  "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
+  "regionCount": zod.number(),
+  "regions": zod.array(zod.string()),
+  "liveCheckCount": zod.number(),
+  "evaluatedCheckCount": zod.number(),
+  "unassignedLiveCheckCount": zod.number(),
+  "regionalResults": zod.array(zod.object({
+  "region": zod.string(),
+  "sampleCount": zod.number(),
+  "latestCheckAt": zod.coerce.date(),
+  "latestStatus": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "latestReachable": zod.boolean()
+})),
+  "contradictorySignals": zod.array(zod.enum(['status', 'reachability', 'https', 'tls', 'securityHeaders'])),
+  "observationBasis": zod.enum(['STORED_LIVE_CHECKS']),
+  "continuousMonitoring": zod.literal(false),
+  "description": zod.string()
+}),
   "sampleCount": zod.number(),
   "timedSampleCount": zod.number(),
   "uptimePercent": zod.number().nullable(),

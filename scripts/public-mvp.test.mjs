@@ -211,6 +211,8 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.ok(openApi.data.paths["/public/services/{id}/pre-action-check"].post);
   assert.ok(openApi.data.components.schemas.PublicPreActionCheck);
   assert.ok(openApi.data.components.schemas.TrustMetrics);
+   assert.ok(openApi.data.components.schemas.RegionalAggregation);
+   assert.ok(openApi.data.components.schemas.TrustMetrics.properties.regionalAggregation);
   assert.ok(openApi.data.components.schemas.SecurityHeaders);
   assert.ok(openApi.data.components.schemas.DomainVerification);
 });
@@ -509,6 +511,30 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const serviceId = serviceCreated.data.id;
   assert.ok(serviceId);
 
+   const listedService = await request(`/api/services/${serviceId}`, {
+     method: "PATCH",
+     jar: jarA,
+     body: { visibility: "LISTED" },
+   });
+   assert.equal(listedService.response.status, 200);
+   assert.equal(listedService.data.visibility, "LISTED");
+
+   const publicDetail = await request(`/api/public/services/${serviceId}`);
+   assert.equal(publicDetail.response.status, 200);
+   assert.equal(publicDetail.data.visibility, "LISTED");
+   assert.equal(
+     publicDetail.data.trustMetrics.regionalAggregation.state,
+     "INSUFFICIENT_REGIONAL_DATA",
+   );
+   assert.equal(publicDetail.data.trustMetrics.regionalAggregation.continuousMonitoring, false);
+
+   const publicPreAction = await request(`/api/public/services/${serviceId}/pre-action-check`);
+   assert.equal(publicPreAction.response.status, 200);
+   assert.equal(
+     publicPreAction.data.factors.trustMetrics.regionalAggregation.state,
+     "INSUFFICIENT_REGIONAL_DATA",
+   );
+
   const domainIssue = await request(`/api/services/${serviceId}/domain-verification`, {
     method: "POST",
     jar: jarA,
@@ -524,6 +550,14 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   });
   assert.equal(liveCheck.response.status, 201);
   assert.ok(["PASS", "FAIL", "REVIEW"].includes(liveCheck.data.status));
+
+   const observedPublicDetail = await request(`/api/public/services/${serviceId}`);
+   assert.equal(observedPublicDetail.response.status, 200);
+   assert.equal(
+     observedPublicDetail.data.trustMetrics.regionalAggregation.state,
+     "SINGLE_REGION",
+   );
+   assert.equal(observedPublicDetail.data.trustMetrics.regionalAggregation.regionCount, 1);
 
   const manualCheck = await request(`/api/services/${serviceId}/verify`, {
     method: "POST",

@@ -1344,6 +1344,8 @@ components:
     TrustMetrics:
       type: object
       properties:
+        regionalAggregation:
+          $ref: "#/components/schemas/RegionalAggregation"
         sampleCount:
           type: number
         timedSampleCount:
@@ -1374,7 +1376,57 @@ components:
             description:
               type: string
           required: [method, halfLifeDays, description]
-      required: [sampleCount, timedSampleCount, uptimePercent, averageResponseTimeMs, p95ResponseTimeMs, p99ResponseTimeMs, withinTargetPercent, windowStartAt, latestCheckAt, weighting]
+      required: [regionalAggregation, sampleCount, timedSampleCount, uptimePercent, averageResponseTimeMs, p95ResponseTimeMs, p99ResponseTimeMs, withinTargetPercent, windowStartAt, latestCheckAt, weighting]
+    RegionalAggregation:
+      type: object
+      properties:
+        state:
+          type: string
+          enum: [SINGLE_REGION, MULTIPLE_REGIONS, CONTRADICTORY_REGIONAL_RESULTS, INSUFFICIENT_REGIONAL_DATA]
+        regionCount:
+          type: number
+        regions:
+          type: array
+          items:
+            type: string
+        liveCheckCount:
+          type: number
+        evaluatedCheckCount:
+          type: number
+        unassignedLiveCheckCount:
+          type: number
+        regionalResults:
+          type: array
+          items:
+            type: object
+            properties:
+              region:
+                type: string
+              sampleCount:
+                type: number
+              latestCheckAt:
+                type: string
+                format: date-time
+              latestStatus:
+                type: string
+                enum: [PASS, FAIL, REVIEW]
+              latestReachable:
+                type: boolean
+            required: [region, sampleCount, latestCheckAt, latestStatus, latestReachable]
+        contradictorySignals:
+          type: array
+          items:
+            type: string
+            enum: [status, reachability, https, tls, securityHeaders]
+        observationBasis:
+          type: string
+          enum: [STORED_LIVE_CHECKS]
+        continuousMonitoring:
+          type: boolean
+          enum: [false]
+        description:
+          type: string
+      required: [state, regionCount, regions, liveCheckCount, evaluatedCheckCount, unassignedLiveCheckCount, regionalResults, contradictorySignals, observationBasis, continuousMonitoring, description]
     DomainVerification:
       type: object
       properties:

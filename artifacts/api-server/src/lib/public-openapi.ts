@@ -158,9 +158,71 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             securityHeaders: { $ref: "#/components/schemas/SignalState" },
           },
         },
+        RegionalAggregation: {
+          type: "object",
+          required: [
+            "state",
+            "regionCount",
+            "regions",
+            "liveCheckCount",
+            "evaluatedCheckCount",
+            "unassignedLiveCheckCount",
+            "regionalResults",
+            "contradictorySignals",
+            "observationBasis",
+            "continuousMonitoring",
+            "description",
+          ],
+          properties: {
+            state: {
+              type: "string",
+              enum: [
+                "SINGLE_REGION",
+                "MULTIPLE_REGIONS",
+                "CONTRADICTORY_REGIONAL_RESULTS",
+                "INSUFFICIENT_REGIONAL_DATA",
+              ],
+            },
+            regionCount: { type: "number" },
+            regions: { type: "array", items: { type: "string" } },
+            liveCheckCount: { type: "number" },
+            evaluatedCheckCount: { type: "number" },
+            unassignedLiveCheckCount: { type: "number" },
+            regionalResults: {
+              type: "array",
+              items: {
+                type: "object",
+                required: [
+                  "region",
+                  "sampleCount",
+                  "latestCheckAt",
+                  "latestStatus",
+                  "latestReachable",
+                ],
+                properties: {
+                  region: { type: "string" },
+                  sampleCount: { type: "number" },
+                  latestCheckAt: { type: "string", format: "date-time" },
+                  latestStatus: { type: "string", enum: ["PASS", "FAIL", "REVIEW"] },
+                  latestReachable: { type: "boolean" },
+                },
+              },
+            },
+            contradictorySignals: {
+              type: "array",
+              items: {
+                type: "string",
+                enum: ["status", "reachability", "https", "tls", "securityHeaders"],
+              },
+            },
+            observationBasis: { type: "string", enum: ["STORED_LIVE_CHECKS"] },
+            continuousMonitoring: { type: "boolean", enum: [false] },
+            description: { type: "string" },
+          },
+        },
         TrustMetrics: {
           type: "object",
-          required: ["sampleCount", "timedSampleCount", "uptimePercent", "averageResponseTimeMs", "p95ResponseTimeMs", "p99ResponseTimeMs", "withinTargetPercent", "windowStartAt", "latestCheckAt", "weighting"],
+          required: ["sampleCount", "timedSampleCount", "uptimePercent", "averageResponseTimeMs", "p95ResponseTimeMs", "p99ResponseTimeMs", "withinTargetPercent", "windowStartAt", "latestCheckAt", "weighting", "regionalAggregation"],
           properties: {
             sampleCount: { type: "number" },
             timedSampleCount: { type: "number" },
@@ -172,6 +234,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             windowStartAt: { type: ["string", "null"], format: "date-time" },
             latestCheckAt: { type: ["string", "null"], format: "date-time" },
             weighting: { type: "object" },
+            regionalAggregation: { $ref: "#/components/schemas/RegionalAggregation" },
           },
         },
         DomainVerification: {

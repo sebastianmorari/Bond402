@@ -15,6 +15,22 @@ type PublicService = {
   trustScore: number | null;
   trustExplanation: string;
   trustMetrics: {
+    regionalAggregation: {
+      state:
+        | "SINGLE_REGION"
+        | "MULTIPLE_REGIONS"
+        | "CONTRADICTORY_REGIONAL_RESULTS"
+        | "INSUFFICIENT_REGIONAL_DATA";
+      regionCount: number;
+      regions: string[];
+      liveCheckCount: number;
+      evaluatedCheckCount: number;
+      unassignedLiveCheckCount: number;
+      contradictorySignals: string[];
+      observationBasis: "STORED_LIVE_CHECKS";
+      continuousMonitoring: false;
+      description: string;
+    };
     sampleCount: number;
     timedSampleCount: number;
     uptimePercent: number | null;
@@ -96,6 +112,16 @@ function signalLabel(value: string) {
         : "Nicht bewertet";
 }
 
+function regionalStateLabel(value: PublicService["trustMetrics"]["regionalAggregation"]["state"]) {
+  return value === "SINGLE_REGION"
+    ? "Eine beobachtete Region"
+    : value === "MULTIPLE_REGIONS"
+      ? "Mehrere beobachtete Regionen"
+      : value === "CONTRADICTORY_REGIONAL_RESULTS"
+        ? "Widersprüchliche Regionen"
+        : "Unzureichende Regionaldaten";
+}
+
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
@@ -132,6 +158,7 @@ function ServiceCard({ service }: { service: PublicService }) {
         <Badge variant="outline">HTTPS: {signalLabel(service.signals.https)}</Badge>
         <Badge variant="outline">TLS: {signalLabel(service.signals.tls)}</Badge>
         <Badge variant="outline">Domain: {signalLabel(service.domainVerification.status === "VERIFIED" ? "CHECKED" : service.domainVerification.status === "NOT_EVALUATED" ? "NOT_EVALUATED" : "WARNING")}</Badge>
+        <Badge variant="outline">Regionen: {regionalStateLabel(service.trustMetrics.regionalAggregation.state)}</Badge>
       </div>
       <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted-foreground">{service.trustExplanation}</p>
       <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">Trust-Daten öffnen <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
@@ -222,6 +249,19 @@ export function PublicServicePage() {
               ["Uptime", service.trustMetrics.uptimePercent === null ? "NOT_EVALUATED" : `${service.trustMetrics.uptimePercent}% beobachtet`],
             ].map(([label, value]) => <div key={label} className="rounded-xl border border-border/60 bg-background/50 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-semibold">{value.length > 20 ? value : signalLabel(value)}</p></div>)}
           </div>
+           <div className="mt-4 rounded-xl border border-border/60 bg-background/50 p-4">
+             <div className="flex flex-wrap items-center justify-between gap-3">
+               <div>
+                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Regionale Beobachtungen</p>
+                 <p className="mt-1 font-semibold">{regionalStateLabel(service.trustMetrics.regionalAggregation.state)}</p>
+               </div>
+               <Badge variant="outline">{service.trustMetrics.regionalAggregation.regionCount} Region{service.trustMetrics.regionalAggregation.regionCount === 1 ? "" : "en"}</Badge>
+             </div>
+             <p className="mt-3 text-sm leading-6 text-muted-foreground">{service.trustMetrics.regionalAggregation.description}</p>
+             <p className="mt-2 text-xs leading-5 text-muted-foreground">
+               Beobachtungsbasis: gespeicherte Livechecks · Kontinuierliche Mehrregionen-Überwachung: nein.
+             </p>
+           </div>
           <p className="mt-4 text-xs leading-5 text-muted-foreground">{service.trustMetrics.weighting.description} Uptime und Latenz beziehen sich nur auf gespeicherte Bond402-Livechecks im sichtbaren Beobachtungsfenster.</p>
         </section>
         <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h2 className="text-xl font-semibold">Pre-Action-Entscheidung</h2><p className="mt-1 text-sm text-muted-foreground">Gespeicherte Trust-Daten für den gewählten Aktionskontext.</p></div><select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={context} onChange={(event) => setContext(event.target.value)}><option value="GENERAL">Allgemein</option><option value="READ">Lesen</option><option value="WRITE">Schreiben</option><option value="PAYMENT">Zahlung</option><option value="CREDENTIAL_USE">Zugangsdaten verwenden</option></select></div>{decision && <div className="mt-5"><Badge variant={decisionVariant(decision.decision)} className="text-sm">{decision.decision}</Badge><ul className="mt-4 space-y-2 text-sm leading-6 text-muted-foreground">{decision.reasons.map((reason) => <li key={reason}>• {reason}</li>)}</ul><p className="mt-4 text-xs text-muted-foreground">Policy {decision.policy.version} · Datenstatus {decision.freshness.state}{decision.freshness.ageSeconds === null ? "" : ` · ${Math.floor(decision.freshness.ageSeconds / 3600)} h alt`}</p></div>}</section>

@@ -347,8 +347,9 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                         <span>p95 / p99</span><strong>{service.trustMetrics.p95ResponseTimeMs ?? "—"} / {service.trustMetrics.p99ResponseTimeMs ?? "—"} ms</strong>
                         <span>Samples</span><strong>{service.trustMetrics.sampleCount}</strong>
                         <span>Domain</span><strong>{service.domainVerification.status}</strong>
+                        <span>Regionale Daten</span><strong>{service.trustMetrics.regionalAggregation.state}</strong>
                       </div>
-                      <p className="mt-3 text-xs leading-5 text-muted-foreground">{service.trustMetrics.weighting.description}</p>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">{service.trustMetrics.weighting.description} {service.trustMetrics.regionalAggregation.description}</p>
                     </div>
                     <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
                       <p className="text-xs uppercase tracking-wider text-muted-foreground">Letzte Signalzustände</p>

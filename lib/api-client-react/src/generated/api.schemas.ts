@@ -339,6 +339,65 @@ export const ApiServiceVisibility = {
   LISTED: 'LISTED',
 } as const;
 
+export type RegionalAggregationState = typeof RegionalAggregationState[keyof typeof RegionalAggregationState];
+
+
+export const RegionalAggregationState = {
+  SINGLE_REGION: 'SINGLE_REGION',
+  MULTIPLE_REGIONS: 'MULTIPLE_REGIONS',
+  CONTRADICTORY_REGIONAL_RESULTS: 'CONTRADICTORY_REGIONAL_RESULTS',
+  INSUFFICIENT_REGIONAL_DATA: 'INSUFFICIENT_REGIONAL_DATA',
+} as const;
+
+export type RegionalAggregationRegionalResultsItemLatestStatus = typeof RegionalAggregationRegionalResultsItemLatestStatus[keyof typeof RegionalAggregationRegionalResultsItemLatestStatus];
+
+
+export const RegionalAggregationRegionalResultsItemLatestStatus = {
+  PASS: 'PASS',
+  FAIL: 'FAIL',
+  REVIEW: 'REVIEW',
+} as const;
+
+export type RegionalAggregationContradictorySignalsItem = typeof RegionalAggregationContradictorySignalsItem[keyof typeof RegionalAggregationContradictorySignalsItem];
+
+
+export const RegionalAggregationContradictorySignalsItem = {
+  status: 'status',
+  reachability: 'reachability',
+  https: 'https',
+  tls: 'tls',
+  securityHeaders: 'securityHeaders',
+} as const;
+
+export type RegionalAggregationObservationBasis = typeof RegionalAggregationObservationBasis[keyof typeof RegionalAggregationObservationBasis];
+
+
+export const RegionalAggregationObservationBasis = {
+  STORED_LIVE_CHECKS: 'STORED_LIVE_CHECKS',
+} as const;
+
+export type RegionalAggregationRegionalResultsItem = {
+  region: string;
+  sampleCount: number;
+  latestCheckAt: string;
+  latestStatus: RegionalAggregationRegionalResultsItemLatestStatus;
+  latestReachable: boolean;
+};
+
+export interface RegionalAggregation {
+  state: RegionalAggregationState;
+  regionCount: number;
+  regions: string[];
+  liveCheckCount: number;
+  evaluatedCheckCount: number;
+  unassignedLiveCheckCount: number;
+  regionalResults: RegionalAggregationRegionalResultsItem[];
+  contradictorySignals: RegionalAggregationContradictorySignalsItem[];
+  observationBasis: RegionalAggregationObservationBasis;
+  continuousMonitoring: false;
+  description: string;
+}
+
 export type TrustMetricsWeighting = {
   method: string;
   halfLifeDays: number;
@@ -346,6 +405,7 @@ export type TrustMetricsWeighting = {
 };
 
 export interface TrustMetrics {
+  regionalAggregation: RegionalAggregation;
   sampleCount: number;
   timedSampleCount: number;
   /** @nullable */
