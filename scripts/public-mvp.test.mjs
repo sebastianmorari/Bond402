@@ -613,14 +613,23 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     DELETE FROM bond402_api_checks
     WHERE service_id = '${serviceId}' AND check_type = 'LIVE';
   `);
-  const checkSql = (status, reachable, responseTimeMs, structureMatch, errorCode = null) => `
+   const checkSql = (
+     status,
+     reachable,
+     responseTimeMs,
+     structureMatch,
+     errorCode = null,
+     probeRegion = "default",
+     checkedAt = "NOW()",
+   ) => `
     INSERT INTO bond402_api_checks
       (id, service_id, checked_at, status, check_type, reachable, response_time_ms,
-       structure_match, http_status, error_code, summary, found_fields, missing_fields)
+        structure_match, http_status, error_code, summary, found_fields, missing_fields, probe_region)
     VALUES
-      ('${randomUUID()}', '${serviceId}', NOW(), '${status}', 'LIVE', ${reachable},
+       ('${randomUUID()}', '${serviceId}', ${checkedAt}, ${sqlLiteral(status)}, 'LIVE', ${reachable},
        ${responseTimeMs}, ${structureMatch}, ${reachable ? 200 : "NULL"},
-       ${errorCode ? `'${errorCode}'` : "NULL"}, 'Testprüfung', '[]'::jsonb, '[]'::jsonb);
+        ${errorCode ? sqlLiteral(errorCode) : "NULL"}, 'Testprüfung', '[]'::jsonb, '[]'::jsonb,
+        ${sqlLiteral(probeRegion)});
   `;
   runSql(checkSql("PASS", true, 120, true));
   const allowDecision = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
