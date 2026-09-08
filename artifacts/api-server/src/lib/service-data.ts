@@ -6,10 +6,20 @@ import {
   type ApiCheckRow,
   type ApiServiceRow,
 } from "@workspace/db";
-import type { VerificationOutcome } from "./api-verifier";
+import type { TargetRequestOptions, VerificationOutcome } from "./api-verifier";
 import { calculateTrustMetrics, weightedRatio } from "./trust-metrics";
 
 export { calculateTrustMetrics, weightedRatio };
+
+export function getTargetRequestOptions(service: ApiServiceRow): TargetRequestOptions {
+  return {
+    requestMethod: service.requestMethod as "GET" | "POST",
+    targetAuthType: service.targetAuthType as "NONE" | "BEARER" | "API_KEY_HEADER",
+    targetAuthHeaderName: service.targetAuthHeaderName,
+    targetAuthSecretCiphertext: service.targetAuthSecretCiphertext,
+    requestBody: service.requestBody ?? undefined,
+  };
+}
 
 type ServiceDataExecutor = Pick<typeof db, "select">;
 
@@ -154,6 +164,11 @@ export function buildServiceResponse(
     url: service.url,
     expectedStructure: service.expectedStructure,
     maxResponseTime: service.maxResponseTime,
+    requestMethod: service.requestMethod as "GET" | "POST",
+    targetAuthType: service.targetAuthType as "NONE" | "BEARER" | "API_KEY_HEADER",
+    targetAuthHeaderName: service.targetAuthHeaderName ?? null,
+    targetAuthSecretConfigured: Boolean(service.targetAuthSecretCiphertext),
+    requestBody: service.requestBody ?? null,
     visibility: service.visibility as "PRIVATE" | "LISTED",
     listedAt: service.listedAt?.toISOString() ?? null,
     createdAt: service.createdAt.toISOString(),

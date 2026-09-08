@@ -8,6 +8,9 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceInputRequestBody } from './apiServiceInputRequestBody';
+import type { ServiceRequestMethod } from './serviceRequestMethod';
+import type { TargetAuthType } from './targetAuthType';
 
 export interface ApiServiceInput {
   /**
@@ -30,4 +33,18 @@ export interface ApiServiceInput {
      * @maximum 15000
      */
   maxResponseTime: number;
+  requestMethod?: ServiceRequestMethod;
+  targetAuthType?: TargetAuthType;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$
+     */
+  targetAuthHeaderName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 4096
+     */
+  targetAuthSecret?: string;
+  requestBody?: ApiServiceInputRequestBody;
 }

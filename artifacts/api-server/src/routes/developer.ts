@@ -13,6 +13,7 @@ import { runLiveVerification } from "../lib/api-verifier";
 import {
   calculateTrust,
   findOwnedService,
+  getTargetRequestOptions,
   loadChecks,
   saveOutcome,
   toCheckResponse,
@@ -81,6 +82,7 @@ router.post("/developer/services/:id/checks", async (req, res): Promise<void> =>
     service.url,
     service.expectedStructure,
     service.maxResponseTime,
+    getTargetRequestOptions(service),
   );
   await saveOutcome(service.id, "LIVE", outcome);
   res.status(201).json(DeveloperRunServiceCheckResponse.parse(await buildResponse(service)));

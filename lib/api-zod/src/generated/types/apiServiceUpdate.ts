@@ -8,7 +8,10 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceUpdateRequestBody } from './apiServiceUpdateRequestBody';
 import type { ApiServiceUpdateVisibility } from './apiServiceUpdateVisibility';
+import type { ServiceRequestMethod } from './serviceRequestMethod';
+import type { TargetAuthType } from './targetAuthType';
 
 export interface ApiServiceUpdate {
   /**
@@ -32,4 +35,19 @@ export interface ApiServiceUpdate {
      */
   maxResponseTime?: number;
   visibility?: ApiServiceUpdateVisibility;
+  requestMethod?: ServiceRequestMethod;
+  targetAuthType?: TargetAuthType;
+  /**
+     * @maxLength 128
+     * @nullable
+     * @pattern ^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$
+     */
+  targetAuthHeaderName?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 4096
+     */
+  targetAuthSecret?: string;
+  /** @nullable */
+  requestBody?: ApiServiceUpdateRequestBody;
 }

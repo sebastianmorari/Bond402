@@ -8,10 +8,13 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceRequestBody } from './apiServiceRequestBody';
 import type { ApiServiceVisibility } from './apiServiceVisibility';
 import type { CheckResult } from './checkResult';
 import type { DomainVerification } from './domainVerification';
+import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { SignalStates } from './signalStates';
+import type { TargetAuthType } from './targetAuthType';
 import type { TrustMetrics } from './trustMetrics';
 
 export interface ApiService {
@@ -20,6 +23,13 @@ export interface ApiService {
   url: string;
   expectedStructure: string;
   maxResponseTime: number;
+  requestMethod: ServiceRequestMethod;
+  targetAuthType: TargetAuthType;
+  /** @nullable */
+  targetAuthHeaderName: string | null;
+  targetAuthSecretConfigured: boolean;
+  /** @nullable */
+  requestBody: ApiServiceRequestBody;
   visibility: ApiServiceVisibility;
   /** @nullable */
   listedAt: Date | null;

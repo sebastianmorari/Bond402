@@ -206,6 +206,23 @@ export interface DeveloperService {
   maxResponseTime: number;
 }
 
+export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
+
+
+export const ServiceRequestMethod = {
+  GET: 'GET',
+  POST: 'POST',
+} as const;
+
+export type TargetAuthType = typeof TargetAuthType[keyof typeof TargetAuthType];
+
+
+export const TargetAuthType = {
+  NONE: 'NONE',
+  BEARER: 'BEARER',
+  API_KEY_HEADER: 'API_KEY_HEADER',
+} as const;
+
 export type CheckResultStatus = typeof CheckResultStatus[keyof typeof CheckResultStatus];
 
 
@@ -276,6 +293,8 @@ export interface DeveloperServiceResult {
   checks: CheckResult[];
 }
 
+export type ApiServiceInputRequestBody = { [key: string]: unknown };
+
 export interface ApiServiceInput {
   /**
      * @minLength 2
@@ -297,6 +316,20 @@ export interface ApiServiceInput {
      * @maximum 15000
      */
   maxResponseTime: number;
+  requestMethod?: ServiceRequestMethod;
+  targetAuthType?: TargetAuthType;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     * @pattern ^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$
+     */
+  targetAuthHeaderName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 4096
+     */
+  targetAuthSecret?: string;
+  requestBody?: ApiServiceInputRequestBody;
 }
 
 export type ApiServiceUpdateVisibility = typeof ApiServiceUpdateVisibility[keyof typeof ApiServiceUpdateVisibility];
@@ -306,6 +339,11 @@ export const ApiServiceUpdateVisibility = {
   PRIVATE: 'PRIVATE',
   LISTED: 'LISTED',
 } as const;
+
+/**
+ * @nullable
+ */
+export type ApiServiceUpdateRequestBody = { [key: string]: unknown } | null;
 
 export interface ApiServiceUpdate {
   /**
@@ -329,7 +367,27 @@ export interface ApiServiceUpdate {
      */
   maxResponseTime?: number;
   visibility?: ApiServiceUpdateVisibility;
+  requestMethod?: ServiceRequestMethod;
+  targetAuthType?: TargetAuthType;
+  /**
+     * @maxLength 128
+     * @nullable
+     * @pattern ^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$
+     */
+  targetAuthHeaderName?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 4096
+     */
+  targetAuthSecret?: string;
+  /** @nullable */
+  requestBody?: ApiServiceUpdateRequestBody;
 }
+
+/**
+ * @nullable
+ */
+export type ApiServiceRequestBody = { [key: string]: unknown } | null;
 
 export type ApiServiceVisibility = typeof ApiServiceVisibility[keyof typeof ApiServiceVisibility];
 
@@ -453,6 +511,13 @@ export interface ApiService {
   url: string;
   expectedStructure: string;
   maxResponseTime: number;
+  requestMethod: ServiceRequestMethod;
+  targetAuthType: TargetAuthType;
+  /** @nullable */
+  targetAuthHeaderName: string | null;
+  targetAuthSecretConfigured: boolean;
+  /** @nullable */
+  requestBody: ApiServiceRequestBody;
   visibility: ApiServiceVisibility;
   /** @nullable */
   listedAt: string | null;

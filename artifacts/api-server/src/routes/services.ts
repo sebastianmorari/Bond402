@@ -34,6 +34,7 @@ import {
   findOwnedService,
   buildServiceResponse,
   calculateTrustMetrics,
+  getTargetRequestOptions,
   loadChecks,
   saveOutcome,
   toCheckResponse,
@@ -44,6 +45,11 @@ import { requireCheckQuota } from "../lib/quota";
 import { runServiceCreationTransaction } from "../lib/service-creation";
 import { getServiceCreationErrorResponse } from "../lib/service-errors";
 import { logger } from "../lib/logger";
+import {
+  encryptTargetSecret,
+  validateTargetAuthHeaderName,
+  type TargetAuthType,
+} from "../lib/target-auth";
 
 const router: IRouter = Router();
 
@@ -55,6 +61,115 @@ function publicUrlErrorMessage(code: string) {
     return "Private oder interne Adressen dürfen nicht geprüft werden.";
   }
   return "Die URL ist ungültig.";
+}
+
+function targetConfigError(error: unknown) {
+  const code =
+    typeof error === "object" && error && "code" in error
+      ? String(error.code)
+      : "INVALID_TARGET_CONFIGURATION";
+  const messages: Record<string, string> = {
+    INVALID_TARGET_AUTH: "Das Ziel-Secret ist ungültig.",
+    INVALID_TARGET_AUTH_HEADER: "Der Authentifizierungs-Header ist nicht erlaubt.",
+    TARGET_AUTH_CONFIGURATION: "Die Zielauthentifizierung ist unvollständig.",
+    TARGET_REQUEST_CONFIGURATION: "Die Request-Konfiguration ist ungültig.",
+    REQUEST_BODY_TOO_LARGE: "Der JSON-Request-Body ist zu groß.",
+    TARGET_AUTH_UNAVAILABLE: "Die serverseitige Secret-Verwaltung ist vorübergehend nicht verfügbar.",
+  };
+  return {
+    code,
+    error: messages[code] ?? "Die Request-Konfiguration ist ungültig.",
+    status: code === "TARGET_AUTH_UNAVAILABLE" ? 503 : 400,
+  };
+}
+
+function hasField<T extends object>(value: T, field: keyof T) {
+  return Object.prototype.hasOwnProperty.call(value, field);
+}
+
+function normalizeTargetConfiguration(
+  input: {
+    requestMethod?: "GET" | "POST";
+    targetAuthType?: TargetAuthType;
+    targetAuthHeaderName?: string | null;
+    targetAuthSecret?: string;
+    requestBody?: Record<string, unknown> | null;
+  },
+  existing?: typeof apiServicesTable.$inferSelect,
+) {
+  const requestMethod = input.requestMethod ?? existing?.requestMethod ?? "GET";
+  const targetAuthType = input.targetAuthType ?? existing?.targetAuthType ?? "NONE";
+  const bodyWasProvided = hasField(input, "requestBody");
+  let requestBody = bodyWasProvided
+    ? input.requestBody ?? null
+    : existing?.requestBody ?? null;
+
+  if (requestMethod === "GET" && requestBody !== null) {
+    if (bodyWasProvided) {
+      throw Object.assign(new Error("Ein Request-Body ist nur für POST erlaubt."), {
+        code: "TARGET_REQUEST_CONFIGURATION",
+      });
+    }
+    requestBody = null;
+  }
+
+  if (targetAuthType === "NONE") {
+    if (input.targetAuthSecret) {
+      throw Object.assign(new Error("Ein Secret ist ohne Zielauthentifizierung nicht erlaubt."), {
+        code: "TARGET_AUTH_CONFIGURATION",
+      });
+    }
+    return {
+      requestMethod,
+      targetAuthType,
+      targetAuthHeaderName: null,
+      targetAuthSecretCiphertext: null,
+      requestBody,
+    };
+  }
+
+  const existingSecret = existing?.targetAuthSecretCiphertext ?? null;
+  const targetAuthSecretCiphertext = input.targetAuthSecret
+    ? encryptTargetSecret(input.targetAuthSecret)
+    : existingSecret;
+  if (!targetAuthSecretCiphertext) {
+    throw Object.assign(new Error("Für diese Zielauthentifizierung ist ein Secret erforderlich."), {
+      code: "TARGET_AUTH_CONFIGURATION",
+    });
+  }
+
+  if (targetAuthType === "BEARER") {
+    if (
+      input.targetAuthHeaderName &&
+      input.targetAuthHeaderName.trim().toLowerCase() !== "authorization"
+    ) {
+      throw Object.assign(new Error("Bearer verwendet ausschließlich Authorization."), {
+        code: "INVALID_TARGET_AUTH_HEADER",
+      });
+    }
+    return {
+      requestMethod,
+      targetAuthType,
+      targetAuthHeaderName: null,
+      targetAuthSecretCiphertext,
+      requestBody,
+    };
+  }
+
+  if (!input.targetAuthHeaderName && !existing?.targetAuthHeaderName) {
+    throw Object.assign(new Error("Für einen API-Key-Header ist ein Header-Name erforderlich."), {
+      code: "TARGET_AUTH_CONFIGURATION",
+    });
+  }
+  return {
+    requestMethod,
+    targetAuthType,
+    targetAuthHeaderName: validateTargetAuthHeaderName(
+      input.targetAuthHeaderName ?? existing?.targetAuthHeaderName ?? "",
+    ),
+    targetAuthSecretCiphertext,
+    requestBody,
+  };
 }
 
 const DEMO_SERVICES = [
@@ -220,6 +335,15 @@ router.post("/services", async (req, res): Promise<void> => {
     return;
   }
 
+  let targetConfiguration;
+  try {
+    targetConfiguration = normalizeTargetConfiguration(parsed.data);
+  } catch (error) {
+    const result = targetConfigError(error);
+    res.status(result.status).json({ error: result.error, code: result.code });
+    return;
+  }
+
   try {
     await validatePublicUrl(parsed.data.url);
   } catch (error) {
@@ -247,6 +371,11 @@ router.post("/services", async (req, res): Promise<void> => {
           url: parsed.data.url,
           expectedStructure: normalizedStructure,
           maxResponseTime: parsed.data.maxResponseTime,
+           requestMethod: targetConfiguration.requestMethod,
+           targetAuthType: targetConfiguration.targetAuthType,
+           targetAuthHeaderName: targetConfiguration.targetAuthHeaderName,
+           targetAuthSecretCiphertext: targetConfiguration.targetAuthSecretCiphertext,
+           requestBody: targetConfiguration.requestBody,
           visibility: "PRIVATE",
         })
         .returning();
@@ -295,16 +424,37 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const existing = await findOwnedService(params.data.id, userId);
+  if (!existing) {
+    res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
+    return;
+  }
+
+  let targetConfiguration;
+  try {
+    targetConfiguration = normalizeTargetConfiguration(body.data, existing);
+  } catch (error) {
+    const result = targetConfigError(error);
+    res.status(result.status).json({ error: result.error, code: result.code });
+    return;
+  }
+
   const changes = {
-    ...body.data,
     ...(body.data.name !== undefined ? { name: body.data.name.trim() } : {}),
     ...(body.data.expectedStructure !== undefined
       ? { expectedStructure: body.data.expectedStructure.trim() }
       : {}),
+    ...(body.data.url !== undefined ? { url: body.data.url } : {}),
+    ...(body.data.maxResponseTime !== undefined
+      ? { maxResponseTime: body.data.maxResponseTime }
+      : {}),
+    ...(body.data.visibility !== undefined ? { visibility: body.data.visibility } : {}),
+    requestMethod: targetConfiguration.requestMethod,
+    targetAuthType: targetConfiguration.targetAuthType,
+    targetAuthHeaderName: targetConfiguration.targetAuthHeaderName,
+    targetAuthSecretCiphertext: targetConfiguration.targetAuthSecretCiphertext,
+    requestBody: targetConfiguration.requestBody,
   };
-  if (body.data.visibility !== undefined) {
-    changes.visibility = body.data.visibility;
-  }
   if (changes.name !== undefined && changes.name.length < 2) {
     res.status(400).json({ error: "Der Dienstname ist zu kurz.", code: "INVALID_INPUT" });
     return;
@@ -350,10 +500,7 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
       ),
     )
     .returning();
-  if (!service) {
-    res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
-    return;
-  }
+  if (!service) return;
   res.json(UpdateServiceResponse.parse(await toServiceResponse(service)));
 });
 
@@ -399,6 +546,7 @@ router.post("/services/:id/checks", async (req, res): Promise<void> => {
     service.url,
     service.expectedStructure,
     service.maxResponseTime,
+    getTargetRequestOptions(service),
   );
   const check = await saveOutcome(service.id, "LIVE", outcome);
   res.status(201).json(RunServiceCheckResponse.parse(toCheckResponse(check)));

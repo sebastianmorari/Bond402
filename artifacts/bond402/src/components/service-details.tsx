@@ -65,12 +65,18 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
   const [manualResponse, setManualResponse] = useState("");
   const [domainToken, setDomainToken] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [postConfirmationOpen, setPostConfirmationOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
     url: "",
     maxResponseTime: 1000,
     expectedStructure: "",
     visibility: "PRIVATE" as "PRIVATE" | "LISTED",
+    requestMethod: "GET" as "GET" | "POST",
+    targetAuthType: "NONE" as "NONE" | "BEARER" | "API_KEY_HEADER",
+    targetAuthHeaderName: "",
+    targetAuthSecret: "",
+    requestBodyText: "",
   });
 
   const { data: service, isLoading, isError } = useGetService(serviceId || "", {
@@ -88,6 +94,11 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
         maxResponseTime: service.maxResponseTime,
         expectedStructure: service.expectedStructure,
         visibility: service.visibility,
+        requestMethod: service.requestMethod,
+        targetAuthType: service.targetAuthType,
+        targetAuthHeaderName: service.targetAuthHeaderName ?? "",
+        targetAuthSecret: "",
+        requestBodyText: service.requestBody ? JSON.stringify(service.requestBody, null, 2) : "",
       });
     }
   }, [service, isEditing]);
@@ -99,8 +110,9 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
   const issueDomainVerification = useIssueDomainVerification();
   const checkDomainVerification = useCheckDomainVerification();
 
-  const handleRunLiveCheck = () => {
+  const startLiveCheck = () => {
     if (!serviceId) return;
+    setPostConfirmationOpen(false);
     runCheck.mutate(
       { id: serviceId },
       {
@@ -123,6 +135,14 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
         }
       }
     );
+  };
+
+  const handleRunLiveCheck = () => {
+    if (service?.requestMethod === "POST") {
+      setPostConfirmationOpen(true);
+      return;
+    }
+    startLiveCheck();
   };
 
   const handleManualVerify = () => {
@@ -205,6 +225,23 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
 
   const handleUpdate = () => {
     if (!serviceId) return;
+    let requestBody: Record<string, unknown> | null = null;
+    if (editForm.requestBodyText.trim()) {
+      try {
+        const parsed = JSON.parse(editForm.requestBodyText);
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+          throw new Error("not an object");
+        }
+        requestBody = parsed as Record<string, unknown>;
+      } catch {
+        toast({
+          title: "Ungültiger JSON-Body",
+          description: "Der Request-Body muss ein gültiges JSON-Objekt sein.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     updateService.mutate(
       { 
         id: serviceId, 
@@ -212,8 +249,17 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
           name: editForm.name,
           url: editForm.url,
           maxResponseTime: Number(editForm.maxResponseTime),
-          expectedStructure: editForm.expectedStructure
-          ,visibility: editForm.visibility
+           expectedStructure: editForm.expectedStructure,
+           visibility: editForm.visibility,
+           requestMethod: editForm.requestMethod,
+           targetAuthType: editForm.targetAuthType,
+           targetAuthHeaderName: editForm.targetAuthType === "API_KEY_HEADER"
+             ? editForm.targetAuthHeaderName
+             : null,
+           ...(editForm.targetAuthSecret.trim()
+             ? { targetAuthSecret: editForm.targetAuthSecret.trim() }
+             : {}),
+           requestBody,
         } 
       },
       {
@@ -379,17 +425,38 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                     <div>
                       <h4 className="font-medium text-sm">Jetzt prüfen</h4>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Kontaktiert die URL direkt über unseren Server und gleicht die Antwort mit der Struktur ab.
+                        {service.requestMethod === "POST"
+                          ? "Sendet einen POST-Request an den Zielservice und gleicht die Antwort mit der Struktur ab."
+                          : "Kontaktiert die URL direkt über unseren Server und gleicht die Antwort mit der Struktur ab."}
                       </p>
-                    </div>
-                    <Button onClick={handleRunLiveCheck} disabled={runCheck.isPending}>
-                      {runCheck.isPending ? (
-                        <Activity className="h-4 w-4 mr-2 animate-pulse" />
-                      ) : (
-                        <Play className="h-4 w-4 mr-2" />
+                      {service.requestMethod === "POST" && (
+                        <p className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                          Achtung: POST kann Kosten verursachen oder Seiteneffekte auslösen.
+                        </p>
                       )}
-                      Prüfung starten
-                    </Button>
+                    </div>
+                    <AlertDialog open={postConfirmationOpen} onOpenChange={setPostConfirmationOpen}>
+                      <Button onClick={handleRunLiveCheck} disabled={runCheck.isPending}>
+                        {runCheck.isPending ? (
+                          <Activity className="h-4 w-4 mr-2 animate-pulse" />
+                        ) : (
+                          <Play className="h-4 w-4 mr-2" />
+                        )}
+                        Prüfung starten
+                      </Button>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>POST-Prüfung ausdrücklich bestätigen</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Diese Prüfung sendet den konfigurierten POST-Body an „{service.name}“. Das kann Kosten verursachen oder eine Aktion beim Zielservice auslösen. Möchten Sie fortfahren?
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                          <AlertDialogAction onClick={startLiveCheck}>POST-Prüfung ausführen</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
 
                   <div className="space-y-4">
@@ -547,6 +614,67 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                           onChange={(e) => setEditForm(f => ({ ...f, maxResponseTime: Number(e.target.value) }))}
                         />
                       </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Prüfmethode</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            value={editForm.requestMethod}
+                            onChange={(e) => setEditForm((f) => ({ ...f, requestMethod: e.target.value as "GET" | "POST" }))}
+                          >
+                            <option value="GET">GET – liest Daten</option>
+                            <option value="POST">POST – kann Aktionen auslösen</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Zielauthentifizierung</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            value={editForm.targetAuthType}
+                            onChange={(e) => setEditForm((f) => ({ ...f, targetAuthType: e.target.value as "NONE" | "BEARER" | "API_KEY_HEADER" }))}
+                          >
+                            <option value="NONE">Keine</option>
+                            <option value="BEARER">Bearer-Token</option>
+                            <option value="API_KEY_HEADER">API-Key im Header</option>
+                          </select>
+                        </div>
+                      </div>
+                      {editForm.targetAuthType === "API_KEY_HEADER" && (
+                        <div className="space-y-2">
+                          <Label>API-Key-Header</Label>
+                          <Input
+                            value={editForm.targetAuthHeaderName}
+                            placeholder="X-API-Key"
+                            onChange={(e) => setEditForm((f) => ({ ...f, targetAuthHeaderName: e.target.value }))}
+                          />
+                        </div>
+                      )}
+                      {editForm.targetAuthType !== "NONE" && (
+                        <div className="space-y-2">
+                          <Label>{editForm.targetAuthType === "BEARER" ? "Neues Bearer-Token" : "Neuer API-Key"}</Label>
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            value={editForm.targetAuthSecret}
+                            placeholder={service.targetAuthSecretConfigured ? "Leer lassen, um das bisherige Secret zu behalten" : "Secret eingeben"}
+                            onChange={(e) => setEditForm((f) => ({ ...f, targetAuthSecret: e.target.value }))}
+                          />
+                          <p className="text-xs text-muted-foreground">Das bisherige Secret wird nie angezeigt. Leer lassen behält es unverändert.</p>
+                        </div>
+                      )}
+                      {editForm.requestMethod === "POST" && (
+                        <div className="space-y-2">
+                          <Label>JSON-Request-Body (optional)</Label>
+                          <Textarea
+                            className="font-mono text-xs min-h-[150px]"
+                            value={editForm.requestBodyText}
+                            onChange={(e) => setEditForm((f) => ({ ...f, requestBodyText: e.target.value }))}
+                          />
+                          <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">
+                            POST kann Kosten verursachen oder Seiteneffekte auslösen. Jede Live-Prüfung sendet diesen Body.
+                          </p>
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label>Erwartete Struktur (JSON)</Label>
                         <Textarea 
@@ -578,11 +706,24 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                   ) : (
                     <div className="space-y-4">
                       <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Live-Request</p>
+                        <p className="text-sm bg-muted/30 p-2 rounded border border-border/50">
+                          {service.requestMethod} · {service.targetAuthType === "NONE" ? "ohne Zielauthentifizierung" : service.targetAuthType === "BEARER" ? "Bearer-Token" : `API-Key (${service.targetAuthHeaderName ?? "Header"})`}
+                          {service.targetAuthSecretConfigured ? " · Secret hinterlegt" : ""}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Sichtbarkeit</p>
                         <p className="text-sm bg-muted/30 p-2 rounded border border-border/50">
                           {service.visibility === "LISTED" ? "Öffentlich gelistet" : "Privat"}
                         </p>
                       </div>
+                      {service.requestBody && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">JSON-Request-Body</p>
+                          <pre className="font-mono text-xs bg-muted/30 p-4 rounded border border-border/50 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(service.requestBody, null, 2)}</pre>
+                        </div>
+                      )}
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">URL</p>
                         <p className="font-mono text-sm break-all bg-muted/30 p-2 rounded border border-border/50">{service.url}</p>

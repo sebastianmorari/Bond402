@@ -4,8 +4,14 @@ import http from "node:http";
 import https from "node:https";
 import net from "node:net";
 import tls from "node:tls";
+import {
+  decryptTargetSecret,
+  validateTargetAuthHeaderName,
+  type TargetAuthType,
+} from "./target-auth";
 
 const MAX_RESPONSE_BYTES = 1_000_000;
+const MAX_REQUEST_BODY_BYTES = 64_000;
 const MAX_REDIRECTS = 3;
 
 export type VerificationOutcome = {
@@ -27,6 +33,14 @@ export type VerificationOutcome = {
 };
 
 export type SignalStatus = "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED";
+
+export type TargetRequestOptions = {
+  requestMethod?: "GET" | "POST";
+  targetAuthType?: TargetAuthType;
+  targetAuthHeaderName?: string | null;
+  targetAuthSecretCiphertext?: string | null;
+  requestBody?: unknown;
+};
 
 export type SecurityHeadersSnapshot = {
   status: SignalStatus;
@@ -265,6 +279,11 @@ export async function validatePublicUrl(
 async function requestOnce(
   url: URL,
   deadline: number,
+  requestOptions: {
+    method: "GET" | "POST";
+    headers: Record<string, string>;
+    body?: string;
+  },
 ): Promise<{
   status: number;
   body: string;
@@ -298,11 +317,10 @@ async function requestOnce(
         servername: hostname,
         port: url.port || undefined,
         path: `${url.pathname}${url.search}`,
-        method: "GET",
+        method: requestOptions.method,
         headers: {
-          Accept: "application/json, text/plain;q=0.8",
+          ...requestOptions.headers,
           Host: url.host,
-          "User-Agent": "Bond402-Verification/1.0",
         },
       },
       (response) => {
@@ -348,13 +366,80 @@ async function requestOnce(
       reject(error);
     });
     request.on("close", () => clearTimeout(deadlineTimer));
-    request.end();
+    request.end(requestOptions.body);
   });
+}
+
+export function prepareTargetRequest(options: TargetRequestOptions) {
+  const method = options.requestMethod ?? "GET";
+  const authType = options.targetAuthType ?? "NONE";
+  const headers: Record<string, string> = {
+    Accept: "application/json, text/plain;q=0.8",
+    "User-Agent": "Bond402-Verification/1.0",
+  };
+  const secretHeaderNames = new Set<string>();
+
+  if (authType !== "NONE") {
+    if (!options.targetAuthSecretCiphertext) {
+      throw Object.assign(new Error("Die Zielauthentifizierung ist unvollständig."), {
+        code: "TARGET_AUTH_CONFIGURATION",
+      });
+    }
+    const secret = decryptTargetSecret(options.targetAuthSecretCiphertext);
+    if (authType === "BEARER") {
+      headers.Authorization = `Bearer ${secret}`;
+      secretHeaderNames.add("authorization");
+    } else if (authType === "API_KEY_HEADER") {
+      if (!options.targetAuthHeaderName) {
+        throw Object.assign(new Error("Der Ziel-API-Key-Header fehlt."), {
+          code: "TARGET_AUTH_CONFIGURATION",
+        });
+      }
+      const headerName = validateTargetAuthHeaderName(options.targetAuthHeaderName);
+      headers[headerName] = secret;
+      secretHeaderNames.add(headerName);
+    } else {
+      throw Object.assign(new Error("Die Zielauthentifizierung ist ungültig."), {
+        code: "TARGET_AUTH_CONFIGURATION",
+      });
+    }
+  }
+
+  let body: string | undefined;
+  if (options.requestBody !== undefined && options.requestBody !== null) {
+    if (method !== "POST") {
+      throw Object.assign(new Error("Ein Request-Body ist nur für POST erlaubt."), {
+        code: "TARGET_REQUEST_CONFIGURATION",
+      });
+    }
+    try {
+      body = JSON.stringify(options.requestBody);
+    } catch {
+      throw Object.assign(new Error("Der JSON-Request-Body ist ungültig."), {
+        code: "TARGET_REQUEST_CONFIGURATION",
+      });
+    }
+    if (!body || Buffer.byteLength(body, "utf8") > MAX_REQUEST_BODY_BYTES) {
+      throw Object.assign(new Error("Der JSON-Request-Body ist zu groß."), {
+        code: "REQUEST_BODY_TOO_LARGE",
+      });
+    }
+    headers["Content-Type"] = "application/json";
+  }
+
+  return {
+    method,
+    headers,
+    secretHeaderNames,
+    body,
+    hasSecret: secretHeaderNames.size > 0,
+  };
 }
 
 async function safeGet(
   initialUrl: string,
   timeoutMs: number,
+  options: TargetRequestOptions = {},
 ): Promise<{
   status: number;
   body: string;
@@ -363,7 +448,9 @@ async function safeGet(
   tls: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null };
 }> {
   const deadline = Date.now() + timeoutMs;
+  const requestOptions = prepareTargetRequest(options);
   let url = await validatePublicUrl(initialUrl, deadline);
+  const initialOrigin = url.origin;
   let totalElapsed = 0;
   let headers: Record<string, string> = {};
   let tlsInfo: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null } = {
@@ -373,15 +460,38 @@ async function safeGet(
   };
 
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
-    const response = await requestOnce(url, deadline);
+    const sameOrigin = url.origin === initialOrigin;
+    const requestHeaders = sameOrigin
+      ? requestOptions.headers
+      : Object.fromEntries(
+          Object.entries(requestOptions.headers).filter(
+            ([name]) => !requestOptions.secretHeaderNames.has(name.toLowerCase()),
+          ),
+        );
+    const response = await requestOnce(url, deadline, {
+      method: requestOptions.method,
+      headers: requestHeaders,
+      body: sameOrigin ? requestOptions.body : undefined,
+    });
     totalElapsed += response.elapsedMs;
     headers = response.headers;
     tlsInfo = response.tls;
     if (response.status >= 300 && response.status < 400 && response.location) {
+      if (requestOptions.method === "POST") {
+        throw Object.assign(new Error("POST-Weiterleitungen werden aus Sicherheitsgründen nicht ausgeführt."), {
+          code: "UNSAFE_REDIRECT",
+        });
+      }
       if (redirect === MAX_REDIRECTS) {
         throw Object.assign(new Error("Zu viele Weiterleitungen."), { code: "TOO_MANY_REDIRECTS" });
       }
-      url = await validatePublicUrl(new URL(response.location, url).toString(), deadline);
+      const nextUrl = await validatePublicUrl(new URL(response.location, url).toString(), deadline);
+      if (requestOptions.hasSecret && nextUrl.origin !== initialOrigin) {
+        throw Object.assign(new Error("Authentifizierte Weiterleitungen zu einer anderen Domain werden nicht ausgeführt."), {
+          code: "UNSAFE_REDIRECT",
+        });
+      }
+      url = nextUrl;
       continue;
     }
     return {
@@ -442,10 +552,11 @@ export async function runLiveVerification(
   url: string,
   expectedStructure: string,
   maxResponseTime: number,
+  options: TargetRequestOptions = {},
 ): Promise<VerificationOutcome> {
   const timeoutMs = Math.min(10_000, Math.max(2_000, maxResponseTime + 2_000));
   try {
-    const response = await safeGet(url, timeoutMs);
+    const response = await safeGet(url, timeoutMs, options);
     if (response.status < 200 || response.status >= 300) {
       return {
         status: "FAIL",

@@ -1188,6 +1188,12 @@ components:
         maxResponseTime:
           type: number
       required: [id, name, url, expectedStructure, maxResponseTime]
+    ServiceRequestMethod:
+      type: string
+      enum: [GET, POST]
+    TargetAuthType:
+      type: string
+      enum: [NONE, BEARER, API_KEY_HEADER]
     DeveloperServiceResult:
       type: object
       properties:
@@ -1226,6 +1232,26 @@ components:
           type: number
           minimum: 100
           maximum: 15000
+        requestMethod:
+          $ref: "#/components/schemas/ServiceRequestMethod"
+          default: GET
+        targetAuthType:
+          $ref: "#/components/schemas/TargetAuthType"
+          default: NONE
+        targetAuthHeaderName:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: "^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$"
+        targetAuthSecret:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          writeOnly: true
+        requestBody:
+          type: object
+          additionalProperties: true
+          maxProperties: 100
       required: [name, url, expectedStructure, maxResponseTime]
     ApiServiceUpdate:
       type: object
@@ -1249,6 +1275,23 @@ components:
         visibility:
           type: string
           enum: [PRIVATE, LISTED]
+        requestMethod:
+          $ref: "#/components/schemas/ServiceRequestMethod"
+        targetAuthType:
+          $ref: "#/components/schemas/TargetAuthType"
+        targetAuthHeaderName:
+          type: ["string", "null"]
+          maxLength: 128
+          pattern: "^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$"
+        targetAuthSecret:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          writeOnly: true
+        requestBody:
+          type: ["object", "null"]
+          additionalProperties: true
+          maxProperties: 100
     ApiService:
       type: object
       properties:
@@ -1262,6 +1305,17 @@ components:
           type: string
         maxResponseTime:
           type: number
+        requestMethod:
+          $ref: "#/components/schemas/ServiceRequestMethod"
+        targetAuthType:
+          $ref: "#/components/schemas/TargetAuthType"
+        targetAuthHeaderName:
+          type: ["string", "null"]
+        targetAuthSecretConfigured:
+          type: boolean
+        requestBody:
+          type: ["object", "null"]
+          additionalProperties: true
         visibility:
           type: string
           enum: [PRIVATE, LISTED]
@@ -1285,7 +1339,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CheckResult"
-      required: [id, name, url, expectedStructure, maxResponseTime, visibility, listedAt, createdAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, checks]
+      required: [id, name, url, expectedStructure, maxResponseTime, requestMethod, targetAuthType, targetAuthHeaderName, targetAuthSecretConfigured, requestBody, visibility, listedAt, createdAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, checks]
     CheckResult:
       type: object
       properties:

@@ -17,6 +17,11 @@ const formSchema = z.object({
   url: z.string().url("Muss eine gültige URL sein (http:// oder https://)").max(2048),
   expectedStructure: z.string().min(1, "Struktur darf nicht leer sein").max(4000, "Struktur ist zu lang"),
   maxResponseTime: z.coerce.number().min(100, "Mindestens 100ms").max(15000, "Maximal 15000ms"),
+  requestMethod: z.enum(["GET", "POST"]),
+  targetAuthType: z.enum(["NONE", "BEARER", "API_KEY_HEADER"]),
+  targetAuthHeaderName: z.string().max(128).optional(),
+  targetAuthSecret: z.string().max(4096).optional(),
+  requestBody: z.string().max(64000).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -33,12 +38,49 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
       url: "",
       expectedStructure: '{"status": "ok"}',
       maxResponseTime: 1000,
+      requestMethod: "GET",
+      targetAuthType: "NONE",
+      targetAuthHeaderName: "X-API-Key",
+      targetAuthSecret: "",
+      requestBody: "",
     },
   });
+  const requestMethod = form.watch("requestMethod");
+  const targetAuthType = form.watch("targetAuthType");
 
   const onSubmit = (data: FormValues) => {
+    let requestBody: Record<string, unknown> | undefined;
+    if (data.requestBody?.trim()) {
+      try {
+        const parsed = JSON.parse(data.requestBody);
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+          throw new Error("not an object");
+        }
+        requestBody = parsed as Record<string, unknown>;
+      } catch {
+        toast({
+          title: "Ungültiger JSON-Body",
+          description: "Der Request-Body muss ein gültiges JSON-Objekt sein.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const { requestBody: _requestBody, ...rest } = data;
     createService.mutate(
-      { data },
+      {
+        data: {
+          ...rest,
+          ...(requestBody ? { requestBody } : {}),
+          ...(data.targetAuthSecret?.trim()
+            ? { targetAuthSecret: data.targetAuthSecret.trim() }
+            : {}),
+          ...(data.targetAuthType === "API_KEY_HEADER"
+            ? { targetAuthHeaderName: data.targetAuthHeaderName?.trim() }
+            : {}),
+        },
+      },
       {
         onSuccess: () => {
           toast({ title: "Erfolg", description: "API-Dienst wurde registriert." });
@@ -148,6 +190,91 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
                 </FormItem>
               )}
             />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="requestMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prüfmethode</FormLabel>
+                    <FormControl>
+                      <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...field}>
+                        <option value="GET">GET – liest Daten</option>
+                        <option value="POST">POST – kann Aktionen auslösen</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="targetAuthType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Zielauthentifizierung</FormLabel>
+                    <FormControl>
+                      <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...field}>
+                        <option value="NONE">Keine</option>
+                        <option value="BEARER">Bearer-Token</option>
+                        <option value="API_KEY_HEADER">API-Key im Header</option>
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {targetAuthType === "API_KEY_HEADER" && (
+              <FormField
+                control={form.control}
+                name="targetAuthHeaderName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>API-Key-Header</FormLabel>
+                    <FormControl><Input placeholder="X-API-Key" {...field} /></FormControl>
+                    <p className="text-xs text-muted-foreground">Host-, Cookie-, Proxy- und Forwarding-Header sind nicht erlaubt.</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {targetAuthType !== "NONE" && (
+              <FormField
+                control={form.control}
+                name="targetAuthSecret"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{targetAuthType === "BEARER" ? "Bearer-Token" : "API-Key"}</FormLabel>
+                    <FormControl><Input type="password" autoComplete="new-password" placeholder="Wird verschlüsselt gespeichert" {...field} /></FormControl>
+                    <p className="text-xs text-muted-foreground">Das Secret wird nicht öffentlich angezeigt, geloggt oder in Prüfhistorien gespeichert.</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {requestMethod === "POST" && (
+              <FormField
+                control={form.control}
+                name="requestBody"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>JSON-Request-Body (optional)</FormLabel>
+                    <FormControl>
+                      <Textarea className="font-mono text-sm min-h-28" placeholder={'{"query":"example"}'} {...field} />
+                    </FormControl>
+                    <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">
+                      POST kann Kosten verursachen oder Seiteneffekte auslösen. Bond402 sendet den Body bei jeder Live-Prüfung an den Zielservice.
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <Button type="submit" className="w-full" disabled={createService.isPending}>
               {createService.isPending ? "Registriert..." : "Dienst registrieren"}

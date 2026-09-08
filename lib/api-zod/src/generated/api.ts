@@ -219,6 +219,11 @@ export const ListServicesResponseItem = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "requestMethod": zod.enum(['GET', 'POST']),
+  "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
+  "targetAuthHeaderName": zod.string().nullable(),
+  "targetAuthSecretConfigured": zod.boolean(),
+  "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -313,13 +318,26 @@ export const createServiceBodyExpectedStructureMax = 4000;
 export const createServiceBodyMaxResponseTimeMin = 100;
 export const createServiceBodyMaxResponseTimeMax = 15000;
 
+export const createServiceBodyRequestMethodDefault = `GET`;
+export const createServiceBodyTargetAuthTypeDefault = `NONE`;
+export const createServiceBodyTargetAuthHeaderNameMax = 128;
+
+
+export const createServiceBodyTargetAuthHeaderNameRegExp = new RegExp('^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$');
+export const createServiceBodyTargetAuthSecretMax = 4096;
+
 
 
 export const CreateServiceBody = zod.object({
   "name": zod.string().min(createServiceBodyNameMin).max(createServiceBodyNameMax),
   "url": zod.string().max(createServiceBodyUrlMax).regex(createServiceBodyUrlRegExp),
   "expectedStructure": zod.string().min(1).max(createServiceBodyExpectedStructureMax),
-  "maxResponseTime": zod.number().min(createServiceBodyMaxResponseTimeMin).max(createServiceBodyMaxResponseTimeMax)
+  "maxResponseTime": zod.number().min(createServiceBodyMaxResponseTimeMin).max(createServiceBodyMaxResponseTimeMax),
+  "requestMethod": zod.enum(['GET', 'POST']).default(createServiceBodyRequestMethodDefault),
+  "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']).default(createServiceBodyTargetAuthTypeDefault),
+  "targetAuthHeaderName": zod.string().min(1).max(createServiceBodyTargetAuthHeaderNameMax).regex(createServiceBodyTargetAuthHeaderNameRegExp).optional(),
+  "targetAuthSecret": zod.string().min(1).max(createServiceBodyTargetAuthSecretMax).optional(),
+  "requestBody": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 export const CreateServiceResponse = zod.object({
@@ -328,6 +346,11 @@ export const CreateServiceResponse = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "requestMethod": zod.enum(['GET', 'POST']),
+  "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
+  "targetAuthHeaderName": zod.string().nullable(),
+  "targetAuthSecretConfigured": zod.boolean(),
+  "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -422,6 +445,11 @@ export const GetServiceResponse = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "requestMethod": zod.enum(['GET', 'POST']),
+  "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
+  "targetAuthHeaderName": zod.string().nullable(),
+  "targetAuthSecretConfigured": zod.boolean(),
+  "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -535,6 +563,12 @@ export const updateServiceBodyExpectedStructureMax = 4000;
 export const updateServiceBodyMaxResponseTimeMin = 100;
 export const updateServiceBodyMaxResponseTimeMax = 15000;
 
+export const updateServiceBodyTargetAuthHeaderNameMax = 128;
+
+
+export const updateServiceBodyTargetAuthHeaderNameRegExp = new RegExp('^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$');
+export const updateServiceBodyTargetAuthSecretMax = 4096;
+
 
 
 export const UpdateServiceBody = zod.object({
@@ -542,7 +576,12 @@ export const UpdateServiceBody = zod.object({
   "url": zod.string().max(updateServiceBodyUrlMax).regex(updateServiceBodyUrlRegExp).optional(),
   "expectedStructure": zod.string().min(1).max(updateServiceBodyExpectedStructureMax).optional(),
   "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional(),
-  "visibility": zod.enum(['PRIVATE', 'LISTED']).optional()
+  "visibility": zod.enum(['PRIVATE', 'LISTED']).optional(),
+  "requestMethod": zod.enum(['GET', 'POST']).optional(),
+  "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']).optional(),
+  "targetAuthHeaderName": zod.string().max(updateServiceBodyTargetAuthHeaderNameMax).regex(updateServiceBodyTargetAuthHeaderNameRegExp).nullish(),
+  "targetAuthSecret": zod.string().min(1).max(updateServiceBodyTargetAuthSecretMax).optional(),
+  "requestBody": zod.record(zod.string(), zod.unknown()).nullish()
 })
 
 export const UpdateServiceResponse = zod.object({
@@ -551,6 +590,11 @@ export const UpdateServiceResponse = zod.object({
   "url": zod.string(),
   "expectedStructure": zod.string(),
   "maxResponseTime": zod.number(),
+  "requestMethod": zod.enum(['GET', 'POST']),
+  "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
+  "targetAuthHeaderName": zod.string().nullable(),
+  "targetAuthSecretConfigured": zod.boolean(),
+  "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
