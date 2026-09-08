@@ -919,7 +919,7 @@ export const getListServicesQueryKey = () => {
     }
 
 
-export const getListServicesQueryOptions = <TData = Awaited<ReturnType<typeof listServices>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListServicesQueryOptions = <TData = Awaited<ReturnType<typeof listServices>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -938,14 +938,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListServicesQueryResult = NonNullable<Awaited<ReturnType<typeof listServices>>>
-export type ListServicesQueryError = ErrorType<unknown>
+export type ListServicesQueryError = ErrorType<ApiError>
 
 
 /**
  * @summary List all registered API services with their checks
  */
 
-export function useListServices<TData = Awaited<ReturnType<typeof listServices>>, TError = ErrorType<unknown>>(
+export function useListServices<TData = Awaited<ReturnType<typeof listServices>>, TError = ErrorType<ApiError>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {

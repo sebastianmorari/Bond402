@@ -11,6 +11,8 @@ import { calculateTrustMetrics, weightedRatio } from "./trust-metrics";
 
 export { calculateTrustMetrics, weightedRatio };
 
+type ServiceDataExecutor = Pick<typeof db, "select">;
+
 function signalState(check: ApiCheckRow | undefined) {
   if (!check) {
     return {
@@ -90,8 +92,11 @@ export function calculateTrust(checks: ApiCheckRow[], maxResponseTime: number) {
   };
 }
 
-export async function loadChecks(serviceId: string) {
-  return db
+export async function loadChecks(
+  serviceId: string,
+  executor: ServiceDataExecutor = db,
+) {
+  return executor
     .select()
     .from(apiChecksTable)
     .where(eq(apiChecksTable.serviceId, serviceId))
@@ -129,8 +134,11 @@ export async function saveOutcome(
   return check;
 }
 
-export async function toServiceResponse(service: ApiServiceRow) {
-  const checks = await loadChecks(service.id);
+export async function toServiceResponse(
+  service: ApiServiceRow,
+  executor: ServiceDataExecutor = db,
+) {
+  const checks = await loadChecks(service.id, executor);
   const trust = calculateTrust(checks, service.maxResponseTime);
   const latestCheck = checks.find((check) => check.checkType === "LIVE");
   return {

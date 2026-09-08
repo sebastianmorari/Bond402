@@ -286,6 +286,24 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ApiService"
+        "401":
+          description: Not signed in
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Database temporarily unavailable
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
     post:
       operationId: createService
       tags: [services]
@@ -307,6 +325,36 @@ paths:
                 $ref: "#/components/schemas/ApiService"
         "400":
           description: Invalid service data
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Not signed in
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Service already exists
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Database temporarily unavailable
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
           content:
             application/json:
               schema:
@@ -950,6 +998,12 @@ components:
       name: id
       in: path
       required: true
+      schema:
+        type: string
+        minLength: 1
+  headers:
+    RequestId:
+      description: Correlation ID for this request, also present in server logs.
       schema:
         type: string
         minLength: 1

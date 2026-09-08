@@ -9,6 +9,8 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "test:public-mvp": "pnpm --filter @workspace/api-server run build && node --test scripts/public-mvp.test.mjs",
     "test:domain-verification": "node --experimental-strip-types --test scripts/domain-verification.test.mjs",
+    "test:service-safety": "pnpm --filter @workspace/scripts exec tsx --test service-safety.test.mjs",
+    "test:service-routes": "pnpm --filter @workspace/api-server run build && node --test scripts/service-routes.test.mjs",
     "test:trust-metrics": "node --experimental-strip-types --test scripts/trust-metrics.test.mjs",
     "test:frontend-smoke": "node --test scripts/frontend-smoke.test.mjs",
     "test:frontend-seo": "PORT=4173 BASE_PATH=/ pnpm --filter @workspace/bond402 run build && node --test scripts/frontend-seo.test.mjs"

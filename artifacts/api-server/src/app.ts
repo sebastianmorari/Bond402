@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import router from "./routes";
 import sitemapRouter from "./routes/sitemap";
 import { logger } from "./lib/logger";
+import { createApiErrorHandler, requestIdMiddleware } from "./lib/api-errors";
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -27,6 +28,7 @@ app.use(
     },
   }),
 );
+app.use(requestIdMiddleware);
 app.use(cookieParser());
 app.use(sitemapRouter);
 app.use((req, res, next) => {
@@ -52,33 +54,6 @@ app.use("/api", (_req, res, next) => {
 
 app.use("/api", router);
 
-app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (res.headersSent) {
-    next(error);
-    return;
-  }
-  if (typeof error === "object" && error && "type" in error && error.type === "entity.too.large") {
-    res.status(413).json({
-      error: "Die Anfrage ist zu groß. Bitte senden Sie weniger Daten.",
-      code: "PAYLOAD_TOO_LARGE",
-    });
-    return;
-  }
-  if (typeof error === "object" && error && "type" in error && error.type === "entity.parse.failed") {
-    res.status(400).json({
-      error: "Die Anfrage enthält kein gültiges JSON.",
-      code: "INVALID_JSON",
-    });
-    return;
-  }
-  logger.error(
-    { errorType: error instanceof Error ? error.name : typeof error },
-    "Unhandled request error",
-  );
-  res.status(500).json({
-    error: "Der Server konnte die Anfrage nicht verarbeiten.",
-    code: "INTERNAL_ERROR",
-  });
-});
+app.use(createApiErrorHandler(logger));
 
 export default app;

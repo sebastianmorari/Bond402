@@ -39,6 +39,8 @@ import {
 } from "../lib/service-data";
 import { requireUserId } from "../lib/auth";
 import { requireCheckQuota } from "../lib/quota";
+import { runServiceCreationTransaction } from "../lib/service-creation";
+import { getServiceCreationErrorResponse } from "../lib/service-errors";
 
 const router: IRouter = Router();
 
@@ -84,7 +86,7 @@ router.get("/services", async (req, res): Promise<void> => {
     .from(apiServicesTable)
     .where(eq(apiServicesTable.ownerId, userId))
     .orderBy(desc(apiServicesTable.createdAt));
-  const response = await Promise.all(services.map(toServiceResponse));
+  const response = await Promise.all(services.map((service) => toServiceResponse(service)));
   res.json(ListServicesResponse.parse(response));
 });
 
@@ -120,19 +122,39 @@ router.post("/services", async (req, res): Promise<void> => {
     return;
   }
 
-  const [service] = await db
-    .insert(apiServicesTable)
-    .values({
-      id: crypto.randomUUID(),
-      ownerId: userId,
-      name: normalizedName,
-      url: parsed.data.url,
-      expectedStructure: normalizedStructure,
-      maxResponseTime: parsed.data.maxResponseTime,
-      visibility: "PRIVATE",
-    })
-    .returning();
-  res.status(201).json(CreateServiceResponse.parse(await toServiceResponse(service)));
+  try {
+    const response = await runServiceCreationTransaction(
+      (callback) => db.transaction(callback),
+      async (tx) => {
+      const [service] = await tx
+        .insert(apiServicesTable)
+        .values({
+          id: crypto.randomUUID(),
+          ownerId: userId,
+          name: normalizedName,
+          url: parsed.data.url,
+          expectedStructure: normalizedStructure,
+          maxResponseTime: parsed.data.maxResponseTime,
+          visibility: "PRIVATE",
+        })
+        .returning();
+
+      if (!service) {
+        throw new Error("Service insert returned no row");
+      }
+
+      return CreateServiceResponse.parse(await toServiceResponse(service, tx));
+      },
+    );
+    res.status(201).json(response);
+  } catch (error) {
+    const conflict = getServiceCreationErrorResponse(error);
+    if (conflict) {
+      res.status(conflict.status).json(conflict.body);
+      return;
+    }
+    throw error;
+  }
 });
 
 router.get("/services/:id", async (req, res): Promise<void> => {
