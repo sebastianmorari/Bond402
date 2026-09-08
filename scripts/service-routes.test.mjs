@@ -126,6 +126,115 @@ test("Authentifizierter GET liefert eine Liste und POST legt einen Dienst an", a
   assert.equal(listed.data[0].id, created.data.id);
 });
 
+test("Services ohne Checks und mit historischer Check-Historie bleiben gültig", async () => {
+  const withoutChecks = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Dienst ohne Prüfungen",
+      url: "https://example.com",
+      expectedStructure: "status",
+      maxResponseTime: 1200,
+    },
+  });
+  assert.equal(withoutChecks.response.status, 201);
+  assert.equal(withoutChecks.data.checks.length, 0);
+  assert.equal(withoutChecks.data.trustScore, null);
+
+  const withHistory = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Dienst mit Historie",
+      url: "https://example.com",
+      expectedStructure: "status",
+      maxResponseTime: 1200,
+    },
+  });
+  assert.equal(withHistory.response.status, 201);
+
+  runSql(`
+    INSERT INTO bond402_api_checks (
+      id, service_id, status, check_type, reachable, response_time_ms,
+      structure_match, http_status, summary, found_fields, missing_fields,
+      https, tls_status, security_headers, probe_region
+    ) VALUES (
+      ${sqlLiteral(randomUUID())}, ${sqlLiteral(withHistory.data.id)}, 'PASS', 'LIVE',
+      true, 240, true, 200, 'Historischer Testwert',
+      '["status"]'::jsonb, '[]'::jsonb, true, 'CHECKED',
+      '{"status":"CHECKED","evaluated":[],"present":[],"missing":[]}'::jsonb,
+      'test-region'
+    );
+  `);
+
+  const listed = await request("/api/services", { authenticated: true });
+  assert.equal(listed.response.status, 200);
+  const emptyHistoryService = listed.data.find((service) => service.id === withoutChecks.data.id);
+  const historicalService = listed.data.find((service) => service.id === withHistory.data.id);
+  assert.ok(emptyHistoryService);
+  assert.deepEqual(emptyHistoryService.checks, []);
+  assert.ok(historicalService);
+  assert.equal(historicalService.checks.length, 1);
+  assert.equal(historicalService.checks[0].status, "PASS");
+});
+
+test("Fehlerhafte Services oder Checks beschädigen nicht die gültige Liste", async () => {
+  const valid = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Gültiger Dienst neben Fehler",
+      url: "https://example.com",
+      expectedStructure: "status",
+      maxResponseTime: 1200,
+    },
+  });
+  assert.equal(valid.response.status, 201);
+
+  const serviceWithBadCheck = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Dienst mit fehlerhafter Prüfung",
+      url: "https://example.com",
+      expectedStructure: "status",
+      maxResponseTime: 1200,
+    },
+  });
+  assert.equal(serviceWithBadCheck.response.status, 201);
+
+  const badServiceId = randomUUID();
+  runSql(`
+    INSERT INTO bond402_api_services (
+      id, owner_id, name, url, expected_structure, max_response_time, visibility
+    ) VALUES (
+      ${sqlLiteral(badServiceId)}, ${sqlLiteral(userId)}, 'Beschädigter Dienst',
+      'https://bad-service.example.com', 'status', 1200, 'BROKEN'
+    );
+    INSERT INTO bond402_api_checks (
+      id, service_id, status, check_type, reachable, response_time_ms,
+      structure_match, http_status, summary, found_fields, missing_fields,
+      https, tls_status, security_headers, probe_region
+    ) VALUES (
+      ${sqlLiteral(randomUUID())}, ${sqlLiteral(serviceWithBadCheck.data.id)}, 'BROKEN', 'LIVE',
+      true, 240, true, 200, 'Beschädigter Testwert',
+      '["status"]'::jsonb, '[]'::jsonb, true, 'CHECKED',
+      '{"status":"CHECKED","evaluated":[],"present":[],"missing":[]}'::jsonb,
+      'test-region'
+    );
+  `);
+
+  const listed = await request("/api/services", { authenticated: true });
+  assert.equal(listed.response.status, 200);
+  assert.match(listed.response.headers.get("x-request-id") ?? "", /\S/);
+  assert.ok(listed.data.some((service) => service.id === valid.data.id));
+  const safeService = listed.data.find((service) => service.id === serviceWithBadCheck.data.id);
+  assert.ok(safeService);
+  assert.deepEqual(safeService.checks, []);
+  assert.equal(listed.data.some((service) => service.id === badServiceId), false);
+  assert.equal(listed.data.some((service) => service.name === "Gültiger Dienst neben Fehler"), true);
+});
+
 test("Fehlende Sitzung bleibt ein kontrollierter 401-Fehler mit Request-ID", async () => {
   const response = await request("/api/services");
   assert.equal(response.response.status, 401);

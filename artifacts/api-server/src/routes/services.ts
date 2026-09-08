@@ -13,7 +13,7 @@ import {
   GetServiceParams,
   GetServiceResponse,
   ListDemoServicesResponse,
-  ListServicesResponse,
+  ListServicesResponseItem,
   RunServiceCheckParams,
   RunServiceCheckResponse,
   UpdateServiceBody,
@@ -32,7 +32,9 @@ import {
 } from "../lib/api-verifier";
 import {
   findOwnedService,
+  buildServiceResponse,
   calculateTrustMetrics,
+  loadChecks,
   saveOutcome,
   toCheckResponse,
   toServiceResponse,
@@ -41,6 +43,7 @@ import { requireUserId } from "../lib/auth";
 import { requireCheckQuota } from "../lib/quota";
 import { runServiceCreationTransaction } from "../lib/service-creation";
 import { getServiceCreationErrorResponse } from "../lib/service-errors";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
@@ -78,6 +81,110 @@ const DEMO_SERVICES = [
   },
 ];
 
+function getValidationFieldPaths(error: unknown): string[] {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("issues" in error) ||
+    !Array.isArray(error.issues)
+  ) {
+    return [];
+  }
+
+  return error.issues.flatMap((issue: unknown) => {
+    if (typeof issue !== "object" || issue === null || !("path" in issue)) {
+      return [];
+    }
+    const path = issue.path;
+    if (!Array.isArray(path)) return [];
+    return [path.length > 0 ? path.map(String).join(".") : "<root>"];
+  });
+}
+
+function getCheckIndexes(fieldPaths: string[]): Set<number> {
+  const indexes = new Set<number>();
+  for (const fieldPath of fieldPaths) {
+    const match = /^checks\.(\d+)(?:\.|$)/.exec(fieldPath);
+    if (match) indexes.add(Number(match[1]));
+  }
+  return indexes;
+}
+
+function logServiceDataIssue(
+  requestId: string,
+  serviceId: string,
+  fieldPaths: string[],
+  error?: unknown,
+) {
+  logger.warn(
+    {
+      requestId,
+      serviceId,
+      fieldPaths: fieldPaths.length > 0 ? fieldPaths : ["service"],
+      ...(error instanceof Error ? { errorType: error.name } : {}),
+    },
+    "Dienst wurde wegen ungültiger Antwortdaten übersprungen oder bereinigt",
+  );
+}
+
+async function toSafeListServiceResponse(
+  service: Parameters<typeof buildServiceResponse>[0],
+  requestId: string,
+) {
+  let checks;
+  try {
+    checks = await loadChecks(service.id);
+  } catch (error) {
+    logServiceDataIssue(requestId, service.id, ["checks"], error);
+    return null;
+  }
+
+  const skippedCheckIndexes = new Set<number>();
+  for (const [index, check] of checks.entries()) {
+    try {
+      toCheckResponse(check);
+    } catch (error) {
+      skippedCheckIndexes.add(index);
+      logServiceDataIssue(requestId, service.id, [`checks.${index}`], error);
+    }
+  }
+
+  const usableChecks = checks.filter((_, index) => !skippedCheckIndexes.has(index));
+  let candidate;
+  try {
+    candidate = buildServiceResponse(service, usableChecks);
+  } catch (error) {
+    logServiceDataIssue(requestId, service.id, ["service"], error);
+    return null;
+  }
+
+  const parsed = ListServicesResponseItem.safeParse(candidate);
+  if (parsed.success) return parsed.data;
+
+  const fieldPaths = getValidationFieldPaths(parsed.error);
+  const invalidCheckIndexes = getCheckIndexes(fieldPaths);
+  if (invalidCheckIndexes.size > 0) {
+    const filteredChecks = usableChecks.filter(
+      (_, index) => !invalidCheckIndexes.has(index),
+    );
+    try {
+      const retry = ListServicesResponseItem.safeParse(
+        buildServiceResponse(service, filteredChecks),
+      );
+      if (retry.success) {
+        logServiceDataIssue(requestId, service.id, fieldPaths);
+        return retry.data;
+      }
+    } catch (error) {
+      logServiceDataIssue(requestId, service.id, fieldPaths, error);
+      return null;
+    }
+  }
+
+  logServiceDataIssue(requestId, service.id, fieldPaths);
+  return null;
+}
+
 router.get("/services", async (req, res): Promise<void> => {
   const userId = await requireUserId(req, res);
   if (!userId) return;
@@ -86,8 +193,13 @@ router.get("/services", async (req, res): Promise<void> => {
     .from(apiServicesTable)
     .where(eq(apiServicesTable.ownerId, userId))
     .orderBy(desc(apiServicesTable.createdAt));
-  const response = await Promise.all(services.map((service) => toServiceResponse(service)));
-  res.json(ListServicesResponse.parse(response));
+  const requestId = typeof req.id === "string" ? req.id : crypto.randomUUID();
+  const response = (
+    await Promise.all(
+      services.map((service) => toSafeListServiceResponse(service, requestId)),
+    )
+  ).filter((service): service is NonNullable<typeof service> => service !== null);
+  res.json(response);
 });
 
 router.post("/services", async (req, res): Promise<void> => {

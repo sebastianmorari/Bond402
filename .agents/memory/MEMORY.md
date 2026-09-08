@@ -5,3 +5,4 @@
 - [Auth mail launch configuration](auth-mail-launch.md) — set PUBLIC_BASE_URL only from the published HTTPS URL; local Resend API overrides belong only in tests.
 - [Public beta catalog](public-beta-catalog.md) — only explicitly listed services expose stored trust metadata; public pre-action is read-only and live checks remain owner-key protected.
 - [Observed trust signals](trust-signals.md) — signal states and historical metrics describe stored observations, never security guarantees or certifications.
+- [Resilient collection responses](resilient-collection-responses.md) — aggregate endpoints should isolate malformed stored records and still return valid entries.

@@ -139,6 +139,13 @@ export async function toServiceResponse(
   executor: ServiceDataExecutor = db,
 ) {
   const checks = await loadChecks(service.id, executor);
+  return buildServiceResponse(service, checks);
+}
+
+export function buildServiceResponse(
+  service: ApiServiceRow,
+  checks: ApiCheckRow[],
+) {
   const trust = calculateTrust(checks, service.maxResponseTime);
   const latestCheck = checks.find((check) => check.checkType === "LIVE");
   return {
