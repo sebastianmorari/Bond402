@@ -1,13 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { fetchCurrentAuthUser, type AuthSessionUser } from "./auth-session";
 
-export type LocalAuthUser = {
-  id: string;
-  email: string;
-  name: string;
-  createdAt: string;
-  emailVerified: boolean;
-};
+export type LocalAuthUser = AuthSessionUser;
 
 type AuthContextValue = {
   user: LocalAuthUser | null;
@@ -41,14 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then(async (response) => {
-        if (response.status === 401) return null;
-        return parseAuthResponse(response);
-      })
+    fetchCurrentAuthUser()
       .then((result) => {
         if (!cancelled) {
-          setUser(result?.user ?? null);
+          setUser(result);
           setIsLoaded(true);
         }
       })
