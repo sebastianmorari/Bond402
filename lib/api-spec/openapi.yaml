@@ -1431,6 +1431,9 @@ components:
     SignalState:
       type: string
       enum: [CHECKED, WARNING, UNAVAILABLE, NOT_EVALUATED]
+    DomainSignalState:
+      type: string
+      enum: [CHECKED, WARNING, UNAVAILABLE, NOT_EVALUATED, NOT_APPLICABLE]
     SecurityHeaders:
       type: object
       properties:
@@ -1656,7 +1659,7 @@ components:
             securityHeaders:
               $ref: "#/components/schemas/SignalState"
             domain:
-              $ref: "#/components/schemas/SignalState"
+              $ref: "#/components/schemas/DomainSignalState"
           required: [https, tls, securityHeaders, domain]
         trustMetrics:
           $ref: "#/components/schemas/TrustMetrics"

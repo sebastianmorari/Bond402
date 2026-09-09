@@ -224,6 +224,7 @@ export const ListServicesResponseItem = zod.object({
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
   "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -270,7 +271,7 @@ export const ListServicesResponseItem = zod.object({
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "domainVerification": zod.object({
-  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_APPLICABLE', 'NOT_EVALUATED']),
   "verifiedAt": zod.coerce.date().nullable()
 }),
   "checks": zod.array(zod.object({
@@ -326,7 +327,7 @@ export const createServiceBodyTargetAuthHeaderNameMax = 128;
 export const createServiceBodyTargetAuthHeaderNameRegExp = new RegExp('^[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9]$');
 export const createServiceBodyTargetAuthSecretMax = 4096;
 
-
+export const createServiceBodyDomainRelationshipDefault = `THIRD_PARTY`;
 
 export const CreateServiceBody = zod.object({
   "name": zod.string().min(createServiceBodyNameMin).max(createServiceBodyNameMax),
@@ -337,7 +338,8 @@ export const CreateServiceBody = zod.object({
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']).default(createServiceBodyTargetAuthTypeDefault),
   "targetAuthHeaderName": zod.string().min(1).max(createServiceBodyTargetAuthHeaderNameMax).regex(createServiceBodyTargetAuthHeaderNameRegExp).optional(),
   "targetAuthSecret": zod.string().min(1).max(createServiceBodyTargetAuthSecretMax).optional(),
-  "requestBody": zod.record(zod.string(), zod.unknown()).optional()
+  "requestBody": zod.record(zod.string(), zod.unknown()).optional(),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']).default(createServiceBodyDomainRelationshipDefault)
 })
 
 export const CreateServiceResponse = zod.object({
@@ -351,6 +353,7 @@ export const CreateServiceResponse = zod.object({
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
   "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -397,7 +400,7 @@ export const CreateServiceResponse = zod.object({
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "domainVerification": zod.object({
-  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_APPLICABLE', 'NOT_EVALUATED']),
   "verifiedAt": zod.coerce.date().nullable()
 }),
   "checks": zod.array(zod.object({
@@ -450,6 +453,7 @@ export const GetServiceResponse = zod.object({
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
   "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -496,7 +500,7 @@ export const GetServiceResponse = zod.object({
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "domainVerification": zod.object({
-  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_APPLICABLE', 'NOT_EVALUATED']),
   "verifiedAt": zod.coerce.date().nullable()
 }),
   "checks": zod.array(zod.object({
@@ -581,7 +585,8 @@ export const UpdateServiceBody = zod.object({
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']).optional(),
   "targetAuthHeaderName": zod.string().max(updateServiceBodyTargetAuthHeaderNameMax).regex(updateServiceBodyTargetAuthHeaderNameRegExp).nullish(),
   "targetAuthSecret": zod.string().min(1).max(updateServiceBodyTargetAuthSecretMax).optional(),
-  "requestBody": zod.record(zod.string(), zod.unknown()).nullish()
+  "requestBody": zod.record(zod.string(), zod.unknown()).nullish(),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']).optional()
 })
 
 export const UpdateServiceResponse = zod.object({
@@ -595,6 +600,7 @@ export const UpdateServiceResponse = zod.object({
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
   "requestBody": zod.record(zod.string(), zod.unknown()).nullable(),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']),
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -641,7 +647,7 @@ export const UpdateServiceResponse = zod.object({
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "domainVerification": zod.object({
-  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_APPLICABLE', 'NOT_EVALUATED']),
   "verifiedAt": zod.coerce.date().nullable()
 }),
   "checks": zod.array(zod.object({
@@ -1149,7 +1155,7 @@ export const DeveloperPreActionCheckResponse = zod.object({
   "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
-  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED', 'NOT_APPLICABLE'])
 }),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
@@ -1311,9 +1317,10 @@ export const SearchPublicServicesResponse = zod.object({
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "domainVerification": zod.object({
-  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_APPLICABLE', 'NOT_EVALUATED']),
   "verifiedAt": zod.coerce.date().nullable()
 }),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']),
   "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
   "latestCheckAt": zod.coerce.date().nullable(),
   "latestCheck": zod.union([zod.object({
@@ -1414,9 +1421,10 @@ export const GetPublicServiceResponse = zod.object({
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
 }),
   "domainVerification": zod.object({
-  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_EVALUATED']),
+  "status": zod.enum(['VERIFIED', 'PENDING', 'NOT_STARTED', 'NOT_APPLICABLE', 'NOT_EVALUATED']),
   "verifiedAt": zod.coerce.date().nullable()
 }),
+  "domainRelationship": zod.enum(['OWNED', 'THIRD_PARTY']),
   "latestStatus": zod.union([zod.literal('PASS'),zod.literal('FAIL'),zod.literal('REVIEW'),zod.literal(null)]).nullable(),
   "latestCheckAt": zod.coerce.date().nullable(),
   "latestCheck": zod.union([zod.object({
@@ -1481,7 +1489,7 @@ export const GetPublicPreActionCheckResponse = zod.object({
   "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
-  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED', 'NOT_APPLICABLE'])
 }),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
@@ -1588,7 +1596,7 @@ export const PostPublicPreActionCheckResponse = zod.object({
   "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "securityHeaders": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
-  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED'])
+  "domain": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED', 'NOT_APPLICABLE'])
 }),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({

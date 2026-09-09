@@ -8,12 +8,14 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { DomainSignalState } from './domainSignalState';
-import type { SignalState } from './signalState';
 
-export type DeveloperPreActionFactorsSignals = {
-  https: SignalState;
-  tls: SignalState;
-  securityHeaders: SignalState;
-  domain: DomainSignalState;
-};
+export type DomainSignalState = typeof DomainSignalState[keyof typeof DomainSignalState];
+
+
+export const DomainSignalState = {
+  CHECKED: 'CHECKED',
+  WARNING: 'WARNING',
+  UNAVAILABLE: 'UNAVAILABLE',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+} as const;

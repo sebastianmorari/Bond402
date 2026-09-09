@@ -158,6 +158,10 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             securityHeaders: { $ref: "#/components/schemas/SignalState" },
           },
         },
+        DomainSignalState: {
+          type: "string",
+          enum: ["CHECKED", "WARNING", "UNAVAILABLE", "NOT_EVALUATED", "NOT_APPLICABLE"],
+        },
         RegionalAggregation: {
           type: "object",
           required: [
@@ -241,13 +245,20 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           type: "object",
           required: ["status", "verifiedAt"],
           properties: {
-            status: { type: "string", enum: ["VERIFIED", "NOT_EVALUATED"] },
+            status: {
+              type: "string",
+              enum: ["VERIFIED", "PENDING", "NOT_STARTED", "NOT_APPLICABLE", "NOT_EVALUATED"],
+            },
             verifiedAt: { type: ["string", "null"], format: "date-time" },
           },
         },
+        DomainRelationship: {
+          type: "string",
+          enum: ["OWNED", "THIRD_PARTY"],
+        },
         PublicService: {
           type: "object",
-          required: ["id", "name", "url", "trustScore", "trustExplanation", "trustMetrics", "signals", "domainVerification", "latestStatus", "latestCheckAt", "latestCheck", "access", "links"],
+          required: ["id", "name", "url", "trustScore", "trustExplanation", "trustMetrics", "signals", "domainVerification", "domainRelationship", "latestStatus", "latestCheckAt", "latestCheck", "access", "links"],
           properties: {
             id: { type: "string" },
             name: { type: "string" },
@@ -257,6 +268,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             trustMetrics: { $ref: "#/components/schemas/TrustMetrics" },
             signals: { $ref: "#/components/schemas/SignalStates" },
             domainVerification: { $ref: "#/components/schemas/DomainVerification" },
+            domainRelationship: { $ref: "#/components/schemas/DomainRelationship" },
             latestStatus: { type: ["string", "null"], enum: ["PASS", "FAIL", "REVIEW", null] },
             latestCheckAt: { type: ["string", "null"], format: "date-time" },
             latestCheck: { type: ["object", "null"] },
@@ -275,7 +287,15 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             factors: {
               type: "object",
               properties: {
-                signals: { type: "object" },
+                signals: {
+                  type: "object",
+                  properties: {
+                    https: { $ref: "#/components/schemas/SignalState" },
+                    tls: { $ref: "#/components/schemas/SignalState" },
+                    securityHeaders: { $ref: "#/components/schemas/SignalState" },
+                    domain: { $ref: "#/components/schemas/DomainSignalState" },
+                  },
+                },
                 trustMetrics: { $ref: "#/components/schemas/TrustMetrics" },
               },
             },

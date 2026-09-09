@@ -7,6 +7,10 @@ import {
   type ApiServiceRow,
 } from "@workspace/db";
 import type { TargetRequestOptions, VerificationOutcome } from "./api-verifier";
+import {
+  getDomainRelationship,
+  getDomainVerificationStatus,
+} from "./domain-verification-policy";
 import { calculateTrustMetrics, weightedRatio } from "./trust-metrics";
 
 export { calculateTrustMetrics, weightedRatio };
@@ -158,6 +162,7 @@ export function buildServiceResponse(
 ) {
   const trust = calculateTrust(checks, service.maxResponseTime);
   const latestCheck = checks.find((check) => check.checkType === "LIVE");
+  const domainRelationship = getDomainRelationship(service);
   return {
     id: service.id,
     name: service.name,
@@ -177,13 +182,13 @@ export function buildServiceResponse(
     trustMetrics: trust.metrics,
     signals: signalState(latestCheck),
     domainVerification: {
-      status: service.domainVerifiedAt
-        ? ("VERIFIED" as const)
-        : service.domainVerificationTokenHash
-          ? ("PENDING" as const)
-          : ("NOT_STARTED" as const),
-      verifiedAt: service.domainVerifiedAt?.toISOString() ?? null,
+      status: getDomainVerificationStatus(service),
+      verifiedAt:
+        domainRelationship === "OWNED"
+          ? service.domainVerifiedAt?.toISOString() ?? null
+          : null,
     },
+    domainRelationship,
     checks: checks.map(toCheckResponse),
   };
 }
@@ -191,6 +196,7 @@ export function buildServiceResponse(
 export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheckRow[]) {
   const trust = calculateTrust(checks, service.maxResponseTime);
   const latestCheck = checks.find((check) => check.checkType === "LIVE");
+  const domainRelationship = getDomainRelationship(service);
   return {
     id: service.id,
     name: service.name,
@@ -202,9 +208,13 @@ export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheck
     trustMetrics: trust.metrics,
     signals: signalState(latestCheck),
     domainVerification: {
-      status: service.domainVerifiedAt ? ("VERIFIED" as const) : ("NOT_EVALUATED" as const),
-      verifiedAt: service.domainVerifiedAt?.toISOString() ?? null,
+      status: getDomainVerificationStatus(service),
+      verifiedAt:
+        domainRelationship === "OWNED"
+          ? service.domainVerifiedAt?.toISOString() ?? null
+          : null,
     },
+    domainRelationship,
     latestStatus: latestCheck?.status as "PASS" | "FAIL" | "REVIEW" | undefined ?? null,
     latestCheckAt: latestCheck?.checkedAt.toISOString() ?? null,
     latestCheck: latestCheck

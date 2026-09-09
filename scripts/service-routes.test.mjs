@@ -118,6 +118,8 @@ test("Authentifizierter GET liefert eine Liste und POST legt einen Dienst an", a
   });
   assert.equal(created.response.status, 201);
   assert.ok(created.data.id);
+  assert.equal(created.data.domainRelationship, "THIRD_PARTY");
+  assert.equal(created.data.domainVerification.status, "NOT_APPLICABLE");
   assert.match(created.response.headers.get("x-request-id") ?? "", /\S/);
 
   const listed = await request("/api/services", { authenticated: true });
@@ -253,4 +255,112 @@ test("Fehlende Sitzung bleibt ein kontrollierter 401-Fehler mit Request-ID", asy
   assert.equal(createResponse.response.status, 401);
   assert.equal(createResponse.data.code, "UNAUTHORIZED");
   assert.match(createResponse.response.headers.get("x-request-id") ?? "", /\S/);
+});
+
+test("OWNED und THIRD_PARTY werden gespeichert, korrekt ausgegeben und sicher getrennt verifiziert", async () => {
+  const invalid = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Ungültige Domain-Beziehung",
+      url: "https://example.com",
+      expectedStructure: "status",
+      maxResponseTime: 1000,
+      domainRelationship: "UNKNOWN",
+    },
+  });
+  assert.equal(invalid.response.status, 400);
+  assert.equal(invalid.data.code, "INVALID_INPUT");
+
+  const owned = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Eigene Domain für Routentest",
+      url: "https://example.com",
+      expectedStructure: "status",
+      maxResponseTime: 1000,
+      domainRelationship: "OWNED",
+    },
+  });
+  assert.equal(owned.response.status, 201);
+  assert.equal(owned.data.domainRelationship, "OWNED");
+  assert.equal(owned.data.domainVerification.status, "NOT_STARTED");
+
+  const invalidUpdate = await request(`/api/services/${owned.data.id}`, {
+    method: "PATCH",
+    authenticated: true,
+    body: { domainRelationship: "UNKNOWN" },
+  });
+  assert.equal(invalidUpdate.response.status, 400);
+  assert.equal(invalidUpdate.data.code, "INVALID_INPUT");
+
+  const issued = await request(`/api/services/${owned.data.id}/domain-verification`, {
+    method: "POST",
+    authenticated: true,
+  });
+  assert.equal(issued.response.status, 200);
+  assert.equal(issued.data.status, "PENDING");
+  assert.match(issued.data.token, /^bond402_/);
+
+  runSql(`
+    UPDATE bond402_api_services
+    SET domain_verified_at = NOW(), visibility = 'LISTED'
+    WHERE id = ${sqlLiteral(owned.data.id)} AND owner_id = ${sqlLiteral(userId)};
+  `);
+
+  const verified = await request(`/api/services/${owned.data.id}`, { authenticated: true });
+  assert.equal(verified.response.status, 200);
+  assert.equal(verified.data.domainRelationship, "OWNED");
+  assert.equal(verified.data.domainVerification.status, "VERIFIED");
+
+  const publicOwned = await request(`/api/public/services/${owned.data.id}`);
+  assert.equal(publicOwned.response.status, 200);
+  assert.equal(publicOwned.data.domainRelationship, "OWNED");
+  assert.equal(publicOwned.data.domainVerification.status, "VERIFIED");
+
+  const switched = await request(`/api/services/${owned.data.id}`, {
+    method: "PATCH",
+    authenticated: true,
+    body: { domainRelationship: "THIRD_PARTY" },
+  });
+  assert.equal(switched.response.status, 200);
+  assert.equal(switched.data.domainRelationship, "THIRD_PARTY");
+  assert.equal(switched.data.domainVerification.status, "NOT_APPLICABLE");
+  assert.equal(switched.data.domainVerification.verifiedAt, null);
+
+  const privateThirdParty = await request(`/api/services/${owned.data.id}`, {
+    authenticated: true,
+  });
+  assert.equal(privateThirdParty.response.status, 200);
+  assert.equal(privateThirdParty.data.domainVerification.status, "NOT_APPLICABLE");
+
+  const publicThirdParty = await request(`/api/public/services/${owned.data.id}`);
+  assert.equal(publicThirdParty.response.status, 200);
+  assert.equal(publicThirdParty.data.domainRelationship, "THIRD_PARTY");
+  assert.equal(publicThirdParty.data.domainVerification.status, "NOT_APPLICABLE");
+
+  const publicPreAction = await request(
+    `/api/public/services/${owned.data.id}/pre-action-check`,
+  );
+  assert.equal(publicPreAction.response.status, 200);
+  assert.equal(publicPreAction.data.factors.signals.domain, "NOT_APPLICABLE");
+
+  const issueThirdParty = await request(`/api/services/${owned.data.id}/domain-verification`, {
+    method: "POST",
+    authenticated: true,
+  });
+  assert.equal(issueThirdParty.response.status, 400);
+  assert.equal(issueThirdParty.data.code, "DOMAIN_VERIFICATION_NOT_APPLICABLE");
+  assert.equal(issueThirdParty.data.status, "NOT_APPLICABLE");
+  assert.equal(issueThirdParty.data.domainRelationship, "THIRD_PARTY");
+
+  const checkThirdParty = await request(
+    `/api/services/${owned.data.id}/domain-verification/check`,
+    { method: "POST", authenticated: true },
+  );
+  assert.equal(checkThirdParty.response.status, 400);
+  assert.equal(checkThirdParty.data.code, "DOMAIN_VERIFICATION_NOT_APPLICABLE");
+  assert.equal(checkThirdParty.data.status, "NOT_APPLICABLE");
+  assert.equal(checkThirdParty.data.domainRelationship, "THIRD_PARTY");
 });

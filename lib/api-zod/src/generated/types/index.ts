@@ -44,6 +44,8 @@ export * from './developerPreActionFactorsLatestStatus';
 export * from './developerPreActionFactorsSignals';
 export * from './developerService';
 export * from './developerServiceResult';
+export * from './domainRelationship';
+export * from './domainSignalState';
 export * from './domainVerification';
 export * from './domainVerificationIssue';
 export * from './domainVerificationIssueStatus';

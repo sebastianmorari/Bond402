@@ -9,6 +9,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { ApiServiceInputRequestBody } from './apiServiceInputRequestBody';
+import type { DomainRelationship } from './domainRelationship';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { TargetAuthType } from './targetAuthType';
 
@@ -47,4 +48,5 @@ export interface ApiServiceInput {
      */
   targetAuthSecret?: string;
   requestBody?: ApiServiceInputRequestBody;
+  domainRelationship?: DomainRelationship;
 }

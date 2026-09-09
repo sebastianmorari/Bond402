@@ -11,6 +11,7 @@
 import type { ApiServiceRequestBody } from './apiServiceRequestBody';
 import type { ApiServiceVisibility } from './apiServiceVisibility';
 import type { CheckResult } from './checkResult';
+import type { DomainRelationship } from './domainRelationship';
 import type { DomainVerification } from './domainVerification';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { SignalStates } from './signalStates';
@@ -30,6 +31,7 @@ export interface ApiService {
   targetAuthSecretConfigured: boolean;
   /** @nullable */
   requestBody: ApiServiceRequestBody;
+  domainRelationship: DomainRelationship;
   visibility: ApiServiceVisibility;
   /** @nullable */
   listedAt: Date | null;

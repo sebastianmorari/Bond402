@@ -10,6 +10,7 @@
  */
 import type { ApiServiceUpdateRequestBody } from './apiServiceUpdateRequestBody';
 import type { ApiServiceUpdateVisibility } from './apiServiceUpdateVisibility';
+import type { DomainRelationship } from './domainRelationship';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { TargetAuthType } from './targetAuthType';
 
@@ -50,4 +51,5 @@ export interface ApiServiceUpdate {
   targetAuthSecret?: string;
   /** @nullable */
   requestBody?: ApiServiceUpdateRequestBody;
+  domainRelationship?: DomainRelationship;
 }

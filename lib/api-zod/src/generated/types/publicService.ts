@@ -8,6 +8,7 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { DomainRelationship } from './domainRelationship';
 import type { DomainVerification } from './domainVerification';
 import type { PublicServiceAccess } from './publicServiceAccess';
 import type { PublicServiceLatestCheck } from './publicServiceLatestCheck';
@@ -30,6 +31,7 @@ export interface PublicService {
   trustMetrics: TrustMetrics;
   signals: SignalStates;
   domainVerification: DomainVerification;
+  domainRelationship: DomainRelationship;
   /** @nullable */
   latestStatus: PublicServiceLatestStatus;
   /** @nullable */

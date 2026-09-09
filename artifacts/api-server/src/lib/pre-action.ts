@@ -1,4 +1,5 @@
 import type { ApiCheckRow, ApiServiceRow } from "@workspace/db";
+import { getDomainSignal } from "./domain-verification-policy";
 import { calculateTrust } from "./service-data";
 
 export type AgentDecision = "ALLOW" | "CAUTION" | "BLOCK";
@@ -27,13 +28,13 @@ export function evaluatePreAction(
           | "WARNING"
           | "UNAVAILABLE"
           | "NOT_EVALUATED",
-        domain: service.domainVerifiedAt ? ("CHECKED" as const) : ("NOT_EVALUATED" as const),
+        domain: getDomainSignal(service),
       }
     : {
         https: "NOT_EVALUATED" as const,
         tls: "NOT_EVALUATED" as const,
         securityHeaders: "NOT_EVALUATED" as const,
-        domain: "NOT_EVALUATED" as const,
+        domain: getDomainSignal(service),
       };
   const reasons: string[] = [];
   const anomalies: string[] = [];

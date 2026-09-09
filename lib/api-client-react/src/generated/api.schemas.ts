@@ -223,6 +223,14 @@ export const TargetAuthType = {
   API_KEY_HEADER: 'API_KEY_HEADER',
 } as const;
 
+export type DomainRelationship = typeof DomainRelationship[keyof typeof DomainRelationship];
+
+
+export const DomainRelationship = {
+  OWNED: 'OWNED',
+  THIRD_PARTY: 'THIRD_PARTY',
+} as const;
+
 export type CheckResultStatus = typeof CheckResultStatus[keyof typeof CheckResultStatus];
 
 
@@ -330,6 +338,7 @@ export interface ApiServiceInput {
      */
   targetAuthSecret?: string;
   requestBody?: ApiServiceInputRequestBody;
+  domainRelationship?: DomainRelationship;
 }
 
 export type ApiServiceUpdateVisibility = typeof ApiServiceUpdateVisibility[keyof typeof ApiServiceUpdateVisibility];
@@ -382,6 +391,7 @@ export interface ApiServiceUpdate {
   targetAuthSecret?: string;
   /** @nullable */
   requestBody?: ApiServiceUpdateRequestBody;
+  domainRelationship?: DomainRelationship;
 }
 
 /**
@@ -496,6 +506,7 @@ export const DomainVerificationStatus = {
   VERIFIED: 'VERIFIED',
   PENDING: 'PENDING',
   NOT_STARTED: 'NOT_STARTED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
   NOT_EVALUATED: 'NOT_EVALUATED',
 } as const;
 
@@ -518,6 +529,7 @@ export interface ApiService {
   targetAuthSecretConfigured: boolean;
   /** @nullable */
   requestBody: ApiServiceRequestBody;
+  domainRelationship: DomainRelationship;
   visibility: ApiServiceVisibility;
   /** @nullable */
   listedAt: string | null;
@@ -552,6 +564,17 @@ export interface DashboardMetrics {
   p99ResponseTimeMs: number | null;
   timedSampleCount: number;
 }
+
+export type DomainSignalState = typeof DomainSignalState[keyof typeof DomainSignalState];
+
+
+export const DomainSignalState = {
+  CHECKED: 'CHECKED',
+  WARNING: 'WARNING',
+  UNAVAILABLE: 'UNAVAILABLE',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
+} as const;
 
 export type DomainVerificationIssueStatus = typeof DomainVerificationIssueStatus[keyof typeof DomainVerificationIssueStatus];
 
@@ -599,7 +622,7 @@ export type DeveloperPreActionFactorsSignals = {
   https: SignalState;
   tls: SignalState;
   securityHeaders: SignalState;
-  domain: SignalState;
+  domain: DomainSignalState;
 };
 
 export interface DeveloperPreActionFactors {
@@ -748,6 +771,7 @@ export interface PublicService {
   trustMetrics: TrustMetrics;
   signals: SignalStates;
   domainVerification: DomainVerification;
+  domainRelationship: DomainRelationship;
   /** @nullable */
   latestStatus: PublicServiceLatestStatus;
   /** @nullable */

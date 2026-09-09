@@ -8,12 +8,11 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { DomainSignalState } from './domainSignalState';
-import type { SignalState } from './signalState';
 
-export type DeveloperPreActionFactorsSignals = {
-  https: SignalState;
-  tls: SignalState;
-  securityHeaders: SignalState;
-  domain: DomainSignalState;
-};
+export type DomainRelationship = typeof DomainRelationship[keyof typeof DomainRelationship];
+
+
+export const DomainRelationship = {
+  OWNED: 'OWNED',
+  THIRD_PARTY: 'THIRD_PARTY',
+} as const;

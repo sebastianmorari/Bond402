@@ -44,6 +44,7 @@ import { requireUserId } from "../lib/auth";
 import { requireCheckQuota } from "../lib/quota";
 import { runServiceCreationTransaction } from "../lib/service-creation";
 import { getServiceCreationErrorResponse } from "../lib/service-errors";
+import { getDomainRelationship } from "../lib/domain-verification-policy";
 import { logger } from "../lib/logger";
 import {
   encryptTargetSecret,
@@ -376,6 +377,7 @@ router.post("/services", async (req, res): Promise<void> => {
            targetAuthHeaderName: targetConfiguration.targetAuthHeaderName,
            targetAuthSecretCiphertext: targetConfiguration.targetAuthSecretCiphertext,
            requestBody: targetConfiguration.requestBody,
+           domainRelationship: parsed.data.domainRelationship,
           visibility: "PRIVATE",
         })
         .returning();
@@ -454,7 +456,21 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
     targetAuthHeaderName: targetConfiguration.targetAuthHeaderName,
     targetAuthSecretCiphertext: targetConfiguration.targetAuthSecretCiphertext,
     requestBody: targetConfiguration.requestBody,
+    domainRelationship:
+      body.data.domainRelationship ?? getDomainRelationship(existing),
+    ...(body.data.domainRelationship === "THIRD_PARTY"
+      ? {
+          domainVerificationTokenHash: null,
+          domainVerificationIssuedAt: null,
+          domainVerifiedAt: null,
+        }
+      : {}),
   };
+  if (changes.domainRelationship === "THIRD_PARTY") {
+    changes.domainVerificationTokenHash = null;
+    changes.domainVerificationIssuedAt = null;
+    changes.domainVerifiedAt = null;
+  }
   if (changes.name !== undefined && changes.name.length < 2) {
     res.status(400).json({ error: "Der Dienstname ist zu kurz.", code: "INVALID_INPUT" });
     return;
@@ -585,6 +601,15 @@ router.post("/services/:id/domain-verification", async (req, res): Promise<void>
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;
   }
+  if (getDomainRelationship(service) === "THIRD_PARTY") {
+    res.status(400).json({
+      error: "Für Drittanbieter-APIs ist keine Domain-Verifizierung erforderlich.",
+      code: "DOMAIN_VERIFICATION_NOT_APPLICABLE",
+      status: "NOT_APPLICABLE",
+      domainRelationship: "THIRD_PARTY",
+    });
+    return;
+  }
   const token = `bond402_${crypto.randomUUID()}`;
   const [updated] = await db
     .update(apiServicesTable)
@@ -616,6 +641,15 @@ router.post("/services/:id/domain-verification/check", async (req, res): Promise
   const service = await findOwnedService(params.data.id, userId);
   if (!service) {
     res.status(404).json({ error: "Dienst nicht gefunden.", code: "NOT_FOUND" });
+    return;
+  }
+  if (getDomainRelationship(service) === "THIRD_PARTY") {
+    res.status(400).json({
+      error: "Für Drittanbieter-APIs ist keine Domain-Verifizierung erforderlich.",
+      code: "DOMAIN_VERIFICATION_NOT_APPLICABLE",
+      status: "NOT_APPLICABLE",
+      domainRelationship: "THIRD_PARTY",
+    });
     return;
   }
   if (!service.domainVerificationTokenHash) {

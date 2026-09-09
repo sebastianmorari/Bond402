@@ -16,5 +16,6 @@ export const DomainVerificationStatus = {
   VERIFIED: 'VERIFIED',
   PENDING: 'PENDING',
   NOT_STARTED: 'NOT_STARTED',
+  NOT_APPLICABLE: 'NOT_APPLICABLE',
   NOT_EVALUATED: 'NOT_EVALUATED',
 } as const;
