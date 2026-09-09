@@ -217,6 +217,30 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.ok(openApi.data.components.schemas.DomainVerification);
 });
 
+test("öffentliche OpenAPI dokumentiert die Domainbeziehung vollständig", async () => {
+  const openApi = await request("/api/openapi.json");
+  assert.equal(openApi.response.status, 200);
+
+  const schemas = openApi.data.components.schemas;
+  assert.deepEqual(schemas.DomainRelationship.enum, ["OWNED", "THIRD_PARTY"]);
+  assert.deepEqual(schemas.DomainSignalState.enum, [
+    "CHECKED",
+    "WARNING",
+    "UNAVAILABLE",
+    "NOT_EVALUATED",
+    "NOT_APPLICABLE",
+  ]);
+  assert.ok(schemas.DomainVerification.properties.status.enum.includes("NOT_APPLICABLE"));
+  assert.equal(
+    schemas.PublicService.properties.domainRelationship.$ref,
+    "#/components/schemas/DomainRelationship",
+  );
+  assert.equal(
+    schemas.PublicPreActionCheck.properties.factors.properties.signals.properties.domain.$ref,
+    "#/components/schemas/DomainSignalState",
+  );
+});
+
 test("öffentliche Sitemap enthält nur ausdrücklich gelistete Dienste", async () => {
   const listedId = `${testPrefix}-sitemap-listed`;
   const excludedIds = [
