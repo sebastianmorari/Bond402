@@ -27,6 +27,7 @@ export const apiServicesTable = pgTable("bond402_api_services", {
   domainVerificationTokenHash: text("domain_verification_token_hash"),
   domainVerificationIssuedAt: timestamp("domain_verification_issued_at", { withTimezone: true }),
   domainVerifiedAt: timestamp("domain_verified_at", { withTimezone: true }),
+  domainRelationship: text("domain_relationship").notNull().default("THIRD_PARTY"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

@@ -1194,6 +1194,9 @@ components:
     TargetAuthType:
       type: string
       enum: [NONE, BEARER, API_KEY_HEADER]
+    DomainRelationship:
+      type: string
+      enum: [OWNED, THIRD_PARTY]
     DeveloperServiceResult:
       type: object
       properties:
@@ -1252,6 +1255,9 @@ components:
           type: object
           additionalProperties: true
           maxProperties: 100
+        domainRelationship:
+          $ref: "#/components/schemas/DomainRelationship"
+          default: THIRD_PARTY
       required: [name, url, expectedStructure, maxResponseTime]
     ApiServiceUpdate:
       type: object
@@ -1292,6 +1298,8 @@ components:
           type: ["object", "null"]
           additionalProperties: true
           maxProperties: 100
+        domainRelationship:
+          $ref: "#/components/schemas/DomainRelationship"
     ApiService:
       type: object
       properties:
@@ -1316,6 +1324,8 @@ components:
         requestBody:
           type: ["object", "null"]
           additionalProperties: true
+        domainRelationship:
+          $ref: "#/components/schemas/DomainRelationship"
         visibility:
           type: string
           enum: [PRIVATE, LISTED]
@@ -1339,7 +1349,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CheckResult"
-      required: [id, name, url, expectedStructure, maxResponseTime, requestMethod, targetAuthType, targetAuthHeaderName, targetAuthSecretConfigured, requestBody, visibility, listedAt, createdAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, checks]
+      required: [id, name, url, expectedStructure, maxResponseTime, requestMethod, targetAuthType, targetAuthHeaderName, targetAuthSecretConfigured, requestBody, domainRelationship, visibility, listedAt, createdAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, checks]
     CheckResult:
       type: object
       properties:
@@ -1540,7 +1550,7 @@ components:
       properties:
         status:
           type: string
-          enum: [VERIFIED, PENDING, NOT_STARTED, NOT_EVALUATED]
+          enum: [VERIFIED, PENDING, NOT_STARTED, NOT_APPLICABLE, NOT_EVALUATED]
         verifiedAt:
           type: ["string", "null"]
           format: date-time
@@ -1736,6 +1746,8 @@ components:
           $ref: "#/components/schemas/SignalStates"
         domainVerification:
           $ref: "#/components/schemas/DomainVerification"
+        domainRelationship:
+          $ref: "#/components/schemas/DomainRelationship"
         latestStatus:
           type: ["string", "null"]
           enum: [PASS, FAIL, REVIEW, null]
@@ -1795,7 +1807,7 @@ components:
             privilegedPreActionCheck:
               type: string
           required: [detail, preActionCheck, privilegedPreActionCheck]
-      required: [id, name, url, visibility, listedAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, latestStatus, latestCheckAt, latestCheck, access, links]
+      required: [id, name, url, visibility, listedAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, domainRelationship, latestStatus, latestCheckAt, latestCheck, access, links]
     PublicServiceCatalog:
       type: object
       properties:
