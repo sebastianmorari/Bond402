@@ -11,6 +11,7 @@
     "test:domain-verification": "pnpm --filter @workspace/scripts exec tsx --test domain-verification.test.mjs",
     "test:service-safety": "pnpm --filter @workspace/scripts exec tsx --test service-safety.test.mjs",
     "test:protected-api": "pnpm --filter @workspace/scripts exec tsx --test protected-api.test.mjs",
+    "test:response-mode": "pnpm --filter @workspace/scripts exec tsx --test response-mode.test.mjs",
     "test:service-routes": "pnpm --filter @workspace/api-server run build && node --test scripts/service-routes.test.mjs",
     "test:trust-metrics": "node --experimental-strip-types --test scripts/trust-metrics.test.mjs",
     "test:frontend-smoke": "node --test scripts/frontend-smoke.test.mjs",

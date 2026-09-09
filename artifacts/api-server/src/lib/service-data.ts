@@ -7,6 +7,7 @@ import {
   type ApiServiceRow,
 } from "@workspace/db";
 import type { TargetRequestOptions, VerificationOutcome } from "./api-verifier";
+import { normalizeResponseMode } from "./api-verifier";
 import {
   getDomainRelationship,
   getDomainVerificationStatus,
@@ -168,6 +169,7 @@ export function buildServiceResponse(
     name: service.name,
     url: service.url,
     expectedStructure: service.expectedStructure,
+    responseMode: normalizeResponseMode(service.responseMode),
     maxResponseTime: service.maxResponseTime,
     requestMethod: service.requestMethod as "GET" | "POST",
     targetAuthType: service.targetAuthType as "NONE" | "BEARER" | "API_KEY_HEADER",

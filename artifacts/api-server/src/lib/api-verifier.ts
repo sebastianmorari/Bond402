@@ -34,6 +34,12 @@ export type VerificationOutcome = {
 
 export type SignalStatus = "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED";
 
+export type ResponseMode = "JSON" | "HTTP";
+
+export function normalizeResponseMode(value: string | null | undefined): ResponseMode {
+  return value === "HTTP" ? "HTTP" : "JSON";
+}
+
 export type TargetRequestOptions = {
   requestMethod?: "GET" | "POST";
   targetAuthType?: TargetAuthType;
@@ -553,10 +559,12 @@ export async function runLiveVerification(
   expectedStructure: string,
   maxResponseTime: number,
   options: TargetRequestOptions = {},
+  responseMode: ResponseMode = "JSON",
+  fetchResponse: typeof safeGet = safeGet,
 ): Promise<VerificationOutcome> {
   const timeoutMs = Math.min(10_000, Math.max(2_000, maxResponseTime + 2_000));
   try {
-    const response = await safeGet(url, timeoutMs, options);
+    const response = await fetchResponse(url, timeoutMs, options);
     if (response.status < 200 || response.status >= 300) {
       return {
         status: "FAIL",
@@ -568,6 +576,31 @@ export async function runLiveVerification(
         summary: `Der Dienst antwortete mit HTTP-Status ${response.status}.`,
         foundFields: [],
         missingFields: parseExpectedFields(expectedStructure),
+        https: url.startsWith("https:"),
+        tlsStatus: response.tls.status,
+        tlsExpiresAt: response.tls.expiresAt,
+        tlsDaysRemaining: response.tls.daysRemaining,
+        securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+        probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
+      };
+    }
+
+    if (responseMode === "HTTP") {
+      const fastEnough = response.elapsedMs <= maxResponseTime;
+      const status = fastEnough ? "PASS" : "REVIEW";
+      return {
+        status,
+        reachable: true,
+        responseTimeMs: response.elapsedMs,
+        structureMatch: true,
+        httpStatus: response.status,
+        errorCode: null,
+        summary:
+          status === "PASS"
+            ? "Der Dienst ist über HTTP/HTTPS erreichbar und antwortet schnell genug. Der Inhalt wurde nicht als JSON-Struktur geprüft."
+            : "Der Dienst ist erreichbar, aber die Antwortzeit liegt über dem Zielwert. Der Inhalt wurde nicht als JSON-Struktur geprüft.",
+        foundFields: [],
+        missingFields: [],
         https: url.startsWith("https:"),
         tlsStatus: response.tls.status,
         tlsExpiresAt: response.tls.expiresAt,
@@ -693,7 +726,28 @@ export async function verifyDomainChallenge(
 export function runManualVerification(
   expectedStructure: string,
   actualResponse: string,
+  responseMode: ResponseMode = "JSON",
 ): VerificationOutcome {
+  if (responseMode === "HTTP") {
+    return {
+      status: "PASS",
+      reachable: true,
+      responseTimeMs: 0,
+      structureMatch: true,
+      httpStatus: null,
+      errorCode: null,
+      summary: "Der Antwortinhalt wurde ohne JSON-Strukturprüfung akzeptiert.",
+      foundFields: [],
+      missingFields: [],
+      https: false,
+      tlsStatus: "NOT_EVALUATED",
+      tlsExpiresAt: null,
+      tlsDaysRemaining: null,
+      securityHeaders: DEFAULT_SECURITY_HEADERS,
+      probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
+    };
+  }
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(actualResponse);

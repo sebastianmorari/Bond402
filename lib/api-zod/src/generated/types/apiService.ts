@@ -14,6 +14,7 @@ import type { CheckResult } from './checkResult';
 import type { DomainRelationship } from './domainRelationship';
 import type { DomainVerification } from './domainVerification';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
+import type { ServiceResponseMode } from './serviceResponseMode';
 import type { SignalStates } from './signalStates';
 import type { TargetAuthType } from './targetAuthType';
 import type { TrustMetrics } from './trustMetrics';
@@ -23,6 +24,7 @@ export interface ApiService {
   name: string;
   url: string;
   expectedStructure: string;
+  responseMode: ServiceResponseMode;
   maxResponseTime: number;
   requestMethod: ServiceRequestMethod;
   targetAuthType: TargetAuthType;

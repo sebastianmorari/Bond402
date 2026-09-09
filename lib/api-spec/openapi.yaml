@@ -1185,12 +1185,17 @@ components:
           type: string
         expectedStructure:
           type: string
+        responseMode:
+          $ref: "#/components/schemas/ServiceResponseMode"
         maxResponseTime:
           type: number
-      required: [id, name, url, expectedStructure, maxResponseTime]
+      required: [id, name, url, expectedStructure, responseMode, maxResponseTime]
     ServiceRequestMethod:
       type: string
       enum: [GET, POST]
+    ServiceResponseMode:
+      type: string
+      enum: [JSON, HTTP]
     TargetAuthType:
       type: string
       enum: [NONE, BEARER, API_KEY_HEADER]
@@ -1231,6 +1236,9 @@ components:
           type: string
           minLength: 1
           maxLength: 4000
+        responseMode:
+          $ref: "#/components/schemas/ServiceResponseMode"
+          default: JSON
         maxResponseTime:
           type: number
           minimum: 100
@@ -1258,7 +1266,7 @@ components:
         domainRelationship:
           $ref: "#/components/schemas/DomainRelationship"
           default: THIRD_PARTY
-      required: [name, url, expectedStructure, maxResponseTime]
+      required: [name, url, maxResponseTime]
     ApiServiceUpdate:
       type: object
       properties:
@@ -1274,6 +1282,8 @@ components:
           type: string
           minLength: 1
           maxLength: 4000
+        responseMode:
+          $ref: "#/components/schemas/ServiceResponseMode"
         maxResponseTime:
           type: number
           minimum: 100
@@ -1311,6 +1321,8 @@ components:
           type: string
         expectedStructure:
           type: string
+        responseMode:
+          $ref: "#/components/schemas/ServiceResponseMode"
         maxResponseTime:
           type: number
         requestMethod:
@@ -1349,7 +1361,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CheckResult"
-      required: [id, name, url, expectedStructure, maxResponseTime, requestMethod, targetAuthType, targetAuthHeaderName, targetAuthSecretConfigured, requestBody, domainRelationship, visibility, listedAt, createdAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, checks]
+      required: [id, name, url, expectedStructure, responseMode, maxResponseTime, requestMethod, targetAuthType, targetAuthHeaderName, targetAuthSecretConfigured, requestBody, domainRelationship, visibility, listedAt, createdAt, trustScore, trustExplanation, trustMetrics, signals, domainVerification, checks]
     CheckResult:
       type: object
       properties:

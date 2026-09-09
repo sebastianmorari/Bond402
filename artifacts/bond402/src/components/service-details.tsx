@@ -71,6 +71,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
     url: "",
     maxResponseTime: 1000,
     expectedStructure: "",
+    responseMode: "JSON" as "JSON" | "HTTP",
     visibility: "PRIVATE" as "PRIVATE" | "LISTED",
     requestMethod: "GET" as "GET" | "POST",
     targetAuthType: "NONE" as "NONE" | "BEARER" | "API_KEY_HEADER",
@@ -93,6 +94,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
         url: service.url,
         maxResponseTime: service.maxResponseTime,
         expectedStructure: service.expectedStructure,
+        responseMode: service.responseMode,
         visibility: service.visibility,
         requestMethod: service.requestMethod,
         targetAuthType: service.targetAuthType,
@@ -242,6 +244,8 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
         return;
       }
     }
+    const expectedStructure =
+      editForm.responseMode === "JSON" ? editForm.expectedStructure.trim() : undefined;
     updateService.mutate(
       { 
         id: serviceId, 
@@ -249,7 +253,8 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
           name: editForm.name,
           url: editForm.url,
           maxResponseTime: Number(editForm.maxResponseTime),
-           expectedStructure: editForm.expectedStructure,
+           responseMode: editForm.responseMode,
+           ...(expectedStructure ? { expectedStructure } : {}),
            visibility: editForm.visibility,
            requestMethod: editForm.requestMethod,
            targetAuthType: editForm.targetAuthType,
@@ -375,9 +380,11 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                     <TabsTrigger value="tests" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-12">
                       Live-Prüfung & Historie
                     </TabsTrigger>
-                    <TabsTrigger value="manual" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-12">
-                      Manuelle Prüfung
-                    </TabsTrigger>
+                    {service.responseMode === "JSON" && (
+                      <TabsTrigger value="manual" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-12">
+                        Manuelle Prüfung
+                      </TabsTrigger>
+                    )}
                     <TabsTrigger value="config" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 h-12">
                       Konfiguration
                     </TabsTrigger>
@@ -425,9 +432,11 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                     <div>
                       <h4 className="font-medium text-sm">Jetzt prüfen</h4>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {service.requestMethod === "POST"
-                          ? "Sendet einen POST-Request an den Zielservice und gleicht die Antwort mit der Struktur ab."
-                          : "Kontaktiert die URL direkt über unseren Server und gleicht die Antwort mit der Struktur ab."}
+                        {service.responseMode === "HTTP"
+                          ? "Prüft Erreichbarkeit, HTTP-Status, HTTPS/TLS, Security-Header und Latenz. HTML oder anderer Textinhalt werden akzeptiert."
+                          : service.requestMethod === "POST"
+                            ? "Sendet einen POST-Request an den Zielservice und gleicht die JSON-Antwort mit der hinterlegten Struktur ab."
+                            : "Kontaktiert die URL direkt über unseren Server und gleicht die JSON-Antwort mit der hinterlegten Struktur ab."}
                       </p>
                       {service.requestMethod === "POST" && (
                         <p className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
@@ -504,14 +513,18 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                                 <span className="font-mono">{check.httpStatus || "—"}</span>
                               </div>
                               <div className="flex justify-between bg-muted/30 p-2 rounded">
-                                <span>Struktur:</span>
-                                <span className={check.structureMatch ? "text-success" : "text-destructive"}>
-                                  {check.structureMatch ? "Korrekt" : "Abweichend"}
+                                <span>Inhalt:</span>
+                                <span className={service.responseMode === "HTTP" ? "text-muted-foreground" : check.structureMatch ? "text-success" : "text-destructive"}>
+                                  {service.responseMode === "HTTP"
+                                    ? "Nicht als JSON geprüft"
+                                    : check.structureMatch
+                                      ? "JSON-Struktur korrekt"
+                                      : "JSON-Struktur abweichend"}
                                 </span>
                               </div>
                             </div>
 
-                            {(!check.structureMatch && (check.missingFields.length > 0 || check.foundFields.length > 0)) && (
+                            {service.responseMode === "JSON" && (!check.structureMatch && (check.missingFields.length > 0 || check.foundFields.length > 0)) && (
                               <div className="mt-3 text-xs bg-destructive/5 border border-destructive/20 rounded p-2">
                                 {check.missingFields.length > 0 && (
                                   <div className="mb-1">
@@ -532,6 +545,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                   </div>
                 </TabsContent>
 
+                {service.responseMode === "JSON" && (
                 <TabsContent value="manual" className="p-6 m-0 space-y-6">
                   <div className="space-y-4">
                     <div>
@@ -555,6 +569,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                     </Button>
                   </div>
                 </TabsContent>
+                )}
 
                 <TabsContent value="config" className="p-6 m-0 space-y-6">
                   <div className="flex justify-between items-center mb-4">
@@ -676,6 +691,23 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                         </div>
                       )}
                       <div className="space-y-2">
+                        <Label>Antwortmodus</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          value={editForm.responseMode}
+                          onChange={(e) => setEditForm((f) => ({ ...f, responseMode: e.target.value as "JSON" | "HTTP" }))}
+                        >
+                          <option value="JSON">JSON-Struktur prüfen</option>
+                          <option value="HTTP">Allgemeiner HTTP/HTTPS-Check</option>
+                        </select>
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          {editForm.responseMode === "JSON"
+                            ? "Die erfolgreiche Antwort muss gültiges JSON liefern und die erwarteten Felder enthalten."
+                            : "HTML und anderer Textinhalt sind erlaubt; geprüft werden Erreichbarkeit, Status, HTTPS/TLS, Security-Header und Latenz."}
+                        </p>
+                      </div>
+                      {editForm.responseMode === "JSON" && (
+                      <div className="space-y-2">
                         <Label>Erwartete Struktur (JSON)</Label>
                         <Textarea 
                           className="font-mono text-xs min-h-[150px]"
@@ -683,6 +715,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                           onChange={(e) => setEditForm(f => ({ ...f, expectedStructure: e.target.value }))}
                         />
                       </div>
+                      )}
                       <div className="space-y-2">
                         <Label>Sichtbarkeit</Label>
                         <select
@@ -732,18 +765,26 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                         <p className="text-xs text-muted-foreground">Max. erlaubte Antwortzeit</p>
                         <p className="font-mono text-sm bg-muted/30 p-2 rounded border border-border/50">{service.maxResponseTime} ms</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">Erwartete JSON-Struktur</p>
-                        <pre className="font-mono text-xs bg-muted/30 p-4 rounded border border-border/50 overflow-x-auto whitespace-pre-wrap">
-                          {(() => {
-                            try {
-                              return JSON.stringify(JSON.parse(service.expectedStructure), null, 2);
-                            } catch {
-                              return service.expectedStructure;
-                            }
-                          })()}
-                        </pre>
-                      </div>
+                       <div className="space-y-1">
+                         <p className="text-xs text-muted-foreground">Antwortmodus</p>
+                         <p className="text-sm bg-muted/30 p-2 rounded border border-border/50">
+                           {service.responseMode === "HTTP" ? "Allgemeiner HTTP/HTTPS-Check" : "JSON-Strukturprüfung"}
+                         </p>
+                       </div>
+                       {service.responseMode === "JSON" && (
+                         <div className="space-y-1">
+                           <p className="text-xs text-muted-foreground">Erwartete JSON-Struktur</p>
+                           <pre className="font-mono text-xs bg-muted/30 p-4 rounded border border-border/50 overflow-x-auto whitespace-pre-wrap">
+                             {(() => {
+                               try {
+                                 return JSON.stringify(JSON.parse(service.expectedStructure), null, 2);
+                               } catch {
+                                 return service.expectedStructure;
+                               }
+                             })()}
+                           </pre>
+                         </div>
+                       )}
                     </div>
                   )}
                 </TabsContent>

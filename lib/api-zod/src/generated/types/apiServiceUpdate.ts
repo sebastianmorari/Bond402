@@ -12,6 +12,7 @@ import type { ApiServiceUpdateRequestBody } from './apiServiceUpdateRequestBody'
 import type { ApiServiceUpdateVisibility } from './apiServiceUpdateVisibility';
 import type { DomainRelationship } from './domainRelationship';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
+import type { ServiceResponseMode } from './serviceResponseMode';
 import type { TargetAuthType } from './targetAuthType';
 
 export interface ApiServiceUpdate {
@@ -30,6 +31,7 @@ export interface ApiServiceUpdate {
      * @maxLength 4000
      */
   expectedStructure?: string;
+  responseMode?: ServiceResponseMode;
   /**
      * @minimum 100
      * @maximum 15000

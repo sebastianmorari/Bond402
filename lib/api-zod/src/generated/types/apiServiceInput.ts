@@ -11,6 +11,7 @@
 import type { ApiServiceInputRequestBody } from './apiServiceInputRequestBody';
 import type { DomainRelationship } from './domainRelationship';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
+import type { ServiceResponseMode } from './serviceResponseMode';
 import type { TargetAuthType } from './targetAuthType';
 
 export interface ApiServiceInput {
@@ -28,7 +29,8 @@ export interface ApiServiceInput {
      * @minLength 1
      * @maxLength 4000
      */
-  expectedStructure: string;
+  expectedStructure?: string;
+  responseMode?: ServiceResponseMode;
   /**
      * @minimum 100
      * @maximum 15000

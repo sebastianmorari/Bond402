@@ -198,11 +198,20 @@ export type CreatedApiKey = ApiKey & {
   secret: string;
 };
 
+export type ServiceResponseMode = typeof ServiceResponseMode[keyof typeof ServiceResponseMode];
+
+
+export const ServiceResponseMode = {
+  JSON: 'JSON',
+  HTTP: 'HTTP',
+} as const;
+
 export interface DeveloperService {
   id: string;
   name: string;
   url: string;
   expectedStructure: string;
+  responseMode: ServiceResponseMode;
   maxResponseTime: number;
 }
 
@@ -318,7 +327,8 @@ export interface ApiServiceInput {
      * @minLength 1
      * @maxLength 4000
      */
-  expectedStructure: string;
+  expectedStructure?: string;
+  responseMode?: ServiceResponseMode;
   /**
      * @minimum 100
      * @maximum 15000
@@ -370,6 +380,7 @@ export interface ApiServiceUpdate {
      * @maxLength 4000
      */
   expectedStructure?: string;
+  responseMode?: ServiceResponseMode;
   /**
      * @minimum 100
      * @maximum 15000
@@ -521,6 +532,7 @@ export interface ApiService {
   name: string;
   url: string;
   expectedStructure: string;
+  responseMode: ServiceResponseMode;
   maxResponseTime: number;
   requestMethod: ServiceRequestMethod;
   targetAuthType: TargetAuthType;

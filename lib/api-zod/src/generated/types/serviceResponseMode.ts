@@ -8,13 +8,11 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { ServiceResponseMode } from './serviceResponseMode';
 
-export interface DeveloperService {
-  id: string;
-  name: string;
-  url: string;
-  expectedStructure: string;
-  responseMode: ServiceResponseMode;
-  maxResponseTime: number;
-}
+export type ServiceResponseMode = typeof ServiceResponseMode[keyof typeof ServiceResponseMode];
+
+
+export const ServiceResponseMode = {
+  JSON: 'JSON',
+  HTTP: 'HTTP',
+} as const;

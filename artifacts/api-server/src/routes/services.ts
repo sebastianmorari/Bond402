@@ -8,6 +8,7 @@ import {
 import {
   CreateServiceBody,
   CreateServiceResponse,
+  DeveloperGetServiceResponse,
   DeleteServiceParams,
   GetDashboardResponse,
   GetServiceParams,
@@ -29,6 +30,7 @@ import {
   hashDomainVerificationToken,
   verifyDomainChallenge,
   validatePublicUrl,
+  normalizeResponseMode,
 } from "../lib/api-verifier";
 import {
   findOwnedService,
@@ -53,6 +55,23 @@ import {
 } from "../lib/target-auth";
 
 const router: IRouter = Router();
+const SERVICE_HISTORY_TIMEOUT_MS = 3_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 function publicUrlErrorMessage(code: string) {
   if (code === "UNSAFE_URL") {
@@ -247,18 +266,42 @@ async function toSafeListServiceResponse(
   service: Parameters<typeof buildServiceResponse>[0],
   requestId: string,
 ) {
-  let checks;
+  let checks: Awaited<ReturnType<typeof loadChecks>> = [];
   try {
-    checks = await loadChecks(service.id);
+    checks = await withTimeout(
+      loadChecks(service.id),
+      SERVICE_HISTORY_TIMEOUT_MS,
+      `Prüfhistorie überschritt ${SERVICE_HISTORY_TIMEOUT_MS} ms.`,
+    );
   } catch (error) {
     logServiceDataIssue(requestId, service.id, ["checks"], error);
-    return null;
   }
 
   const skippedCheckIndexes = new Set<number>();
   for (const [index, check] of checks.entries()) {
     try {
-      toCheckResponse(check);
+      const checkResponse = toCheckResponse(check);
+      const parsedCheck = DeveloperGetServiceResponse.safeParse({
+        service: {
+          id: service.id,
+          name: service.name,
+          url: service.url,
+          expectedStructure: service.expectedStructure,
+          responseMode: normalizeResponseMode(service.responseMode),
+          maxResponseTime: service.maxResponseTime,
+        },
+        trustScore: null,
+        trustExplanation: "",
+        latestCheck: checkResponse,
+        checks: [checkResponse],
+      });
+      if (!parsedCheck.success) {
+        skippedCheckIndexes.add(index);
+        logServiceDataIssue(requestId, service.id, [
+          `checks.${index}`,
+          ...getValidationFieldPaths(parsedCheck.error),
+        ]);
+      }
     } catch (error) {
       skippedCheckIndexes.add(index);
       logServiceDataIssue(requestId, service.id, [`checks.${index}`], error);
@@ -304,17 +347,29 @@ async function toSafeListServiceResponse(
 router.get("/services", async (req, res): Promise<void> => {
   const userId = await requireUserId(req, res);
   if (!userId) return;
-  const services = await db
-    .select()
-    .from(apiServicesTable)
-    .where(eq(apiServicesTable.ownerId, userId))
-    .orderBy(desc(apiServicesTable.createdAt));
   const requestId = typeof req.id === "string" ? req.id : crypto.randomUUID();
-  const response = (
-    await Promise.all(
-      services.map((service) => toSafeListServiceResponse(service, requestId)),
-    )
-  ).filter((service): service is NonNullable<typeof service> => service !== null);
+  let services;
+  try {
+    services = await db
+      .select()
+      .from(apiServicesTable)
+      .where(eq(apiServicesTable.ownerId, userId))
+      .orderBy(desc(apiServicesTable.createdAt));
+  } catch (error) {
+    logger.error({ requestId, userId, error }, "Dienstliste konnte nicht geladen werden");
+    throw error;
+  }
+
+  const settled = await Promise.allSettled(
+    services.map((service) => toSafeListServiceResponse(service, requestId)),
+  );
+  const response = settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") {
+      return result.value ? [result.value] : [];
+    }
+    logServiceDataIssue(requestId, services[index]?.id ?? "unknown", ["service"], result.reason);
+    return [];
+  });
   res.json(response);
 });
 
@@ -323,14 +378,16 @@ router.post("/services", async (req, res): Promise<void> => {
   if (!userId) return;
   const parsed = CreateServiceBody.safeParse(req.body);
   const normalizedName = parsed.success ? parsed.data.name.trim() : "";
-  const normalizedStructure = parsed.success
-    ? parsed.data.expectedStructure.trim()
-    : "";
+  const responseMode = parsed.success ? normalizeResponseMode(parsed.data.responseMode) : "JSON";
+  const normalizedStructure =
+    parsed.success && responseMode === "JSON"
+      ? parsed.data.expectedStructure?.trim() ?? ""
+      : "";
   if (
     !parsed.success ||
     !Number.isInteger(parsed.data.maxResponseTime) ||
     normalizedName.length < 2 ||
-    normalizedStructure.length === 0
+    (responseMode === "JSON" && normalizedStructure.length === 0)
   ) {
     res.status(400).json({ error: "Bitte prüfen Sie alle Eingaben.", code: "INVALID_INPUT" });
     return;
@@ -371,6 +428,7 @@ router.post("/services", async (req, res): Promise<void> => {
           name: normalizedName,
           url: parsed.data.url,
           expectedStructure: normalizedStructure,
+          responseMode,
           maxResponseTime: parsed.data.maxResponseTime,
            requestMethod: targetConfiguration.requestMethod,
            targetAuthType: targetConfiguration.targetAuthType,
@@ -441,11 +499,19 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const responseMode = normalizeResponseMode(
+    body.data.responseMode ?? existing.responseMode,
+  );
+  const expectedStructure =
+    responseMode === "HTTP"
+      ? ""
+      : body.data.expectedStructure !== undefined
+        ? body.data.expectedStructure.trim()
+        : existing.expectedStructure;
   const changes = {
     ...(body.data.name !== undefined ? { name: body.data.name.trim() } : {}),
-    ...(body.data.expectedStructure !== undefined
-      ? { expectedStructure: body.data.expectedStructure.trim() }
-      : {}),
+    expectedStructure,
+    responseMode,
     ...(body.data.url !== undefined ? { url: body.data.url } : {}),
     ...(body.data.maxResponseTime !== undefined
       ? { maxResponseTime: body.data.maxResponseTime }
@@ -475,7 +541,7 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Der Dienstname ist zu kurz.", code: "INVALID_INPUT" });
     return;
   }
-  if (changes.expectedStructure !== undefined && changes.expectedStructure.length === 0) {
+  if (responseMode === "JSON" && changes.expectedStructure.length === 0) {
     res.status(400).json({ error: "Die erwartete Struktur darf nicht leer sein.", code: "INVALID_INPUT" });
     return;
   }
@@ -563,6 +629,7 @@ router.post("/services/:id/checks", async (req, res): Promise<void> => {
     service.expectedStructure,
     service.maxResponseTime,
     getTargetRequestOptions(service),
+    normalizeResponseMode(service.responseMode),
   );
   const check = await saveOutcome(service.id, "LIVE", outcome);
   res.status(201).json(RunServiceCheckResponse.parse(toCheckResponse(check)));
@@ -583,7 +650,11 @@ router.post("/services/:id/verify", async (req, res): Promise<void> => {
     return;
   }
   if (!(await requireCheckQuota(userId, res))) return;
-  const outcome = runManualVerification(service.expectedStructure, body.data.actualResponse);
+  const outcome = runManualVerification(
+    service.expectedStructure,
+    body.data.actualResponse,
+    normalizeResponseMode(service.responseMode),
+  );
   const check = await saveOutcome(service.id, "MANUAL", outcome);
   res.status(201).json(VerifyServiceResponseResponse.parse(toCheckResponse(check)));
 });

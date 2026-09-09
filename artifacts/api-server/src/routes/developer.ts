@@ -9,7 +9,7 @@ import {
   DeveloperPreActionCheckResponse,
 } from "@workspace/api-zod";
 import { authenticateApiKey } from "../lib/api-key-auth";
-import { runLiveVerification } from "../lib/api-verifier";
+import { normalizeResponseMode, runLiveVerification } from "../lib/api-verifier";
 import {
   calculateTrust,
   findOwnedService,
@@ -32,6 +32,7 @@ async function buildResponse(service: NonNullable<Awaited<ReturnType<typeof find
       name: service.name,
       url: service.url,
       expectedStructure: service.expectedStructure,
+       responseMode: normalizeResponseMode(service.responseMode),
       maxResponseTime: service.maxResponseTime,
     },
     trustScore: trust.score,
@@ -83,6 +84,7 @@ router.post("/developer/services/:id/checks", async (req, res): Promise<void> =>
     service.expectedStructure,
     service.maxResponseTime,
     getTargetRequestOptions(service),
+    normalizeResponseMode(service.responseMode),
   );
   await saveOutcome(service.id, "LIVE", outcome);
   res.status(201).json(DeveloperRunServiceCheckResponse.parse(await buildResponse(service)));

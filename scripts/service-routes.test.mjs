@@ -128,6 +128,31 @@ test("Authentifizierter GET liefert eine Liste und POST legt einen Dienst an", a
   assert.equal(listed.data[0].id, created.data.id);
 });
 
+test("HTTP-Dienste benötigen keine erwartete JSON-Struktur", async () => {
+  const created = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Allgemeiner HTTP Routentest",
+      url: "https://example.com",
+      responseMode: "HTTP",
+      maxResponseTime: 1000,
+    },
+  });
+  assert.equal(created.response.status, 201);
+  assert.equal(created.data.responseMode, "HTTP");
+  assert.equal(created.data.expectedStructure, "");
+
+  const updated = await request(`/api/services/${created.data.id}`, {
+    method: "PATCH",
+    authenticated: true,
+    body: { responseMode: "JSON", expectedStructure: "status" },
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.data.responseMode, "JSON");
+  assert.equal(updated.data.expectedStructure, "status");
+});
+
 test("Services ohne Checks und mit historischer Check-Historie bleiben gültig", async () => {
   const withoutChecks = await request("/api/services", {
     method: "POST",
@@ -178,6 +203,36 @@ test("Services ohne Checks und mit historischer Check-Historie bleiben gültig",
   assert.ok(historicalService);
   assert.equal(historicalService.checks.length, 1);
   assert.equal(historicalService.checks[0].status, "PASS");
+
+  const malformed = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "Dienst mit fehlerhafter Historie",
+      url: "https://example.com",
+      expectedStructure: "status",
+      maxResponseTime: 1200,
+    },
+  });
+  assert.equal(malformed.response.status, 201);
+  runSql(`
+    INSERT INTO bond402_api_checks (
+      id, service_id, status, check_type, reachable, response_time_ms,
+      structure_match, http_status, summary, found_fields, missing_fields,
+      https, tls_status, security_headers, probe_region
+    ) VALUES (
+      ${sqlLiteral(randomUUID())}, ${sqlLiteral(malformed.data.id)}, 'PASS', 'LIVE',
+      true, 240, true, 200, 'Ungültiger historischer Testwert',
+      '["status"]'::jsonb, '[]'::jsonb, true, 'CHECKED',
+      '{"status":"INVALID","evaluated":[],"present":[],"missing":[]}'::jsonb, 'test-region'
+    );
+  `);
+
+  const resilientList = await request("/api/services", { authenticated: true });
+  assert.equal(resilientList.response.status, 200);
+  const malformedService = resilientList.data.find((service) => service.id === malformed.data.id);
+  assert.ok(malformedService);
+  assert.deepEqual(malformedService.checks, []);
 });
 
 test("Fehlerhafte Services oder Checks beschädigen nicht die gültige Liste", async () => {

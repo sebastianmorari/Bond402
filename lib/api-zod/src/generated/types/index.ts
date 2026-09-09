@@ -85,6 +85,7 @@ export * from './regionalAggregationState';
 export * from './searchPublicServicesParams';
 export * from './securityHeaders';
 export * from './serviceRequestMethod';
+export * from './serviceResponseMode';
 export * from './signalState';
 export * from './signalStates';
 export * from './targetAuthType';

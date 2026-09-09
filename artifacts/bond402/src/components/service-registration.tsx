@@ -15,13 +15,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 const formSchema = z.object({
   name: z.string().min(2, "Name muss mindestens 2 Zeichen lang sein").max(100, "Name darf maximal 100 Zeichen lang sein"),
   url: z.string().url("Muss eine gültige URL sein (http:// oder https://)").max(2048),
-  expectedStructure: z.string().min(1, "Struktur darf nicht leer sein").max(4000, "Struktur ist zu lang"),
+  expectedStructure: z.string().max(4000, "Struktur ist zu lang"),
+  responseMode: z.enum(["JSON", "HTTP"]),
   maxResponseTime: z.coerce.number().min(100, "Mindestens 100ms").max(15000, "Maximal 15000ms"),
   requestMethod: z.enum(["GET", "POST"]),
   targetAuthType: z.enum(["NONE", "BEARER", "API_KEY_HEADER"]),
   targetAuthHeaderName: z.string().max(128).optional(),
   targetAuthSecret: z.string().max(4096).optional(),
   requestBody: z.string().max(64000).optional(),
+}).superRefine((data, context) => {
+  if (data.responseMode === "JSON" && !data.expectedStructure.trim()) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["expectedStructure"],
+      message: "Für JSON-Prüfungen wird eine erwartete Struktur benötigt.",
+    });
+  }
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -37,6 +46,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
       name: "",
       url: "",
       expectedStructure: '{"status": "ok"}',
+      responseMode: "JSON",
       maxResponseTime: 1000,
       requestMethod: "GET",
       targetAuthType: "NONE",
@@ -46,6 +56,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
     },
   });
   const requestMethod = form.watch("requestMethod");
+  const responseMode = form.watch("responseMode");
   const targetAuthType = form.watch("targetAuthType");
 
   const onSubmit = (data: FormValues) => {
@@ -67,11 +78,18 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
       }
     }
 
-    const { requestBody: _requestBody, ...rest } = data;
+    const {
+      requestBody: _requestBody,
+      expectedStructure: _expectedStructure,
+      ...rest
+    } = data;
+    const expectedStructure =
+      data.responseMode === "JSON" ? data.expectedStructure.trim() : undefined;
     createService.mutate(
       {
         data: {
           ...rest,
+          ...(expectedStructure ? { expectedStructure } : {}),
           ...(requestBody ? { requestBody } : {}),
           ...(data.targetAuthSecret?.trim()
             ? { targetAuthSecret: data.targetAuthSecret.trim() }
@@ -165,6 +183,32 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
 
             <FormField
               control={form.control}
+              name="responseMode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Antwortmodus</FormLabel>
+                  <FormControl>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      {...field}
+                    >
+                      <option value="JSON">JSON-Struktur prüfen</option>
+                      <option value="HTTP">Allgemeiner HTTP/HTTPS-Check</option>
+                    </select>
+                  </FormControl>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    {responseMode === "JSON"
+                      ? "Die erfolgreiche Antwort muss gültiges JSON liefern und die erwarteten Felder enthalten."
+                      : "Prüft Erreichbarkeit, HTTP-Status, HTTPS/TLS, Security-Header und Latenz. HTML und anderer Textinhalt sind erlaubt."}
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {responseMode === "JSON" && (
+            <FormField
+              control={form.control}
               name="expectedStructure"
               render={({ field }) => (
                 <FormItem>
@@ -190,6 +234,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
                 </FormItem>
               )}
             />
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField

@@ -218,6 +218,7 @@ export const ListServicesResponseItem = zod.object({
   "name": zod.string(),
   "url": zod.string(),
   "expectedStructure": zod.string(),
+  "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
   "requestMethod": zod.enum(['GET', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
@@ -316,6 +317,7 @@ export const createServiceBodyUrlMax = 2048;
 export const createServiceBodyUrlRegExp = new RegExp('^https?:/');
 export const createServiceBodyExpectedStructureMax = 4000;
 
+export const createServiceBodyResponseModeDefault = `JSON`;
 export const createServiceBodyMaxResponseTimeMin = 100;
 export const createServiceBodyMaxResponseTimeMax = 15000;
 
@@ -332,7 +334,8 @@ export const createServiceBodyDomainRelationshipDefault = `THIRD_PARTY`;
 export const CreateServiceBody = zod.object({
   "name": zod.string().min(createServiceBodyNameMin).max(createServiceBodyNameMax),
   "url": zod.string().max(createServiceBodyUrlMax).regex(createServiceBodyUrlRegExp),
-  "expectedStructure": zod.string().min(1).max(createServiceBodyExpectedStructureMax),
+  "expectedStructure": zod.string().min(1).max(createServiceBodyExpectedStructureMax).optional(),
+  "responseMode": zod.enum(['JSON', 'HTTP']).default(createServiceBodyResponseModeDefault),
   "maxResponseTime": zod.number().min(createServiceBodyMaxResponseTimeMin).max(createServiceBodyMaxResponseTimeMax),
   "requestMethod": zod.enum(['GET', 'POST']).default(createServiceBodyRequestMethodDefault),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']).default(createServiceBodyTargetAuthTypeDefault),
@@ -347,6 +350,7 @@ export const CreateServiceResponse = zod.object({
   "name": zod.string(),
   "url": zod.string(),
   "expectedStructure": zod.string(),
+  "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
   "requestMethod": zod.enum(['GET', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
@@ -447,6 +451,7 @@ export const GetServiceResponse = zod.object({
   "name": zod.string(),
   "url": zod.string(),
   "expectedStructure": zod.string(),
+  "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
   "requestMethod": zod.enum(['GET', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
@@ -579,6 +584,7 @@ export const UpdateServiceBody = zod.object({
   "name": zod.string().min(updateServiceBodyNameMin).max(updateServiceBodyNameMax).optional(),
   "url": zod.string().max(updateServiceBodyUrlMax).regex(updateServiceBodyUrlRegExp).optional(),
   "expectedStructure": zod.string().min(1).max(updateServiceBodyExpectedStructureMax).optional(),
+  "responseMode": zod.enum(['JSON', 'HTTP']).optional(),
   "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional(),
   "visibility": zod.enum(['PRIVATE', 'LISTED']).optional(),
   "requestMethod": zod.enum(['GET', 'POST']).optional(),
@@ -594,6 +600,7 @@ export const UpdateServiceResponse = zod.object({
   "name": zod.string(),
   "url": zod.string(),
   "expectedStructure": zod.string(),
+  "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
   "requestMethod": zod.enum(['GET', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
@@ -909,6 +916,7 @@ export const DeveloperGetServiceResponse = zod.object({
   "name": zod.string(),
   "url": zod.string(),
   "expectedStructure": zod.string(),
+  "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number()
 }),
   "trustScore": zod.number().nullable(),
@@ -988,6 +996,7 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "name": zod.string(),
   "url": zod.string(),
   "expectedStructure": zod.string(),
+  "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number()
 }),
   "trustScore": zod.number().nullable(),
@@ -1067,6 +1076,7 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "name": zod.string(),
   "url": zod.string(),
   "expectedStructure": zod.string(),
+  "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number()
 }),
   "trustScore": zod.number().nullable(),

@@ -15,6 +15,7 @@ export const apiServicesTable = pgTable("bond402_api_services", {
   name: text("name").notNull(),
   url: text("url").notNull(),
   expectedStructure: text("expected_structure").notNull(),
+  responseMode: text("response_mode").notNull().default("JSON"),
   maxResponseTime: integer("max_response_time").notNull(),
   visibility: text("visibility").notNull().default("PRIVATE"),
   requestMethod: text("request_method").notNull().default("GET"),
