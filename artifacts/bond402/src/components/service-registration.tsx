@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { buildTargetAuthPayload } from "@/lib/service-registration-payload";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name muss mindestens 2 Zeichen lang sein").max(100, "Name darf maximal 100 Zeichen lang sein"),
@@ -73,6 +74,8 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
     const {
       requestBody: _requestBody,
       expectedStructure: _expectedStructure,
+      targetAuthHeaderName: _targetAuthHeaderName,
+      targetAuthSecret: _targetAuthSecret,
       ...rest
     } = data;
     const expectedStructure =
@@ -83,12 +86,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
           ...rest,
           ...(expectedStructure ? { expectedStructure } : {}),
           ...(requestBody ? { requestBody } : {}),
-          ...(data.targetAuthSecret?.trim()
-            ? { targetAuthSecret: data.targetAuthSecret.trim() }
-            : {}),
-          ...(data.targetAuthType === "API_KEY_HEADER"
-            ? { targetAuthHeaderName: data.targetAuthHeaderName?.trim() }
-            : {}),
+          ...buildTargetAuthPayload(data),
         },
       },
       {

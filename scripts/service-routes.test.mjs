@@ -137,11 +137,17 @@ test("HTTP-Dienste benötigen keine erwartete JSON-Struktur", async () => {
       url: "https://example.com",
       responseMode: "HTTP",
       maxResponseTime: 1000,
+      requestMethod: "GET",
+      targetAuthType: "NONE",
     },
   });
   assert.equal(created.response.status, 201);
   assert.equal(created.data.responseMode, "HTTP");
   assert.equal(created.data.expectedStructure, "");
+  assert.equal(created.data.requestMethod, "GET");
+  assert.equal(created.data.targetAuthType, "NONE");
+  assert.equal(created.data.targetAuthHeaderName, null);
+  assert.equal(created.data.targetAuthSecretConfigured, false);
 
   const updated = await request(`/api/services/${created.data.id}`, {
     method: "PATCH",
