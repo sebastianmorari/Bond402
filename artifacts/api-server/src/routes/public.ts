@@ -154,7 +154,14 @@ router.get("/public/services", async (req, res): Promise<void> => {
     services.map(async (service) => toPublicServiceResponse(service, await loadChecks(service.id))),
   );
   const rankedServices = rankPublicServiceResults(publicServices, q);
-  const items = rankedServices.slice((page - 1) * pageSize, page * pageSize);
+  const publicServicesById = new Map(publicServices.map((service) => [service.id, service]));
+  const items = rankedServices
+    .slice((page - 1) * pageSize, page * pageSize)
+    .map(({ id, discovery }) => {
+      const service = publicServicesById.get(id);
+      if (!service) throw new Error("Public search result lost its listed service.");
+      return { ...service, discovery };
+    });
   const totalCount = Number(total);
   res.json({
     items,

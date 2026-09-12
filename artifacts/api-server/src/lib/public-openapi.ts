@@ -26,7 +26,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           responses: {
             "200": {
               description: "Listed service catalog",
-              content: { "application/json": { schema: { type: "object", properties: { items: { type: "array", items: { $ref: "#/components/schemas/PublicService" } } } } } },
+              content: { "application/json": { schema: { $ref: "#/components/schemas/PublicServiceCatalog" } } },
             },
             "400": { description: "Invalid query" },
             "429": { description: "Rate limited; inspect Retry-After" },
@@ -256,6 +256,45 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           type: "string",
           enum: ["OWNED", "THIRD_PARTY"],
         },
+        PublicDiscoverySource: {
+          type: "object",
+          required: ["source", "sourceLabel", "scope", "externalSources"],
+          properties: {
+            source: { type: "string", enum: ["BOND402_INTERNAL_CATALOG"] },
+            sourceLabel: { type: "string" },
+            scope: { type: "string", enum: ["LISTED_SERVICES_ONLY"] },
+            externalSources: { type: "boolean", enum: [false] },
+          },
+        },
+        PublicServiceDiscovery: {
+          type: "object",
+          required: ["source", "sourceLabel", "scope", "matchScore", "rankingFactors", "evidence"],
+          properties: {
+            source: { type: "string", enum: ["BOND402_INTERNAL_CATALOG"] },
+            sourceLabel: { type: "string" },
+            scope: { type: "string", enum: ["LISTED_SERVICES_ONLY"] },
+            matchScore: { type: "number", minimum: 0, maximum: 100 },
+            rankingFactors: {
+              type: "object",
+              required: ["textRelevance", "observationCoverage", "observationFreshness", "publicSource"],
+              properties: {
+                textRelevance: { type: "number", minimum: 0, maximum: 1 },
+                observationCoverage: { type: "number", minimum: 0, maximum: 1 },
+                observationFreshness: { type: "number", minimum: 0, maximum: 1 },
+                publicSource: { type: "number", minimum: 0, maximum: 1 },
+              },
+            },
+            evidence: {
+              type: "object",
+              required: ["liveObservationCount", "latestObservationAt", "publicSourceUrl"],
+              properties: {
+                liveObservationCount: { type: "number", minimum: 0 },
+                latestObservationAt: { type: ["string", "null"], format: "date-time" },
+                publicSourceUrl: { type: "string" },
+              },
+            },
+          },
+        },
         PublicService: {
           type: "object",
           required: ["id", "name", "url", "trustScore", "trustExplanation", "trustMetrics", "signals", "domainVerification", "domainRelationship", "latestStatus", "latestCheckAt", "latestCheck", "access", "links"],
@@ -274,6 +313,21 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             latestCheck: { type: ["object", "null"] },
             access: { type: "object" },
             links: { type: "object" },
+            discovery: { $ref: "#/components/schemas/PublicServiceDiscovery" },
+          },
+        },
+        PublicServiceCatalog: {
+          type: "object",
+          required: ["items", "query", "page", "pageSize", "total", "hasNextPage", "sort", "source"],
+          properties: {
+            items: { type: "array", items: { $ref: "#/components/schemas/PublicService" } },
+            query: { type: "string" },
+            page: { type: "number" },
+            pageSize: { type: "number" },
+            total: { type: "number" },
+            hasNextPage: { type: "boolean" },
+            sort: { type: "string" },
+            source: { $ref: "#/components/schemas/PublicDiscoverySource" },
           },
         },
         PublicPreActionCheck: {

@@ -38,6 +38,7 @@ function normalize(value: string) {
     .toLowerCase();
 }
 
+
 function tokens(value: string) {
   return normalize(value).split(/[^a-z0-9]+/).filter(Boolean);
 }
@@ -87,12 +88,6 @@ function rounded(value: number) {
   return Math.round(value * 1000) / 1000;
 }
 
-function latestTimestamp(service: PublicSearchService) {
-  if (!service.latestCheckAt) return Number.NEGATIVE_INFINITY;
-  const timestamp = Date.parse(service.latestCheckAt);
-  return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
-}
-
 export function rankPublicServiceResults<T extends PublicSearchService>(
   services: readonly T[],
   query: string,
@@ -114,7 +109,7 @@ export function rankPublicServiceResults<T extends PublicSearchService>(
     );
 
     return {
-      ...service,
+      service,
       discovery: {
         source: PUBLIC_DISCOVERY_SOURCE,
         sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
@@ -135,21 +130,26 @@ export function rankPublicServiceResults<T extends PublicSearchService>(
     };
   });
 
-  return ranked.sort((left, right) => {
-    const scoreDifference = right.discovery.matchScore - left.discovery.matchScore;
-    if (scoreDifference !== 0) return scoreDifference;
+  return ranked
+    .sort((left, right) => {
+      const scoreDifference = right.discovery.matchScore - left.discovery.matchScore;
+      if (scoreDifference !== 0) return scoreDifference;
 
-    const textDifference =
-      right.discovery.rankingFactors.textRelevance - left.discovery.rankingFactors.textRelevance;
-    if (textDifference !== 0) return textDifference;
+      const textDifference =
+        right.discovery.rankingFactors.textRelevance - left.discovery.rankingFactors.textRelevance;
+      if (textDifference !== 0) return textDifference;
 
-    const freshnessDifference =
-      right.discovery.rankingFactors.observationFreshness -
-      left.discovery.rankingFactors.observationFreshness;
-    if (freshnessDifference !== 0) return freshnessDifference;
+      const freshnessDifference =
+        right.discovery.rankingFactors.observationFreshness -
+        left.discovery.rankingFactors.observationFreshness;
+      if (freshnessDifference !== 0) return freshnessDifference;
 
-    const nameDifference = compareStrings(normalize(left.name), normalize(right.name));
-    if (nameDifference !== 0) return nameDifference;
-    return compareStrings(left.id, right.id);
-  });
+      const nameDifference = compareStrings(
+        normalize(left.service.name),
+        normalize(right.service.name),
+      );
+      if (nameDifference !== 0) return nameDifference;
+      return compareStrings(left.service.id, right.service.id);
+    })
+    .map(({ service, discovery }) => ({ id: service.id, discovery }));
 }

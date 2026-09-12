@@ -185,12 +185,21 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.equal(discovery.data.authentication.publicCatalog, "none");
   assert.equal(discovery.data.limits.publicCatalogRequestsPerMinutePerIp, 60);
   assert.match(discovery.data.endpoints.catalog, /\/api\/public\/services$/);
+  assert.equal(discovery.data.dataSource.source, "BOND402_INTERNAL_CATALOG");
+  assert.equal(discovery.data.dataSource.scope, "LISTED_SERVICES_ONLY");
+  assert.equal(discovery.data.dataSource.externalSources, false);
 
   const catalog = await request("/api/public/services?page=1&pageSize=2");
   assert.equal(catalog.response.status, 200);
   assert.equal(catalog.data.page, 1);
   assert.equal(catalog.data.pageSize, 2);
-  assert.equal(catalog.data.sort, "name.asc,id.asc");
+  assert.equal(
+    catalog.data.sort,
+    "matchScore.desc,textRelevance.desc,observationFreshness.desc,name.asc,id.asc",
+  );
+  assert.equal(catalog.data.source.source, "BOND402_INTERNAL_CATALOG");
+  assert.equal(catalog.data.source.scope, "LISTED_SERVICES_ONLY");
+  assert.equal(catalog.data.source.externalSources, false);
   assert.equal("ownerId" in catalog.data, false);
   assert.equal("keyHash" in catalog.data, false);
   assert.doesNotMatch(JSON.stringify(catalog.data), /api[_-]?key|session|password|ownerId|keyHash/i);
@@ -211,6 +220,8 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.ok(openApi.data.paths["/public/services/{id}/pre-action-check"].post);
   assert.ok(openApi.data.components.schemas.PublicPreActionCheck);
   assert.ok(openApi.data.components.schemas.TrustMetrics);
+   assert.ok(openApi.data.components.schemas.PublicServiceDiscovery);
+   assert.ok(openApi.data.components.schemas.PublicServiceCatalog);
    assert.ok(openApi.data.components.schemas.RegionalAggregation);
    assert.ok(openApi.data.components.schemas.TrustMetrics.properties.regionalAggregation);
   assert.ok(openApi.data.components.schemas.SecurityHeaders);
@@ -627,6 +638,23 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
      "SINGLE_REGION",
    );
    assert.equal(observedPublicDetail.data.trustMetrics.regionalAggregation.regionCount, 1);
+
+   const rankedCatalog = await request(
+     `/api/public/services?q=${encodeURIComponent("Öffentlicher Testdienst")}&page=1&pageSize=10`,
+   );
+   assert.equal(rankedCatalog.response.status, 200);
+   assert.equal(rankedCatalog.data.items[0].id, serviceId);
+   assert.equal(rankedCatalog.data.items[0].discovery.source, "BOND402_INTERNAL_CATALOG");
+   assert.equal(rankedCatalog.data.items[0].discovery.scope, "LISTED_SERVICES_ONLY");
+   assert.equal(rankedCatalog.data.items[0].discovery.evidence.liveObservationCount, 1);
+   assert.equal(
+     rankedCatalog.data.items[0].discovery.evidence.publicSourceUrl,
+     "https://example.com",
+   );
+   assert.doesNotMatch(
+     JSON.stringify(rankedCatalog.data.items[0]),
+     /ownerId|targetAuthSecret|apiKey|session|password/i,
+   );
 
   const manualCheck = await request(`/api/services/${serviceId}/verify`, {
     method: "POST",

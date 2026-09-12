@@ -1827,7 +1827,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/PublicService"
+            $ref: "#/components/schemas/PublicServiceSearchResult"
         query:
           type: string
         page:
@@ -1840,7 +1840,80 @@ components:
           type: boolean
         sort:
           type: string
-      required: [items, query, page, pageSize, total, hasNextPage, sort]
+        source:
+          $ref: "#/components/schemas/PublicDiscoverySource"
+      required: [items, query, page, pageSize, total, hasNextPage, sort, source]
+    PublicDiscoverySource:
+      type: object
+      properties:
+        source:
+          type: string
+          enum: [BOND402_INTERNAL_CATALOG]
+        sourceLabel:
+          type: string
+        scope:
+          type: string
+          enum: [LISTED_SERVICES_ONLY]
+        externalSources:
+          type: boolean
+          enum: [false]
+      required: [source, sourceLabel, scope, externalSources]
+    PublicServiceDiscovery:
+      type: object
+      properties:
+        source:
+          type: string
+          enum: [BOND402_INTERNAL_CATALOG]
+        sourceLabel:
+          type: string
+        scope:
+          type: string
+          enum: [LISTED_SERVICES_ONLY]
+        matchScore:
+          type: number
+          minimum: 0
+          maximum: 100
+        rankingFactors:
+          type: object
+          properties:
+            textRelevance:
+              type: number
+              minimum: 0
+              maximum: 1
+            observationCoverage:
+              type: number
+              minimum: 0
+              maximum: 1
+            observationFreshness:
+              type: number
+              minimum: 0
+              maximum: 1
+            publicSource:
+              type: number
+              minimum: 0
+              maximum: 1
+          required: [textRelevance, observationCoverage, observationFreshness, publicSource]
+        evidence:
+          type: object
+          properties:
+            liveObservationCount:
+              type: number
+              minimum: 0
+            latestObservationAt:
+              type: ["string", "null"]
+              format: date-time
+            publicSourceUrl:
+              type: string
+          required: [liveObservationCount, latestObservationAt, publicSourceUrl]
+      required: [source, sourceLabel, scope, matchScore, rankingFactors, evidence]
+    PublicServiceSearchResult:
+      allOf:
+        - $ref: "#/components/schemas/PublicService"
+        - type: object
+          properties:
+            discovery:
+              $ref: "#/components/schemas/PublicServiceDiscovery"
+          required: [discovery]
     PublicDiscovery:
       type: object
       properties:
@@ -1896,9 +1969,11 @@ components:
             developerPreActionRequiresKey:
               type: boolean
           required: [publicCatalogRequestsPerMinutePerIp, publicPreActionCountsAgainstMonthlyDeveloperQuota, developerPreActionRequiresKey]
+        dataSource:
+          $ref: "#/components/schemas/PublicDiscoverySource"
         policy:
           $ref: "#/components/schemas/PreActionPolicy"
-      required: [name, description, version, disclaimer, authentication, endpoints, publicResponseFields, limits, policy]
+      required: [name, description, version, disclaimer, authentication, endpoints, dataSource, publicResponseFields, limits, policy]
     PublicPreActionCheck:
       allOf:
         - $ref: "#/components/schemas/DeveloperPreActionCheck"
