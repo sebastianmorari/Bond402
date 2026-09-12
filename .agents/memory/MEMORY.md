@@ -6,3 +6,4 @@
 - [Public beta catalog](public-beta-catalog.md) — only explicitly listed services expose stored trust metadata; public pre-action is read-only and live checks remain owner-key protected.
 - [Observed trust signals](trust-signals.md) — signal states and historical metrics describe stored observations, never security guarantees or certifications.
 - [Resilient collection responses](resilient-collection-responses.md) — aggregate endpoints should isolate malformed stored records and still return valid entries.
+- [Database read resilience](database-read-resilience.md) — only bounded idempotent GET reads retry transient availability failures; normal SQL errors stay non-503.

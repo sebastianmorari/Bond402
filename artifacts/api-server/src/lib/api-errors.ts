@@ -2,7 +2,7 @@ import type { ErrorRequestHandler, Request, RequestHandler, Response } from "exp
 import { logger } from "./logger";
 import {
   getDatabaseErrorCode,
-  isDatabaseError,
+  isTransientDatabaseError,
 } from "./database-errors";
 
 type ErrorLogger = Pick<typeof logger, "error">;
@@ -71,7 +71,7 @@ export function createApiErrorHandler(
       return;
     }
 
-    if (isDatabaseError(error)) {
+    if (isTransientDatabaseError(error)) {
       res.status(503).json({
         error: "Der Datenbankdienst ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
         code: "DATABASE_UNAVAILABLE",

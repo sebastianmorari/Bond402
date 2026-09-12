@@ -1,43 +1,16 @@
-const SQLSTATE_PREFIXES = new Set([
-  "08",
-  "09",
-  "0A",
-  "21",
-  "22",
-  "23",
-  "24",
-  "25",
-  "26",
-  "27",
-  "28",
-  "2B",
-  "2D",
-  "2F",
-  "34",
-  "38",
-  "39",
-  "3B",
-  "3D",
-  "3F",
-  "40",
-  "42",
-  "44",
-  "53",
-  "54",
-  "55",
-  "57",
-  "58",
-  "F0",
-  "HV",
-  "P0",
-  "XX",
-]);
-
 const CONNECTION_ERROR_CODES = new Set([
   "ECONNREFUSED",
   "ECONNRESET",
   "ETIMEDOUT",
   "EPIPE",
+  "EAI_AGAIN",
+]);
+
+const TRANSIENT_AVAILABILITY_SQLSTATE_CODES = new Set([
+  "53300",
+  "57P01",
+  "57P02",
+  "57P03",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -61,9 +34,15 @@ export function isUniqueViolation(error: unknown) {
   return getDatabaseErrorCode(error) === "23505";
 }
 
-export function isDatabaseError(error: unknown) {
+export function isTransientDatabaseError(error: unknown) {
   const code = getDatabaseErrorCode(error);
   if (!code) return false;
-  if (CONNECTION_ERROR_CODES.has(code)) return true;
-  return code.length >= 2 && SQLSTATE_PREFIXES.has(code.slice(0, 2).toUpperCase());
+  const normalizedCode = code.toUpperCase();
+  if (CONNECTION_ERROR_CODES.has(normalizedCode)) return true;
+  if (normalizedCode.startsWith("08")) return true;
+  return TRANSIENT_AVAILABILITY_SQLSTATE_CODES.has(normalizedCode);
 }
+
+// Keep the existing name for callers while making its semantics explicit:
+// only transient database availability failures are classified as 503-worthy.
+export const isDatabaseError = isTransientDatabaseError;

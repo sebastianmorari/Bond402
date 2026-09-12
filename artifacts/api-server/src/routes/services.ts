@@ -43,6 +43,7 @@ import {
   toServiceResponse,
 } from "../lib/service-data";
 import { requireUserId } from "../lib/auth";
+import { withTransientDatabaseReadRetry } from "../lib/database-resilience";
 import { requireCheckQuota } from "../lib/quota";
 import { runServiceCreationTransaction } from "../lib/service-creation";
 import { getServiceCreationErrorResponse } from "../lib/service-errors";
@@ -269,7 +270,7 @@ async function toSafeListServiceResponse(
   let checks: Awaited<ReturnType<typeof loadChecks>> = [];
   try {
     checks = await withTimeout(
-      loadChecks(service.id),
+      withTransientDatabaseReadRetry(() => loadChecks(service.id)),
       SERVICE_HISTORY_TIMEOUT_MS,
       `Prüfhistorie überschritt ${SERVICE_HISTORY_TIMEOUT_MS} ms.`,
     );
@@ -345,16 +346,18 @@ async function toSafeListServiceResponse(
 }
 
 router.get("/services", async (req, res): Promise<void> => {
-  const userId = await requireUserId(req, res);
+  const userId = await requireUserId(req, res, { retryTransientReads: true });
   if (!userId) return;
   const requestId = typeof req.id === "string" ? req.id : crypto.randomUUID();
   let services;
   try {
-    services = await db
-      .select()
-      .from(apiServicesTable)
-      .where(eq(apiServicesTable.ownerId, userId))
-      .orderBy(desc(apiServicesTable.createdAt));
+    services = await withTransientDatabaseReadRetry(() =>
+      db
+        .select()
+        .from(apiServicesTable)
+        .where(eq(apiServicesTable.ownerId, userId))
+        .orderBy(desc(apiServicesTable.createdAt)),
+    );
   } catch (error) {
     logger.error({ requestId, userId, error }, "Dienstliste konnte nicht geladen werden");
     throw error;
@@ -746,20 +749,24 @@ router.post("/services/:id/domain-verification/check", async (req, res): Promise
 });
 
 router.get("/dashboard", async (req, res): Promise<void> => {
-  const userId = await requireUserId(req, res);
+  const userId = await requireUserId(req, res, { retryTransientReads: true });
   if (!userId) return;
-  const services = await db
-    .select()
-    .from(apiServicesTable)
-    .where(eq(apiServicesTable.ownerId, userId));
+  const services = await withTransientDatabaseReadRetry(() =>
+    db
+      .select()
+      .from(apiServicesTable)
+      .where(eq(apiServicesTable.ownerId, userId)),
+  );
   const serviceIds = new Set(services.map((service) => service.id));
   const checks =
     services.length === 0
       ? []
-      : await db
-          .select()
-          .from(apiChecksTable)
-          .where(inArray(apiChecksTable.serviceId, [...serviceIds]));
+      : await withTransientDatabaseReadRetry(() =>
+          db
+            .select()
+            .from(apiChecksTable)
+            .where(inArray(apiChecksTable.serviceId, [...serviceIds])),
+        );
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
   const timedChecks = liveChecks.filter((check) => check.responseTimeMs > 0);
   const aggregateMetrics = calculateTrustMetrics(liveChecks, 15000);

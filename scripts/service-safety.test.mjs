@@ -24,7 +24,7 @@ function makeResponse() {
   };
 }
 
-test("Datenbankfehler werden als 503 mit korrelierter Request-ID ausgegeben", () => {
+test("Transiente Datenbank-Verbindungsfehler werden als 503 mit korrelierter Request-ID ausgegeben", () => {
   const response = makeResponse();
   const logs = [];
   const handler = createApiErrorHandler({
@@ -33,8 +33,8 @@ test("Datenbankfehler werden als 503 mit korrelierter Request-ID ausgegeben", ()
     },
   });
   const request = { id: "service-db-request-123" };
-  const databaseError = Object.assign(new Error("relation bond402_api_checks does not exist"), {
-    code: "42P01",
+  const databaseError = Object.assign(new Error("database connection reset"), {
+    code: "08006",
   });
 
   handler(databaseError, request, response, () => {
@@ -49,7 +49,7 @@ test("Datenbankfehler werden als 503 mit korrelierter Request-ID ausgegeben", ()
   assert.equal(response.headers["X-Request-ID"], request.id);
   assert.equal(logs.length, 1);
   assert.equal(logs[0].payload.requestId, request.id);
-  assert.equal(logs[0].payload.databaseCode, "42P01");
+  assert.equal(logs[0].payload.databaseCode, "08006");
   assert.match(logs[0].message, /Unhandled request error/);
   assert.doesNotMatch(JSON.stringify(response.body), /bond402_api_checks|relation/);
 });

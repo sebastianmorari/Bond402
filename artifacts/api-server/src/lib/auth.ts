@@ -2,6 +2,7 @@ import { createHash, randomBytes, scrypt as nodeScrypt, timingSafeEqual } from "
 import type { Request, Response } from "express";
 import { and, eq, gt, lt } from "drizzle-orm";
 import { bond402SessionsTable, bond402UsersTable, db, type Bond402UserRow } from "@workspace/db";
+import { withTransientDatabaseReadRetry } from "./database-resilience";
 
 const SESSION_COOKIE = "bond402_session";
 const SESSION_DAYS = 30;
@@ -71,20 +72,35 @@ export async function createSession(userId: string, res: Response) {
   res.cookie(SESSION_COOKIE, token, cookieOptions());
 }
 
-export async function getCurrentUser(req: Request): Promise<Bond402UserRow | null> {
+type AuthOptions = {
+  retryTransientReads?: boolean;
+};
+
+export async function getCurrentUser(
+  req: Request,
+  options: AuthOptions = {},
+): Promise<Bond402UserRow | null> {
   const token = req.cookies?.[SESSION_COOKIE];
   if (!token || typeof token !== "string" || token.length < 32) return null;
   const tokenHash = hashSessionToken(token);
-  const [session] = await db
-    .select()
-    .from(bond402SessionsTable)
-    .where(and(eq(bond402SessionsTable.tokenHash, tokenHash), gt(bond402SessionsTable.expiresAt, new Date())));
+  const read = <T>(operation: () => Promise<T>) =>
+    options.retryTransientReads
+      ? withTransientDatabaseReadRetry(operation)
+      : operation();
+  const [session] = await read(async () =>
+    db
+      .select()
+      .from(bond402SessionsTable)
+      .where(and(eq(bond402SessionsTable.tokenHash, tokenHash), gt(bond402SessionsTable.expiresAt, new Date()))),
+  );
   if (!session) return null;
 
-  const [user] = await db
-    .select()
-    .from(bond402UsersTable)
-    .where(eq(bond402UsersTable.id, session.userId));
+  const [user] = await read(async () =>
+    db
+      .select()
+      .from(bond402UsersTable)
+      .where(eq(bond402UsersTable.id, session.userId)),
+  );
   if (!user) return null;
 
   await db
@@ -112,8 +128,12 @@ export async function pruneExpiredSessions() {
   await db.delete(bond402SessionsTable).where(lt(bond402SessionsTable.expiresAt, new Date()));
 }
 
-export async function requireUserId(req: Request, res: Response): Promise<string | null> {
-  const user = await getCurrentUser(req);
+export async function requireUserId(
+  req: Request,
+  res: Response,
+  options: AuthOptions = {},
+): Promise<string | null> {
+  const user = await getCurrentUser(req, options);
   if (!user) {
     res.status(401).json({
       error: "Bitte melden Sie sich an, um Ihre Dienste zu verwalten.",
