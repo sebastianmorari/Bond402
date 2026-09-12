@@ -1,7 +1,12 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, asc, count, eq, ilike, or } from "drizzle-orm";
+import { and, count, eq, ilike, or } from "drizzle-orm";
 import { apiServicesTable, db } from "@workspace/db";
 import { consumePublicRateLimit } from "../lib/api-key-auth";
+import {
+  PUBLIC_DISCOVERY_SOURCE,
+  PUBLIC_DISCOVERY_SOURCE_LABEL,
+  rankPublicServiceResults,
+} from "../lib/public-service-search";
 import { loadChecks, toPublicServiceResponse } from "../lib/service-data";
 import {
   evaluatePreAction,
@@ -89,6 +94,18 @@ router.get("/public/discovery", async (req, res): Promise<void> => {
       wellKnown: `${base}/.well-known/bond402-agent.json`,
       llms: `${base}/llms.txt`,
     },
+    dataSource: {
+      source: PUBLIC_DISCOVERY_SOURCE,
+      sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
+      scope: "LISTED_SERVICES_ONLY",
+      externalSources: false,
+      ranking: [
+        "textRelevance",
+        "observationCoverage",
+        "observationFreshness",
+        "publicSource",
+      ],
+    },
     publicResponseFields: [
       "id",
       "name",
@@ -132,13 +149,12 @@ router.get("/public/services", async (req, res): Promise<void> => {
   const services = await db
     .select()
     .from(apiServicesTable)
-    .where(where)
-    .orderBy(asc(apiServicesTable.name), asc(apiServicesTable.id))
-    .limit(pageSize)
-    .offset((page - 1) * pageSize);
-  const items = await Promise.all(
+    .where(where);
+  const publicServices = await Promise.all(
     services.map(async (service) => toPublicServiceResponse(service, await loadChecks(service.id))),
   );
+  const rankedServices = rankPublicServiceResults(publicServices, q);
+  const items = rankedServices.slice((page - 1) * pageSize, page * pageSize);
   const totalCount = Number(total);
   res.json({
     items,
@@ -147,7 +163,13 @@ router.get("/public/services", async (req, res): Promise<void> => {
     pageSize,
     total: totalCount,
     hasNextPage: page * pageSize < totalCount,
-    sort: "name.asc,id.asc",
+    sort: "matchScore.desc,textRelevance.desc,observationFreshness.desc,name.asc,id.asc",
+    source: {
+      source: PUBLIC_DISCOVERY_SOURCE,
+      sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
+      scope: "LISTED_SERVICES_ONLY",
+      externalSources: false,
+    },
   });
 });
 

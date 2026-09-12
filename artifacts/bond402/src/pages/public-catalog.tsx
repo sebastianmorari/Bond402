@@ -12,6 +12,23 @@ type PublicService = {
   id: string;
   name: string;
   url: string;
+  discovery?: {
+    source: "BOND402_INTERNAL_CATALOG";
+    sourceLabel: string;
+    scope: "LISTED_SERVICES_ONLY";
+    matchScore: number;
+    rankingFactors: {
+      textRelevance: number;
+      observationCoverage: number;
+      observationFreshness: number;
+      publicSource: number;
+    };
+    evidence: {
+      liveObservationCount: number;
+      latestObservationAt: string | null;
+      publicSourceUrl: string;
+    };
+  };
   trustScore: number | null;
   trustExplanation: string;
   trustMetrics: {
@@ -70,6 +87,12 @@ type CatalogResponse = {
   pageSize: number;
   total: number;
   hasNextPage: boolean;
+  source: {
+    source: "BOND402_INTERNAL_CATALOG";
+    sourceLabel: string;
+    scope: "LISTED_SERVICES_ONLY";
+    externalSources: false;
+  };
 };
 
 type DecisionResponse = {
@@ -148,7 +171,10 @@ function ServiceCard({ service }: { service: PublicService }) {
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bot className="h-5 w-5" /></span>
           <div className="min-w-0"><h2 className="truncate font-semibold">{service.name}</h2><p className="truncate font-mono text-xs text-muted-foreground">{service.url}</p></div>
         </div>
-        <Badge variant={service.latestStatus === "PASS" ? "default" : service.latestStatus === "FAIL" ? "destructive" : "outline"}>{service.latestStatus || "Neu"}</Badge>
+         <div className="flex flex-wrap justify-end gap-2">
+           <Badge variant="outline">{service.discovery?.sourceLabel || "Interne Bond402-Daten"}</Badge>
+           <Badge variant={service.latestStatus === "PASS" ? "default" : service.latestStatus === "FAIL" ? "destructive" : "outline"}>{service.latestStatus || "Neu"}</Badge>
+         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Trust Score</p><p className="mt-1 text-xl font-bold">{service.trustScore === null ? "—" : `${service.trustScore}%`}</p></div>
