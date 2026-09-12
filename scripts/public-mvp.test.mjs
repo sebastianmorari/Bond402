@@ -536,6 +536,50 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const serviceId = serviceCreated.data.id;
   assert.ok(serviceId);
 
+  const deleteCandidate = await request("/api/services", {
+    method: "POST",
+    jar: jarA,
+    body: {
+      name: "Löschbarer Besitzschutz-Testdienst",
+      url: "https://example.com",
+      expectedStructure: "html",
+      maxResponseTime: 2000,
+    },
+  });
+  assert.equal(deleteCandidate.response.status, 201);
+  const deleteCandidateId = deleteCandidate.data.id;
+  assert.ok(deleteCandidateId);
+
+  const ownerServicesBeforeDelete = await request("/api/services", { jar: jarA });
+  assert.equal(ownerServicesBeforeDelete.response.status, 200);
+  assert.ok(ownerServicesBeforeDelete.data.some((service) => service.id === deleteCandidateId));
+
+  const otherOwnerBeforeDelete = await request("/api/services", { jar: jarB });
+  assert.equal(otherOwnerBeforeDelete.response.status, 200);
+  assert.deepEqual(otherOwnerBeforeDelete.data, []);
+
+  const deleted = await request(`/api/services/${deleteCandidateId}`, {
+    method: "DELETE",
+    jar: jarA,
+  });
+  assert.equal(deleted.response.status, 204);
+
+  const deletedDetail = await request(`/api/services/${deleteCandidateId}`, { jar: jarA });
+  assert.equal(deletedDetail.response.status, 404);
+  assert.equal(deletedDetail.data.code, "NOT_FOUND");
+
+  const ownerServicesAfterDelete = await request("/api/services", { jar: jarA });
+  assert.equal(ownerServicesAfterDelete.response.status, 200);
+  assert.equal(
+    ownerServicesAfterDelete.data.some((service) => service.id === deleteCandidateId),
+    false,
+  );
+  assert.ok(ownerServicesAfterDelete.data.some((service) => service.id === serviceId));
+
+  const otherOwnerAfterDelete = await request("/api/services", { jar: jarB });
+  assert.equal(otherOwnerAfterDelete.response.status, 200);
+  assert.deepEqual(otherOwnerAfterDelete.data, []);
+
    const listedService = await request(`/api/services/${serviceId}`, {
      method: "PATCH",
      jar: jarA,
