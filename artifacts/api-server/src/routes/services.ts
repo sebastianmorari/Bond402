@@ -389,8 +389,7 @@ router.post("/services", async (req, res): Promise<void> => {
   if (
     !parsed.success ||
     !Number.isInteger(parsed.data.maxResponseTime) ||
-    normalizedName.length < 2 ||
-    (responseMode === "JSON" && normalizedStructure.length === 0)
+    normalizedName.length < 2
   ) {
     res.status(400).json({ error: "Bitte prüfen Sie alle Eingaben.", code: "INVALID_INPUT" });
     return;
@@ -542,10 +541,6 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
   }
   if (changes.name !== undefined && changes.name.length < 2) {
     res.status(400).json({ error: "Der Dienstname ist zu kurz.", code: "INVALID_INPUT" });
-    return;
-  }
-  if (responseMode === "JSON" && changes.expectedStructure.length === 0) {
-    res.status(400).json({ error: "Die erwartete Struktur darf nicht leer sein.", code: "INVALID_INPUT" });
     return;
   }
   if (changes.maxResponseTime !== undefined && !Number.isInteger(changes.maxResponseTime)) {

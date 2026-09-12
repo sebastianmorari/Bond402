@@ -334,7 +334,7 @@ export const createServiceBodyDomainRelationshipDefault = `THIRD_PARTY`;
 export const CreateServiceBody = zod.object({
   "name": zod.string().min(createServiceBodyNameMin).max(createServiceBodyNameMax),
   "url": zod.string().max(createServiceBodyUrlMax).regex(createServiceBodyUrlRegExp),
-  "expectedStructure": zod.string().min(1).max(createServiceBodyExpectedStructureMax).optional(),
+  "expectedStructure": zod.string().max(createServiceBodyExpectedStructureMax).optional(),
   "responseMode": zod.enum(['JSON', 'HTTP']).default(createServiceBodyResponseModeDefault),
   "maxResponseTime": zod.number().min(createServiceBodyMaxResponseTimeMin).max(createServiceBodyMaxResponseTimeMax),
   "requestMethod": zod.enum(['GET', 'POST']).default(createServiceBodyRequestMethodDefault),
@@ -583,7 +583,7 @@ export const updateServiceBodyTargetAuthSecretMax = 4096;
 export const UpdateServiceBody = zod.object({
   "name": zod.string().min(updateServiceBodyNameMin).max(updateServiceBodyNameMax).optional(),
   "url": zod.string().max(updateServiceBodyUrlMax).regex(updateServiceBodyUrlRegExp).optional(),
-  "expectedStructure": zod.string().min(1).max(updateServiceBodyExpectedStructureMax).optional(),
+  "expectedStructure": zod.string().max(updateServiceBodyExpectedStructureMax).optional(),
   "responseMode": zod.enum(['JSON', 'HTTP']).optional(),
   "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional(),
   "visibility": zod.enum(['PRIVATE', 'LISTED']).optional(),

@@ -548,6 +548,9 @@ export function parseExpectedFields(input: string): string[] {
 export function compareStructure(expectedStructure: string, actual: unknown) {
   const expected = parseExpectedFields(expectedStructure);
   const actualKeys = collectKeys(actual);
+  if (expected.length === 0) {
+    return { foundFields: [], missingFields: [], ratio: 1, matches: true };
+  }
   const foundFields = expected.filter((field) => actualKeys.has(field.toLowerCase()));
   const missingFields = expected.filter((field) => !actualKeys.has(field.toLowerCase()));
   const ratio = expected.length === 0 ? 0 : foundFields.length / expected.length;
@@ -575,7 +578,7 @@ export async function runLiveVerification(
         errorCode: "HTTP_ERROR",
         summary: `Der Dienst antwortete mit HTTP-Status ${response.status}.`,
         foundFields: [],
-        missingFields: parseExpectedFields(expectedStructure),
+        missingFields: responseMode === "HTTP" ? [] : parseExpectedFields(expectedStructure),
         https: url.startsWith("https:"),
         tlsStatus: response.tls.status,
         tlsExpiresAt: response.tls.expiresAt,
@@ -643,7 +646,9 @@ export async function runLiveVerification(
           : "FAIL";
     const summary =
       status === "PASS"
-        ? "Der Dienst ist erreichbar, schnell genug und liefert die erwartete Struktur."
+        ? expectedStructure.trim().length === 0
+          ? "Der Dienst ist erreichbar, liefert gültiges JSON und antwortet schnell genug. Es wurde keine Feldstruktur vorgegeben."
+          : "Der Dienst ist erreichbar, schnell genug und liefert die erwartete Struktur."
         : status === "REVIEW"
           ? "Der Dienst antwortet, aber Antwortzeit oder Struktur weichen teilweise ab."
           : "Der Dienst antwortet, aber wichtige erwartete Felder fehlen.";
@@ -679,7 +684,7 @@ export async function runLiveVerification(
       errorCode: code,
       summary: publicVerificationSummary(code),
       foundFields: [],
-      missingFields: parseExpectedFields(expectedStructure),
+      missingFields: responseMode === "HTTP" ? [] : parseExpectedFields(expectedStructure),
       https: url.startsWith("https:"),
       tlsStatus: url.startsWith("https:")
         ? ["CERT_HAS_EXPIRED", "CERT_NOT_YET_VALID", "UNABLE_TO_VERIFY_LEAF_SIGNATURE", "DEPTH_ZERO_SELF_SIGNED_CERT"].includes(code)

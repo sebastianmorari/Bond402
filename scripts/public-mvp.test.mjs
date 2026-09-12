@@ -529,6 +529,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
       url: "https://example.com",
       expectedStructure: "html",
       maxResponseTime: 2000,
+      domainRelationship: "OWNED",
     },
   });
   assert.equal(serviceCreated.response.status, 201);

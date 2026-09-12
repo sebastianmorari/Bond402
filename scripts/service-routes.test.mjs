@@ -153,6 +153,23 @@ test("HTTP-Dienste benötigen keine erwartete JSON-Struktur", async () => {
   assert.equal(updated.data.expectedStructure, "status");
 });
 
+test("JSON-Dienste dürfen ohne optionale erwartete Struktur registriert werden", async () => {
+  const created = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: {
+      name: "JSON ohne Struktur Routentest",
+      url: "https://example.com",
+      responseMode: "JSON",
+      maxResponseTime: 1000,
+    },
+  });
+
+  assert.equal(created.response.status, 201);
+  assert.equal(created.data.responseMode, "JSON");
+  assert.equal(created.data.expectedStructure, "");
+});
+
 test("Services ohne Checks und mit historischer Check-Historie bleiben gültig", async () => {
   const withoutChecks = await request("/api/services", {
     method: "POST",

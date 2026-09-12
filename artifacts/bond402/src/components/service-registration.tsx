@@ -23,14 +23,6 @@ const formSchema = z.object({
   targetAuthHeaderName: z.string().max(128).optional(),
   targetAuthSecret: z.string().max(4096).optional(),
   requestBody: z.string().max(64000).optional(),
-}).superRefine((data, context) => {
-  if (data.responseMode === "JSON" && !data.expectedStructure.trim()) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["expectedStructure"],
-      message: "Für JSON-Prüfungen wird eine erwartete Struktur benötigt.",
-    });
-  }
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -198,7 +190,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
                   </FormControl>
                   <p className="text-xs leading-5 text-muted-foreground">
                     {responseMode === "JSON"
-                      ? "Die erfolgreiche Antwort muss gültiges JSON liefern und die erwarteten Felder enthalten."
+                       ? "Die erfolgreiche Antwort muss gültiges JSON liefern. Eine erwartete Feldstruktur ist optional."
                       : "Prüft Erreichbarkeit, HTTP-Status, HTTPS/TLS, Security-Header und Latenz. HTML und anderer Textinhalt sind erlaubt."}
                   </p>
                   <FormMessage />
@@ -213,7 +205,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
               render={({ field }) => (
                 <FormItem>
                   <div className="flex items-center gap-2">
-                    <FormLabel>Erwartete JSON-Struktur</FormLabel>
+                    <FormLabel>Erwartete JSON-Struktur (optional)</FormLabel>
                     <Tooltip>
                       <TooltipTrigger type="button">
                         <Info className="h-4 w-4 text-muted-foreground" />

@@ -26,10 +26,7 @@ export interface ApiServiceUpdate {
      * @pattern ^https?://
      */
   url?: string;
-  /**
-     * @minLength 1
-     * @maxLength 4000
-     */
+  /** @maxLength 4000 */
   expectedStructure?: string;
   responseMode?: ServiceResponseMode;
   /**

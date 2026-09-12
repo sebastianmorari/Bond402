@@ -53,6 +53,10 @@ import {
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { checkStatusLabel, checkTypeLabel } from "@/lib/presentation";
+import {
+  isDomainVerificationNotApplicableError,
+  shouldShowDomainVerification,
+} from "@/lib/service-ui";
 
 interface ServiceDetailsProps {
   serviceId: string | null;
@@ -202,7 +206,20 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
             variant: result.status === "VERIFIED" ? "default" : "destructive",
           });
         },
-        onError: (error) => toast({ title: "Verifizierung fehlgeschlagen", description: error.data?.error, variant: "destructive" }),
+        onError: (error) => {
+          if (isDomainVerificationNotApplicableError(error)) {
+            toast({
+              title: "Nicht erforderlich",
+              description: "Für Drittanbieter-APIs ist keine Domain-Verifizierung erforderlich.",
+            });
+            return;
+          }
+          toast({
+            title: "Verifizierung fehlgeschlagen",
+            description: error.data?.error,
+            variant: "destructive",
+          });
+        },
       },
     );
   };
@@ -254,7 +271,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
           url: editForm.url,
           maxResponseTime: Number(editForm.maxResponseTime),
            responseMode: editForm.responseMode,
-           ...(expectedStructure ? { expectedStructure } : {}),
+            ...(editForm.responseMode === "JSON" ? { expectedStructure } : {}),
            visibility: editForm.visibility,
            requestMethod: editForm.requestMethod,
            targetAuthType: editForm.targetAuthType,
@@ -415,19 +432,21 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                       <p className="mt-3 text-xs leading-5 text-muted-foreground">Geprüft bedeutet nur: Bond402 hat dieses Signal bei einer Live-Prüfung beobachtet. Es ist keine Sicherheitsgarantie.</p>
                     </div>
                   </div>
-                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <h4 className="font-medium text-sm">Domain-Verifizierung</h4>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">Bestätigt, dass der Betreiber eine HTTPS-Well-Known-Datei unter der Service-Domain kontrolliert.</p>
+                  {shouldShowDomainVerification(service.domainRelationship) && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h4 className="font-medium text-sm">Domain-Verifizierung</h4>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">Bestätigt, dass der Betreiber eine HTTPS-Well-Known-Datei unter der Service-Domain kontrolliert.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button variant="outline" size="sm" onClick={handleIssueDomainVerification} disabled={issueDomainVerification.isPending}>Token erzeugen</Button>
+                          <Button size="sm" onClick={handleCheckDomainVerification} disabled={checkDomainVerification.isPending || service.domainVerification.status === "NOT_STARTED"}>Jetzt prüfen</Button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" onClick={handleIssueDomainVerification} disabled={issueDomainVerification.isPending}>Token erzeugen</Button>
-                        <Button size="sm" onClick={handleCheckDomainVerification} disabled={checkDomainVerification.isPending || service.domainVerification.status === "NOT_STARTED"}>Jetzt prüfen</Button>
-                      </div>
+                      {domainToken && <p className="mt-3 break-all rounded-lg bg-background/70 p-3 font-mono text-xs">Token: {domainToken}</p>}
                     </div>
-                    {domainToken && <p className="mt-3 break-all rounded-lg bg-background/70 p-3 font-mono text-xs">Token: {domainToken}</p>}
-                  </div>
+                  )}
                   <div className="bg-muted/30 border border-border/50 rounded-xl p-4 flex items-center justify-between">
                     <div>
                       <h4 className="font-medium text-sm">Jetzt prüfen</h4>
@@ -702,13 +721,13 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                         </select>
                         <p className="text-xs leading-5 text-muted-foreground">
                           {editForm.responseMode === "JSON"
-                            ? "Die erfolgreiche Antwort muss gültiges JSON liefern und die erwarteten Felder enthalten."
+                             ? "Die erfolgreiche Antwort muss gültiges JSON liefern. Eine erwartete Feldstruktur ist optional."
                             : "HTML und anderer Textinhalt sind erlaubt; geprüft werden Erreichbarkeit, Status, HTTPS/TLS, Security-Header und Latenz."}
                         </p>
                       </div>
                       {editForm.responseMode === "JSON" && (
                       <div className="space-y-2">
-                        <Label>Erwartete Struktur (JSON)</Label>
+                         <Label>Erwartete Struktur (JSON, optional)</Label>
                         <Textarea 
                           className="font-mono text-xs min-h-[150px]"
                           value={editForm.expectedStructure} 

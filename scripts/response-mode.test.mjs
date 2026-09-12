@@ -35,6 +35,22 @@ test("HTTP-Modus akzeptiert eine erfolgreiche HTML-Antwort ohne JSON-Parsing", a
   assert.deepEqual(result.missingFields, []);
 });
 
+test("HTTP-Modus verlangt auch mit alter JSON-Struktur keine erwarteten Felder", async () => {
+  const result = await runLiveVerification(
+    "https://service.example.test/page",
+    '{"status":"ok"}',
+    1000,
+    {},
+    "HTTP",
+    fakeFetcher("<html><body>OK</body></html>"),
+  );
+
+  assert.equal(result.status, "PASS");
+  assert.equal(result.structureMatch, true);
+  assert.deepEqual(result.foundFields, []);
+  assert.deepEqual(result.missingFields, []);
+});
+
 test("JSON-Modus akzeptiert gültiges JSON mit der erwarteten Struktur", async () => {
   const result = await runLiveVerification(
     "https://service.example.test/data",
@@ -48,6 +64,22 @@ test("JSON-Modus akzeptiert gültiges JSON mit der erwarteten Struktur", async (
   assert.equal(result.status, "PASS");
   assert.equal(result.structureMatch, true);
   assert.deepEqual(result.foundFields, ["status"]);
+});
+
+test("JSON-Modus akzeptiert gültiges JSON auch ohne optionale Struktur", async () => {
+  const result = await runLiveVerification(
+    "https://service.example.test/data",
+    "",
+    1000,
+    {},
+    "JSON",
+    fakeFetcher('{"status":"ok"}', 200, 120, { "content-type": "application/json" }),
+  );
+
+  assert.equal(result.status, "PASS");
+  assert.equal(result.structureMatch, true);
+  assert.deepEqual(result.foundFields, []);
+  assert.deepEqual(result.missingFields, []);
 });
 
 test("JSON-Modus meldet ungültiges JSON weiterhin als INVALID_JSON", async () => {
