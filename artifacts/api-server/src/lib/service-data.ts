@@ -2,11 +2,18 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import {
   apiChecksTable,
   apiServicesTable,
+  bond402SecurityObservationsTable,
+  bond402ThreatIndicatorsTable,
   db,
   type ApiCheckRow,
   type ApiServiceRow,
 } from "@workspace/db";
-import type { SecuritySignals, TargetRequestOptions, VerificationOutcome } from "./api-verifier";
+import type {
+  SecurityObservation,
+  SecuritySignals,
+  TargetRequestOptions,
+  VerificationOutcome,
+} from "./api-verifier";
 import {
   calculateSecurityConfidence,
   normalizeResponseMode,
@@ -52,9 +59,14 @@ function signalState(check: ApiCheckRow | undefined) {
 }
 
 function getSecuritySignals(check: ApiCheckRow | undefined): SecuritySignals {
-  return check?.securitySignals
-    ? (check.securitySignals as SecuritySignals)
-    : structuredClone(UNKNOWN_SECURITY_SIGNALS);
+  if (!check?.securitySignals) return structuredClone(UNKNOWN_SECURITY_SIGNALS);
+  const stored = check.securitySignals as Partial<SecuritySignals>;
+  return {
+    ...structuredClone(UNKNOWN_SECURITY_SIGNALS),
+    ...stored,
+    threatIndicators: stored.threatIndicators ?? structuredClone(UNKNOWN_SECURITY_SIGNALS.threatIndicators),
+    historicalDrift: stored.historicalDrift ?? structuredClone(UNKNOWN_SECURITY_SIGNALS.historicalDrift),
+  };
 }
 
 export function toCheckResponse(check: ApiCheckRow) {
@@ -155,6 +167,18 @@ export function calculateTrust(
   };
 }
 
+function applySecurityStatusCap(
+  score: number | null,
+  securityStatus: string,
+): number | null {
+  if (score === null) return null;
+  if (securityStatus === "FLAGGED") return 0;
+  if (securityStatus === "SUSPICIOUS") return Math.min(score, 35);
+  if (securityStatus === "SANDBOX_PENDING") return Math.min(score, 40);
+  if (securityStatus === "SANDBOXED_OBSERVED") return Math.min(score, 60);
+  return score;
+}
+
 export async function loadChecks(
   serviceId: string,
   executor: ServiceDataExecutor = db,
@@ -180,10 +204,46 @@ export async function saveOutcome(
   checkType: "LIVE" | "MANUAL",
   outcome: VerificationOutcome,
 ) {
+  const observation = outcome.securityObservation;
+  const previousObservation = observation
+    ? (
+        await db
+          .select()
+          .from(bond402SecurityObservationsTable)
+          .where(eq(bond402SecurityObservationsTable.serviceId, serviceId))
+          .orderBy(desc(bond402SecurityObservationsTable.observedAt))
+          .limit(1)
+      )[0]
+    : undefined;
+  const securitySignals = withHistoricalDrift(outcome.securitySignals, previousObservation, observation);
+  const { securityObservation: _securityObservation, ...checkOutcome } = outcome;
   const [check] = await db
     .insert(apiChecksTable)
-    .values({ id: crypto.randomUUID(), serviceId, checkType, ...outcome })
+    .values({ id: crypto.randomUUID(), serviceId, checkType, ...checkOutcome, securitySignals })
     .returning();
+  if (observation) {
+    await db.insert(bond402SecurityObservationsTable).values({
+      id: crypto.randomUUID(),
+      serviceId,
+      status: securitySignals.threatIndicators.status,
+      ...observation,
+      indicators: securitySignals.threatIndicators.indicators,
+    });
+    if (securitySignals.threatIndicators.indicators.length > 0) {
+      await db.insert(bond402ThreatIndicatorsTable).values(
+        securitySignals.threatIndicators.indicators.map((indicator) => ({
+          id: crypto.randomUUID(),
+          indicatorType: "PAYLOAD_HEURISTIC",
+          normalizedValue: indicator,
+          verdict: securitySignals.threatIndicators.status,
+          severity: securitySignals.threatIndicators.severity,
+          confidence: String(securitySignals.threatIndicators.confidence),
+          source: "BOND402_HEURISTICS",
+          metadata: { serviceId },
+        })),
+      );
+    }
+  }
   await db.execute(sql`
     DELETE FROM ${apiChecksTable}
     WHERE ${apiChecksTable.id} IN (
@@ -194,7 +254,70 @@ export async function saveOutcome(
       OFFSET 100
     )
   `);
+  if (checkType === "LIVE") {
+    const recentChecks = await loadChecks(serviceId);
+    const liveChecks = recentChecks.filter((item) => item.checkType === "LIVE");
+    const hasFlag = liveChecks.some((item) => {
+      const signals = getSecuritySignals(item);
+      return signals.threatIndicators.status === "FLAGGED";
+    });
+    const hasSuspicion = liveChecks.some((item) => {
+      const signals = getSecuritySignals(item);
+      return signals.threatIndicators.status === "SUSPICIOUS" || signals.historicalDrift.status === "CHANGED";
+    });
+    const nextSecurityStatus = hasFlag
+      ? "FLAGGED"
+      : hasSuspicion
+        ? "SUSPICIOUS"
+        : liveChecks.length >= 3
+          ? "VERIFIED_LOW_RISK"
+          : "SANDBOXED_OBSERVED";
+    const [service] = await db
+      .select({ sandboxObservedAt: apiServicesTable.sandboxObservedAt })
+      .from(apiServicesTable)
+      .where(eq(apiServicesTable.id, serviceId))
+      .limit(1);
+    await db
+      .update(apiServicesTable)
+      .set({
+        securityStatus: nextSecurityStatus,
+        sandboxObservedAt: service?.sandboxObservedAt ?? new Date(),
+      })
+      .where(eq(apiServicesTable.id, serviceId));
+  }
   return check;
+}
+
+function withHistoricalDrift(
+  signals: SecuritySignals,
+  previous: {
+    responseFingerprint: string;
+    responseKind: string;
+    responseSizeBucket: string;
+    headerFingerprint: string;
+    redirectTargets: string[];
+    tlsFingerprint: string;
+  } | undefined,
+  current: SecurityObservation | undefined,
+): SecuritySignals {
+  if (!previous || !current) return signals;
+  const indicators: string[] = [];
+  if (previous.responseFingerprint !== current.responseFingerprint) indicators.push("RESPONSE_STRUCTURE_CHANGED");
+  if (previous.responseKind !== current.responseKind) indicators.push("RESPONSE_KIND_CHANGED");
+  if (previous.headerFingerprint !== current.headerFingerprint) indicators.push("SECURITY_HEADERS_CHANGED");
+  if (previous.tlsFingerprint !== current.tlsFingerprint) indicators.push("TLS_FINGERPRINT_CHANGED");
+  if (previous.redirectTargets.join("|") !== current.redirectTargets.join("|")) indicators.push("REDIRECT_TARGETS_CHANGED");
+  return {
+    ...signals,
+    historicalDrift: {
+      status: indicators.length > 0 ? "CHANGED" : "NONE",
+      indicators,
+      summary:
+        indicators.length > 0
+          ? `Historische Abweichung erkannt: ${indicators.join(", ")}.`
+          : "Die beobachteten Response- und Transportmerkmale entsprechen dem letzten Beobachtungsfingerprint.",
+    },
+  };
 }
 
 export async function toServiceResponse(
@@ -227,10 +350,13 @@ export function buildServiceResponse(
     visibility: service.visibility as "PRIVATE" | "LISTED",
     listedAt: service.listedAt?.toISOString() ?? null,
     createdAt: service.createdAt.toISOString(),
-    trustScore: trust.score,
+     trustScore: applySecurityStatusCap(trust.score, service.securityStatus),
     trustExplanation: trust.explanation,
     availabilityScore: trust.availabilityScore,
     securityConfidence: trust.securityConfidence,
+    securityStatus: service.securityStatus,
+    firstSeenAt: service.firstSeenAt.toISOString(),
+    sandboxObservedAt: service.sandboxObservedAt?.toISOString() ?? null,
     trustMetrics: trust.metrics,
     signals: signalState(latestCheck),
     domainVerification: {
@@ -255,10 +381,13 @@ export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheck
     url: service.url,
     visibility: "LISTED" as const,
     listedAt: service.listedAt?.toISOString() ?? null,
-    trustScore: trust.score,
+     trustScore: applySecurityStatusCap(trust.score, service.securityStatus),
     trustExplanation: trust.explanation,
     availabilityScore: trust.availabilityScore,
     securityConfidence: trust.securityConfidence,
+    securityStatus: service.securityStatus,
+    firstSeenAt: service.firstSeenAt.toISOString(),
+    sandboxObservedAt: service.sandboxObservedAt?.toISOString() ?? null,
     trustMetrics: trust.metrics,
     signals: signalState(latestCheck),
     domainVerification: {

@@ -30,6 +30,9 @@ export const apiServicesTable = pgTable("bond402_api_services", {
   domainVerifiedAt: timestamp("domain_verified_at", { withTimezone: true }),
   domainRelationship: text("domain_relationship").notNull().default("THIRD_PARTY"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  securityStatus: text("security_status").notNull().default("SANDBOX_PENDING"),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  sandboxObservedAt: timestamp("sandbox_observed_at", { withTimezone: true }),
 });
 
 export type SecuritySignalsJson = {
@@ -84,6 +87,18 @@ export type SecuritySignalsJson = {
   securityConfidence: {
     status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
     score: number | null;
+    summary: string;
+  };
+  threatIndicators: {
+    status: "NONE_DETECTED" | "SUSPICIOUS" | "FLAGGED" | "UNKNOWN";
+    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    confidence: number;
+    indicators: string[];
+    summary: string;
+  };
+  historicalDrift: {
+    status: "NONE" | "CHANGED" | "UNKNOWN";
+    indicators: string[];
     summary: string;
   };
 };
@@ -176,6 +191,18 @@ export const apiChecksTable = pgTable("bond402_api_checks", {
         status: "UNKNOWN",
         score: null,
         summary: "Security Confidence ist ohne ausreichende Beobachtungen unbekannt.",
+      },
+      threatIndicators: {
+        status: "UNKNOWN",
+        severity: "LOW",
+        confidence: 0,
+        indicators: [],
+        summary: "Threat-Indikatoren wurden nicht bewertet.",
+      },
+      historicalDrift: {
+        status: "UNKNOWN",
+        indicators: [],
+        summary: "Historische Abweichungen benötigen mehrere Bond402-Beobachtungen.",
       },
     }),
   probeRegion: text("probe_region").notNull().default("default"),

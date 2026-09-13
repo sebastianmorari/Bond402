@@ -31,6 +31,18 @@ export type VerificationOutcome = {
   securityHeaders: SecurityHeadersSnapshot;
   securitySignals: SecuritySignals;
   probeRegion: string;
+  securityObservation?: SecurityObservation;
+};
+
+export type SecurityObservation = {
+  responseFingerprint: string;
+  responseKind: ResponseContentKind;
+  responseSizeBucket: string;
+  headerFingerprint: string;
+  redirectTargets: string[];
+  tlsFingerprint: string;
+  latencyBucket: string;
+  indicators: string[];
 };
 
 export type SignalStatus = "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED";
@@ -120,6 +132,18 @@ export type SecuritySignals = {
     score: number | null;
     summary: string;
   };
+  threatIndicators: {
+    status: "NONE_DETECTED" | "SUSPICIOUS" | "FLAGGED" | "UNKNOWN";
+    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    confidence: number;
+    indicators: string[];
+    summary: string;
+  };
+  historicalDrift: {
+    status: "NONE" | "CHANGED" | "UNKNOWN";
+    indicators: string[];
+    summary: string;
+  };
 };
 
 export type DomainChallengeFetcher = (
@@ -190,6 +214,18 @@ export const UNKNOWN_SECURITY_SIGNALS: SecuritySignals = {
     status: "UNKNOWN",
     score: null,
     summary: "Security Confidence ist ohne ausreichende Beobachtungen unbekannt.",
+  },
+  threatIndicators: {
+    status: "UNKNOWN",
+    severity: "LOW",
+    confidence: 0,
+    indicators: [],
+    summary: "Threat-Indikatoren wurden nicht bewertet.",
+  },
+  historicalDrift: {
+    status: "UNKNOWN",
+    indicators: [],
+    summary: "Historische Abweichungen benötigen mehrere Bond402-Beobachtungen.",
   },
 };
 
@@ -342,6 +378,87 @@ function inspectSuspiciousPayload(body: string): SecuritySignals["suspiciousPayl
   };
 }
 
+function classifyThreatIndicators(
+  indicators: string[],
+): SecuritySignals["threatIndicators"] {
+  if (indicators.length === 0) {
+    return {
+      status: "NONE_DETECTED",
+      severity: "LOW",
+      confidence: 20,
+      indicators: [],
+      summary: "Keine bekannten Muster erkannt. Das ist keine Garantie für Sicherheit.",
+    };
+  }
+  const hasExecutable = indicators.includes("EXECUTABLE_OR_ARCHIVE_SIGNATURE");
+  const hasCommand = indicators.includes("SHELL_OR_POWERSHELL_PATTERN");
+  const flagged = hasExecutable && hasCommand;
+  return {
+    status: flagged ? "FLAGGED" : "SUSPICIOUS",
+    severity: flagged ? "CRITICAL" : hasExecutable || hasCommand ? "HIGH" : "MEDIUM",
+    confidence: flagged ? 85 : 60,
+    indicators,
+    summary: flagged
+      ? "Mehrere gefährliche Payload-Muster wurden gemeinsam erkannt. Es wurde nichts ausgeführt."
+      : "Auffällige Muster wurden erkannt. Legitimer Text oder Code kann ein Fehlalarm sein; es wurde nichts ausgeführt.",
+  };
+}
+
+function hashFingerprint(value: string) {
+  return createHash("sha256").update(value, "utf8").digest("hex").slice(0, 24);
+}
+
+function responseSizeBucket(body: string) {
+  const bytes = Buffer.byteLength(body, "utf8");
+  if (bytes < 1_024) return "<1KB";
+  if (bytes < 10_240) return "<10KB";
+  if (bytes < 102_400) return "<100KB";
+  return "<1MB";
+}
+
+function latencyBucket(elapsedMs: number) {
+  if (elapsedMs <= 250) return "<=250ms";
+  if (elapsedMs <= 1_000) return "<=1s";
+  if (elapsedMs <= 3_000) return "<=3s";
+  return ">3s";
+}
+
+function responseStructureFingerprint(body: string, kind: ResponseContentKind) {
+  if (kind !== "JSON") return hashFingerprint(`${kind}|${body.slice(0, 64).replace(/\s+/g, " ")}`);
+  try {
+    const parsed = JSON.parse(body);
+    const keys = [...collectKeys(parsed)].sort().slice(0, 100);
+    return hashFingerprint(`JSON|${keys.join("|")}`);
+  } catch {
+    return hashFingerprint("JSON|INVALID");
+  }
+}
+
+function buildSecurityObservation(
+  response: {
+    status: number;
+    body: string;
+    headers: Record<string, string>;
+    elapsedMs: number;
+    tls: { protocol: string | null; certificateValid: boolean | null; daysRemaining: number | null };
+    redirectTargets?: string[];
+  },
+  signals: SecuritySignals,
+): SecurityObservation {
+  return {
+    responseFingerprint: responseStructureFingerprint(response.body, signals.responseType.kind),
+    responseKind: signals.responseType.kind,
+    responseSizeBucket: responseSizeBucket(response.body),
+    headerFingerprint: hashFingerprint(Object.keys(response.headers).sort().join("|")),
+    redirectTargets: [...new Set(response.redirectTargets ?? [])].slice(0, MAX_REDIRECTS),
+    tlsFingerprint: hashFingerprint(
+      `${response.tls.protocol ?? "unknown"}|${response.tls.certificateValid ?? "unknown"}|${response.tls.daysRemaining === null ? "unknown" : response.tls.daysRemaining > 30 ? ">30d" : "<=30d"}`,
+    ),
+    latencyBucket: latencyBucket(response.elapsedMs),
+    indicators: signals.threatIndicators.indicators,
+  };
+}
+
 function inspectRateLimit(headers: Record<string, string>, status: number): SecuritySignals["rateLimit"] {
   const hasRateLimitHeader = Object.keys(headers).some(
     (name) => name.startsWith("x-ratelimit-") || name === "ratelimit" || name === "retry-after",
@@ -398,9 +515,21 @@ export function calculateSecurityConfidence(
     (statuses.reduce((sum, status) => sum + securityStatusScore(status), 0) / statuses.length) * 100,
   );
   const sampleCap = sampleCount < 2 ? 60 : sampleCount < 3 ? 70 : sampleCount < 5 ? 80 : 95;
-  const score = Math.min(rawScore, sampleCap, signals.reputation.status === "UNKNOWN" ? 80 : 100);
-  const hasFailure = statuses.some((status) => status === "FAIL");
-  const hasCaution = statuses.some((status) => status === "WARNING" || status === "UNKNOWN");
+  const threatCap =
+    signals.threatIndicators?.status === "FLAGGED"
+      ? 20
+      : signals.threatIndicators?.status === "SUSPICIOUS"
+        ? 40
+        : signals.historicalDrift?.status === "CHANGED"
+          ? 50
+          : 100;
+  const score = Math.min(rawScore, sampleCap, threatCap, signals.reputation.status === "UNKNOWN" ? 80 : 100);
+  const hasFailure =
+    statuses.some((status) => status === "FAIL") || signals.threatIndicators?.status === "FLAGGED";
+  const hasCaution =
+    statuses.some((status) => status === "WARNING" || status === "UNKNOWN") ||
+    signals.threatIndicators?.status === "SUSPICIOUS" ||
+    signals.historicalDrift?.status === "CHANGED";
   return {
     status: hasFailure ? "FAIL" : hasCaution ? "WARNING" : "PASS",
     score,
@@ -424,6 +553,7 @@ function createSecuritySignals(input: {
       certificateValid: boolean | null;
     };
     redirects: { count: number; crossOrigin: boolean; downgraded: boolean };
+    redirectTargets: string[];
   };
   networkStatus?: SecuritySignalStatus;
   networkSummary?: string;
@@ -452,6 +582,7 @@ function createSecuritySignals(input: {
   const redirects = response.redirects ?? { count: 0, crossOrigin: false, downgraded: false };
   const content = classifyResponseContent(response.body, response.headers);
   const payload = inspectSuspiciousPayload(response.body);
+  const threatIndicators = classifyThreatIndicators(payload.indicators);
   const legacyHeaders = inspectSecurityHeaders(
     response.headers,
     tls.protocol === "https:" || tls.status !== "NOT_EVALUATED",
@@ -514,6 +645,8 @@ function createSecuritySignals(input: {
     rateLimit: inspectRateLimit(response.headers, response.status),
     authentication: inspectAuthentication(response.headers, response.status),
     securityConfidence: UNKNOWN_SECURITY_SIGNALS.securityConfidence,
+    threatIndicators,
+    historicalDrift: structuredClone(UNKNOWN_SECURITY_SIGNALS.historicalDrift),
   };
   signals.securityConfidence = calculateSecurityConfidence(signals, 1);
   return signals;
@@ -931,6 +1064,7 @@ export async function safeGet(
     certificateValid: boolean | null;
   };
   redirects: { count: number; crossOrigin: boolean; downgraded: boolean };
+  redirectTargets: string[];
 }> {
   const deadline = Date.now() + timeoutMs;
   const requestOptions = prepareTargetRequest(options);
@@ -954,6 +1088,7 @@ export async function safeGet(
   let redirectCount = 0;
   let crossOriginRedirect = false;
   let downgradedRedirect = false;
+  const redirectTargets: string[] = [];
 
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
     const sameOrigin = url.origin === initialOrigin;
@@ -991,6 +1126,7 @@ export async function safeGet(
       redirectCount += 1;
       crossOriginRedirect ||= nextUrl.origin !== url.origin;
       downgradedRedirect ||= url.protocol === "https:" && nextUrl.protocol === "http:";
+      if (redirectTargets.length < MAX_REDIRECTS) redirectTargets.push(nextUrl.hostname.toLowerCase());
       url = nextUrl;
       continue;
     }
@@ -1005,6 +1141,7 @@ export async function safeGet(
         crossOrigin: crossOriginRedirect,
         downgraded: downgradedRedirect,
       },
+      redirectTargets,
     };
   }
 
@@ -1068,6 +1205,7 @@ export async function runLiveVerification(
   try {
     const response = await fetchResponse(url, timeoutMs, options);
     if (response.status < 200 || response.status >= 300) {
+      const securitySignals = createSecuritySignals({ reachable: true, response });
       return {
         status: "FAIL",
         reachable: true,
@@ -1083,14 +1221,16 @@ export async function runLiveVerification(
         tlsExpiresAt: response.tls.expiresAt,
         tlsDaysRemaining: response.tls.daysRemaining,
         securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
-        securitySignals: createSecuritySignals({ reachable: true, response }),
+        securitySignals,
         probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
+        securityObservation: buildSecurityObservation(response, securitySignals),
       };
     }
 
     if (responseMode === "HTTP") {
       const fastEnough = response.elapsedMs <= maxResponseTime;
       const status = fastEnough ? "PASS" : "REVIEW";
+      const securitySignals = createSecuritySignals({ reachable: true, response });
       return {
         status,
         reachable: true,
@@ -1109,8 +1249,9 @@ export async function runLiveVerification(
         tlsExpiresAt: response.tls.expiresAt,
         tlsDaysRemaining: response.tls.daysRemaining,
         securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
-        securitySignals: createSecuritySignals({ reachable: true, response }),
+        securitySignals,
         probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
+        securityObservation: buildSecurityObservation(response, securitySignals),
       };
     }
 
@@ -1118,6 +1259,7 @@ export async function runLiveVerification(
     try {
       json = JSON.parse(response.body);
     } catch {
+      const securitySignals = createSecuritySignals({ reachable: true, response });
       return {
         status: "FAIL",
         reachable: true,
@@ -1133,8 +1275,9 @@ export async function runLiveVerification(
         tlsExpiresAt: response.tls.expiresAt,
         tlsDaysRemaining: response.tls.daysRemaining,
         securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
-        securitySignals: createSecuritySignals({ reachable: true, response }),
+        securitySignals,
         probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
+        securityObservation: buildSecurityObservation(response, securitySignals),
       };
     }
 
@@ -1154,6 +1297,7 @@ export async function runLiveVerification(
         : status === "REVIEW"
           ? "Der Dienst antwortet, aber Antwortzeit oder Struktur weichen teilweise ab."
           : "Der Dienst antwortet, aber wichtige erwartete Felder fehlen.";
+    const securitySignals = createSecuritySignals({ reachable: true, response });
 
     return {
       status,
@@ -1170,8 +1314,9 @@ export async function runLiveVerification(
       tlsExpiresAt: response.tls.expiresAt,
       tlsDaysRemaining: response.tls.daysRemaining,
       securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
-      securitySignals: createSecuritySignals({ reachable: true, response }),
+      securitySignals,
       probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
+      securityObservation: buildSecurityObservation(response, securitySignals),
     };
   } catch (error) {
     const code =

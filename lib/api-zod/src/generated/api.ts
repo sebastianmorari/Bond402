@@ -229,6 +229,9 @@ export const ListServicesResponseItem = zod.object({
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']),
+  "firstSeenAt": zod.coerce.date(),
+  "sandboxObservedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "availabilityScore": zod.number().nullable(),
@@ -366,6 +369,21 @@ export const ListServicesResponseItem = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -431,6 +449,9 @@ export const CreateServiceResponse = zod.object({
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']),
+  "firstSeenAt": zod.coerce.date(),
+  "sandboxObservedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "availabilityScore": zod.number().nullable(),
@@ -568,6 +589,21 @@ export const CreateServiceResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -602,6 +638,9 @@ export const GetServiceResponse = zod.object({
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']),
+  "firstSeenAt": zod.coerce.date(),
+  "sandboxObservedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "availabilityScore": zod.number().nullable(),
@@ -739,6 +778,21 @@ export const GetServiceResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -821,6 +875,9 @@ export const UpdateServiceResponse = zod.object({
   "visibility": zod.enum(['PRIVATE', 'LISTED']),
   "listedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']),
+  "firstSeenAt": zod.coerce.date(),
+  "sandboxObservedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
   "availabilityScore": zod.number().nullable(),
@@ -958,6 +1015,21 @@ export const UpdateServiceResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -1061,6 +1133,21 @@ export const RunServiceCheckResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -1171,6 +1258,21 @@ export const VerifyServiceResponseResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -1421,6 +1523,21 @@ export const DeveloperGetServiceResponse = zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
   "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
 })
 }),
   "probeRegion": zod.string()
@@ -1510,6 +1627,21 @@ export const DeveloperGetServiceResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -1635,6 +1767,21 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
   "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
 })
 }),
   "probeRegion": zod.string()
@@ -1724,6 +1871,21 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -1849,6 +2011,21 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
   "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
 })
 }),
   "probeRegion": zod.string()
@@ -1938,6 +2115,21 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -2276,6 +2468,21 @@ export const SearchPublicServicesResponse = zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
   "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
 })
 }),
   "probeRegion": zod.string()
@@ -2509,6 +2716,21 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "securityConfidence": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
+  "securityStatus": zod.enum(['SANDBOX_PENDING', 'SANDBOXED_OBSERVED', 'VERIFIED_LOW_RISK', 'SUSPICIOUS', 'FLAGGED']).optional(),
+  "firstSeenAt": zod.coerce.date().optional(),
+  "sandboxObservedAt": zod.coerce.date().nullish(),
+  "threatIndicators": zod.object({
+  "status": zod.enum(['NONE_DETECTED', 'SUSPICIOUS', 'FLAGGED', 'UNKNOWN']),
+  "severity": zod.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "confidence": zod.number(),
+  "indicators": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "historicalDrift": zod.object({
+  "status": zod.enum(['NONE', 'CHANGED', 'UNKNOWN']),
+  "indicators": zod.array(zod.string()),
   "summary": zod.string()
 })
 }),
@@ -2799,6 +3021,44 @@ export const PostPublicPreActionCheckResponse = zod.object({
   "rateLimit": zod.string()
 }).optional()
 }))
+
+
+/**
+ * Runs a rate-limited Bond402 check only for the exact HTTPS GET/HEAD endpoint
+ * that Bond402 derived from the external OpenAPI document. No credentials are
+ * sent, the result is not persisted, and the endpoint remains unverified external.
+ * @summary Run one safe, read-only check for an external discovery candidate
+ */
+
+
+
+export const PostPublicExternalCheckParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const PostPublicExternalCheckBody = zod.object({
+  "method": zod.enum(['GET', 'HEAD']),
+  "path": zod.string(),
+  "url": zod.string().url()
+})
+
+export const PostPublicExternalCheckResponse = zod.object({
+  "serviceId": zod.string(),
+  "endpoint": zod.object({
+  "method": zod.enum(['GET', 'HEAD']),
+  "path": zod.string(),
+  "url": zod.string().url()
+}),
+  "verification": zod.object({
+  "status": zod.enum(['CHECKED_EXTERNAL']),
+  "trustStatus": zod.enum(['UNVERIFIED_EXTERNAL']),
+  "checkedAt": zod.coerce.date(),
+  "persisted": zod.boolean()
+}),
+  "check": zod.record(zod.string(), zod.unknown()),
+  "usage": zod.record(zod.string(), zod.unknown()),
+  "safety": zod.record(zod.string(), zod.unknown())
+})
 
 
 /**

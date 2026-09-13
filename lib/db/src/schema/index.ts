@@ -21,3 +21,4 @@ export * from "./bond402";
 export * from "./bond402-api-keys";
 export * from "./bond402-auth";
 export * from "./bond402-usage";
+export * from "./bond402-security";

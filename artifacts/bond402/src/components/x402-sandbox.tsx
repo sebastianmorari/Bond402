@@ -160,6 +160,18 @@ function simulatedCheck(serviceId: string): CheckResult {
         score: 60,
         summary: "Sandbox-Sicherheitswerte sind simuliert.",
       },
+      threatIndicators: {
+        status: "UNKNOWN",
+        severity: "LOW",
+        confidence: 0,
+        indicators: [],
+        summary: "Threat-Indikatoren werden in der Sandbox nicht simuliert.",
+      },
+      historicalDrift: {
+        status: "UNKNOWN",
+        indicators: [],
+        summary: "Historische Abweichungen werden in der Sandbox nicht simuliert.",
+      },
     },
     probeRegion: "sandbox",
   };

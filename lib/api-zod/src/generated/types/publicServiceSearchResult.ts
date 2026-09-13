@@ -13,4 +13,8 @@ import type { PublicServiceDiscovery } from './publicServiceDiscovery';
 
 export type PublicServiceSearchResult = PublicService & {
   discovery: PublicServiceDiscovery;
-};
+} & Required<Pick<PublicService & {
+  discovery: PublicServiceDiscovery;
+}, Extract<keyof (PublicService & {
+  discovery: PublicServiceDiscovery;
+}), 'securityStatus' | 'firstSeenAt' | 'sandboxObservedAt'>>>;

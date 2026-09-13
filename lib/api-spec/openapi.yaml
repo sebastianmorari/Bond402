@@ -1393,6 +1393,14 @@ components:
         createdAt:
           type: string
           format: date-time
+        securityStatus:
+          $ref: "#/components/schemas/SecurityStatus"
+        firstSeenAt:
+          type: string
+          format: date-time
+        sandboxObservedAt:
+          type: ["string", "null"]
+          format: date-time
         trustScore:
           type: ["number", "null"]
         trustExplanation:
@@ -1411,7 +1419,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CheckResult"
-      required: [id, name, url, expectedStructure, responseMode, maxResponseTime, requestMethod, targetAuthType, targetAuthHeaderName, targetAuthSecretConfigured, requestBody, domainRelationship, visibility, listedAt, createdAt, trustScore, trustExplanation, availabilityScore, securityConfidence, trustMetrics, signals, domainVerification, checks]
+      required: [id, name, url, expectedStructure, responseMode, maxResponseTime, requestMethod, targetAuthType, targetAuthHeaderName, targetAuthSecretConfigured, requestBody, domainRelationship, visibility, listedAt, createdAt, securityStatus, firstSeenAt, sandboxObservedAt, trustScore, trustExplanation, availabilityScore, securityConfidence, trustMetrics, signals, domainVerification, checks]
     CheckResult:
       type: object
       properties:
@@ -1519,6 +1527,9 @@ components:
     SecuritySignalStatus:
       type: string
       enum: [PASS, WARNING, FAIL, UNKNOWN]
+    SecurityStatus:
+      type: string
+      enum: [SANDBOX_PENDING, SANDBOXED_OBSERVED, VERIFIED_LOW_RISK, SUSPICIOUS, FLAGGED]
     ResponseContentKind:
       type: string
       enum: [JSON, TEXT, HTML, JAVASCRIPT, BINARY, DOWNLOAD, UNKNOWN]
@@ -1532,6 +1543,37 @@ components:
         summary:
           type: string
       required: [status, score, summary]
+    ThreatIndicators:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [NONE_DETECTED, SUSPICIOUS, FLAGGED, UNKNOWN]
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        confidence:
+          type: number
+        indicators:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+      required: [status, severity, confidence, indicators, summary]
+    HistoricalDrift:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [NONE, CHANGED, UNKNOWN]
+        indicators:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+      required: [status, indicators, summary]
     SecuritySignals:
       type: object
       properties:
@@ -1660,7 +1702,19 @@ components:
           required: [status, summary, required]
         securityConfidence:
           $ref: "#/components/schemas/SecurityConfidence"
-      required: [reachability, transport, network, redirects, responseType, suspiciousPayload, securityHeaders, reputation, rateLimit, authentication, securityConfidence]
+        securityStatus:
+          $ref: "#/components/schemas/SecurityStatus"
+        firstSeenAt:
+          type: string
+          format: date-time
+        sandboxObservedAt:
+          type: ["string", "null"]
+          format: date-time
+        threatIndicators:
+          $ref: "#/components/schemas/ThreatIndicators"
+        historicalDrift:
+          $ref: "#/components/schemas/HistoricalDrift"
+      required: [reachability, transport, network, redirects, responseType, suspiciousPayload, securityHeaders, reputation, rateLimit, authentication, securityConfidence, threatIndicators, historicalDrift]
     SignalStates:
       type: object
       properties:
@@ -2025,7 +2079,7 @@ components:
             privilegedPreActionCheck:
               type: string
           required: [detail, preActionCheck, privilegedPreActionCheck]
-      required: [id, name, url, visibility, listedAt, trustScore, trustExplanation, availabilityScore, securityConfidence, trustMetrics, signals, domainVerification, domainRelationship, latestStatus, latestCheckAt, latestCheck, access, links]
+      required: [id, name, url, visibility, listedAt, securityStatus, firstSeenAt, sandboxObservedAt, trustScore, trustExplanation, availabilityScore, securityConfidence, trustMetrics, signals, domainVerification, domainRelationship, latestStatus, latestCheckAt, latestCheck, access, links]
     PublicServiceCatalog:
       type: object
       properties:
@@ -2521,7 +2575,6 @@ components:
           type: object
           additionalProperties: true
       required: [serviceId, endpoint, verification, check, usage, safety]
-          required: [actionContext, freshness, policy, access, usage]
     DemoService:
       type: object
       properties:

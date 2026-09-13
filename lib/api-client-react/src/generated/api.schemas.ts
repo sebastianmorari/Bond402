@@ -312,6 +312,60 @@ export const SecuritySignalsReputationStatus = {
   UNKNOWN: 'UNKNOWN',
 } as const;
 
+export type SecurityStatus = typeof SecurityStatus[keyof typeof SecurityStatus];
+
+
+export const SecurityStatus = {
+  SANDBOX_PENDING: 'SANDBOX_PENDING',
+  SANDBOXED_OBSERVED: 'SANDBOXED_OBSERVED',
+  VERIFIED_LOW_RISK: 'VERIFIED_LOW_RISK',
+  SUSPICIOUS: 'SUSPICIOUS',
+  FLAGGED: 'FLAGGED',
+} as const;
+
+export type ThreatIndicatorsStatus = typeof ThreatIndicatorsStatus[keyof typeof ThreatIndicatorsStatus];
+
+
+export const ThreatIndicatorsStatus = {
+  NONE_DETECTED: 'NONE_DETECTED',
+  SUSPICIOUS: 'SUSPICIOUS',
+  FLAGGED: 'FLAGGED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type ThreatIndicatorsSeverity = typeof ThreatIndicatorsSeverity[keyof typeof ThreatIndicatorsSeverity];
+
+
+export const ThreatIndicatorsSeverity = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export interface ThreatIndicators {
+  status: ThreatIndicatorsStatus;
+  severity: ThreatIndicatorsSeverity;
+  confidence: number;
+  indicators: string[];
+  summary: string;
+}
+
+export type HistoricalDriftStatus = typeof HistoricalDriftStatus[keyof typeof HistoricalDriftStatus];
+
+
+export const HistoricalDriftStatus = {
+  NONE: 'NONE',
+  CHANGED: 'CHANGED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface HistoricalDrift {
+  status: HistoricalDriftStatus;
+  indicators: string[];
+  summary: string;
+}
+
 export type SecuritySignalsReachability = {
   status: SecuritySignalStatus;
   summary: string;
@@ -397,6 +451,12 @@ export interface SecuritySignals {
   rateLimit: SecuritySignalsRateLimit;
   authentication: SecuritySignalsAuthentication;
   securityConfidence: SecurityConfidence;
+  securityStatus?: SecurityStatus;
+  firstSeenAt?: string;
+  /** @nullable */
+  sandboxObservedAt?: string | null;
+  threatIndicators: ThreatIndicators;
+  historicalDrift: HistoricalDrift;
 }
 
 export interface CheckResult {
@@ -669,6 +729,10 @@ export interface ApiService {
   /** @nullable */
   listedAt: string | null;
   createdAt: string;
+  securityStatus: SecurityStatus;
+  firstSeenAt: string;
+  /** @nullable */
+  sandboxObservedAt: string | null;
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
@@ -983,7 +1047,11 @@ export interface PublicServiceDiscovery {
 
 export type PublicServiceSearchResult = PublicService & {
   discovery: PublicServiceDiscovery;
-};
+} & Required<Pick<PublicService & {
+  discovery: PublicServiceDiscovery;
+}, Extract<keyof (PublicService & {
+  discovery: PublicServiceDiscovery;
+}), 'securityStatus' | 'firstSeenAt' | 'sandboxObservedAt'>>>;
 
 export type PublicExternalServiceKind = typeof PublicExternalServiceKind[keyof typeof PublicExternalServiceKind];
 
@@ -1401,6 +1469,56 @@ export type PublicPreActionCheck = DeveloperPreActionCheck & {
 
 export interface PublicPreActionBody {
   actionContext?: ActionContext;
+}
+
+export type PublicExternalCheckBodyMethod = typeof PublicExternalCheckBodyMethod[keyof typeof PublicExternalCheckBodyMethod];
+
+
+export const PublicExternalCheckBodyMethod = {
+  GET: 'GET',
+  HEAD: 'HEAD',
+} as const;
+
+export interface PublicExternalCheckBody {
+  method: PublicExternalCheckBodyMethod;
+  path: string;
+  url: string;
+}
+
+export type PublicExternalCheckResponseVerificationStatus = typeof PublicExternalCheckResponseVerificationStatus[keyof typeof PublicExternalCheckResponseVerificationStatus];
+
+
+export const PublicExternalCheckResponseVerificationStatus = {
+  CHECKED_EXTERNAL: 'CHECKED_EXTERNAL',
+} as const;
+
+export type PublicExternalCheckResponseVerificationTrustStatus = typeof PublicExternalCheckResponseVerificationTrustStatus[keyof typeof PublicExternalCheckResponseVerificationTrustStatus];
+
+
+export const PublicExternalCheckResponseVerificationTrustStatus = {
+  UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
+} as const;
+
+export type PublicExternalCheckResponseVerification = {
+  status: PublicExternalCheckResponseVerificationStatus;
+  trustStatus: PublicExternalCheckResponseVerificationTrustStatus;
+  checkedAt: string;
+  persisted: boolean;
+};
+
+export type PublicExternalCheckResponseCheck = { [key: string]: unknown };
+
+export type PublicExternalCheckResponseUsage = { [key: string]: unknown };
+
+export type PublicExternalCheckResponseSafety = { [key: string]: unknown };
+
+export interface PublicExternalCheckResponse {
+  serviceId: string;
+  endpoint: PublicExternalCheckBody;
+  verification: PublicExternalCheckResponseVerification;
+  check: PublicExternalCheckResponseCheck;
+  usage: PublicExternalCheckResponseUsage;
+  safety: PublicExternalCheckResponseSafety;
 }
 
 export interface DemoService {

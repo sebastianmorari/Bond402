@@ -14,6 +14,7 @@ import type { CheckResult } from './checkResult';
 import type { DomainRelationship } from './domainRelationship';
 import type { DomainVerification } from './domainVerification';
 import type { SecurityConfidence } from './securityConfidence';
+import type { SecurityStatus } from './securityStatus';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { ServiceResponseMode } from './serviceResponseMode';
 import type { SignalStates } from './signalStates';
@@ -39,6 +40,10 @@ export interface ApiService {
   /** @nullable */
   listedAt: Date | null;
   createdAt: Date;
+  securityStatus: SecurityStatus;
+  firstSeenAt: Date;
+  /** @nullable */
+  sandboxObservedAt: Date | null;
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;

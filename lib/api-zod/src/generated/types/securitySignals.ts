@@ -8,6 +8,7 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { HistoricalDrift } from './historicalDrift';
 import type { SecurityConfidence } from './securityConfidence';
 import type { SecuritySignalsAuthentication } from './securitySignalsAuthentication';
 import type { SecuritySignalsNetwork } from './securitySignalsNetwork';
@@ -19,6 +20,8 @@ import type { SecuritySignalsResponseType } from './securitySignalsResponseType'
 import type { SecuritySignalsSecurityHeaders } from './securitySignalsSecurityHeaders';
 import type { SecuritySignalsSuspiciousPayload } from './securitySignalsSuspiciousPayload';
 import type { SecuritySignalsTransport } from './securitySignalsTransport';
+import type { SecurityStatus } from './securityStatus';
+import type { ThreatIndicators } from './threatIndicators';
 
 export interface SecuritySignals {
   reachability: SecuritySignalsReachability;
@@ -32,4 +35,10 @@ export interface SecuritySignals {
   rateLimit: SecuritySignalsRateLimit;
   authentication: SecuritySignalsAuthentication;
   securityConfidence: SecurityConfidence;
+  securityStatus?: SecurityStatus;
+  firstSeenAt?: Date;
+  /** @nullable */
+  sandboxObservedAt?: Date | null;
+  threatIndicators: ThreatIndicators;
+  historicalDrift: HistoricalDrift;
 }

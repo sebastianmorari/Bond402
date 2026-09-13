@@ -221,6 +221,10 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           type: "string",
           enum: ["PASS", "WARNING", "FAIL", "UNKNOWN"],
         },
+        SecurityStatus: {
+          type: "string",
+          enum: ["SANDBOX_PENDING", "SANDBOXED_OBSERVED", "VERIFIED_LOW_RISK", "SUSPICIOUS", "FLAGGED"],
+        },
         ResponseContentKind: {
           type: "string",
           enum: ["JSON", "TEXT", "HTML", "JAVASCRIPT", "BINARY", "DOWNLOAD", "UNKNOWN"],
@@ -231,6 +235,26 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           properties: {
             status: { $ref: "#/components/schemas/SecuritySignalStatus" },
             score: { type: ["number", "null"] },
+            summary: { type: "string" },
+          },
+        },
+        ThreatIndicators: {
+          type: "object",
+          required: ["status", "severity", "confidence", "indicators", "summary"],
+          properties: {
+            status: { type: "string", enum: ["NONE_DETECTED", "SUSPICIOUS", "FLAGGED", "UNKNOWN"] },
+            severity: { type: "string", enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+            confidence: { type: "number" },
+            indicators: { type: "array", items: { type: "string" } },
+            summary: { type: "string" },
+          },
+        },
+        HistoricalDrift: {
+          type: "object",
+          required: ["status", "indicators", "summary"],
+          properties: {
+            status: { type: "string", enum: ["NONE", "CHANGED", "UNKNOWN"] },
+            indicators: { type: "array", items: { type: "string" } },
             summary: { type: "string" },
           },
         },
@@ -248,6 +272,8 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             "rateLimit",
             "authentication",
             "securityConfidence",
+            "threatIndicators",
+            "historicalDrift",
           ],
           properties: {
             reachability: {
@@ -348,6 +374,8 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               },
             },
             securityConfidence: { $ref: "#/components/schemas/SecurityConfidence" },
+            threatIndicators: { $ref: "#/components/schemas/ThreatIndicators" },
+            historicalDrift: { $ref: "#/components/schemas/HistoricalDrift" },
           },
         },
         SignalStates: {
@@ -507,7 +535,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         },
         PublicService: {
           type: "object",
-          required: ["id", "name", "url", "trustScore", "trustExplanation", "availabilityScore", "securityConfidence", "trustMetrics", "signals", "domainVerification", "domainRelationship", "latestStatus", "latestCheckAt", "latestCheck", "access", "links"],
+          required: ["id", "name", "url", "trustScore", "trustExplanation", "availabilityScore", "securityConfidence", "securityStatus", "firstSeenAt", "sandboxObservedAt", "trustMetrics", "signals", "domainVerification", "domainRelationship", "latestStatus", "latestCheckAt", "latestCheck", "access", "links"],
           properties: {
             id: { type: "string" },
             name: { type: "string" },
@@ -516,6 +544,9 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             trustExplanation: { type: "string" },
             availabilityScore: { type: ["number", "null"] },
             securityConfidence: { $ref: "#/components/schemas/SecurityConfidence" },
+            securityStatus: { $ref: "#/components/schemas/SecurityStatus" },
+            firstSeenAt: { type: "string", format: "date-time" },
+            sandboxObservedAt: { type: ["string", "null"], format: "date-time" },
             trustMetrics: { $ref: "#/components/schemas/TrustMetrics" },
             signals: { $ref: "#/components/schemas/SignalStates" },
             domainVerification: { $ref: "#/components/schemas/DomainVerification" },

@@ -70,11 +70,13 @@ const securitySignalLabels = {
   authentication: "Auth-Hinweise",
   rateLimit: "Rate-Limit",
   securityConfidence: "Security Confidence",
+  threatIndicators: "Threat-Indikatoren",
+  historicalDrift: "Historische Abweichung",
 } as const;
 
 function securitySignalVariant(status: string): "default" | "destructive" | "secondary" {
-  if (status === "PASS") return "default";
-  if (status === "FAIL") return "destructive";
+  if (status === "PASS" || status === "NONE_DETECTED" || status === "NONE") return "default";
+  if (status === "FAIL" || status === "FLAGGED") return "destructive";
   return "secondary";
 }
 
@@ -85,7 +87,34 @@ function securitySignalStatusLabel(status: string) {
       ? "FAIL"
       : status === "WARNING"
         ? "WARNING"
-        : "UNKNOWN";
+        : status === "NONE_DETECTED"
+          ? "KEIN FUND"
+          : status === "FLAGGED"
+            ? "BLOCK"
+            : status === "SUSPICIOUS"
+              ? "SUSPICIOUS"
+              : status === "CHANGED"
+                ? "ABWEICHUNG"
+                : status === "NONE"
+                  ? "STABIL"
+                  : "UNKNOWN";
+}
+
+function securityStatusLabel(status: string) {
+  switch (status) {
+    case "SANDBOX_PENDING":
+      return "SANDBOX AUSSTEHEND";
+    case "SANDBOXED_OBSERVED":
+      return "SANDBOX BEOBACHTET";
+    case "VERIFIED_LOW_RISK":
+      return "NIEDRIGES RISIKO";
+    case "SUSPICIOUS":
+      return "AUFFÄLLIG";
+    case "FLAGGED":
+      return "BLOCKIERT";
+    default:
+      return "UNBEKANNT";
+  }
 }
 
 interface ServiceDetailsProps {
@@ -359,9 +388,14 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                   <SheetDescription className="font-mono text-xs mt-1 text-primary">
                     {service.url}
                   </SheetDescription>
-                  <Badge variant={service.visibility === "LISTED" ? "default" : "outline"} className="mt-3">
-                    {service.visibility === "LISTED" ? "Öffentlich gelistet" : "Privat"}
-                  </Badge>
+                   <div className="mt-3 flex flex-wrap gap-2">
+                     <Badge variant={service.visibility === "LISTED" ? "default" : "outline"}>
+                       {service.visibility === "LISTED" ? "Öffentlich gelistet" : "Privat"}
+                     </Badge>
+                     <Badge variant={service.securityStatus === "FLAGGED" ? "destructive" : service.securityStatus === "VERIFIED_LOW_RISK" ? "default" : "secondary"}>
+                       {securityStatusLabel(service.securityStatus)}
+                     </Badge>
+                   </div>
                 </div>
                 <div className="flex gap-2">
                   <AlertDialog>
@@ -478,6 +512,56 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                         <span>Freshness</span><strong>{service.trustMetrics.latestCheckAt ? "Vorhanden" : "Nicht bewertet"}</strong>
                       </div>
                       <p className="mt-3 text-xs leading-5 text-muted-foreground">Geprüft bedeutet nur: Bond402 hat dieses Signal bei einer Live-Prüfung beobachtet. Es ist keine Sicherheitsgarantie.</p>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs uppercase tracking-wider text-muted-foreground">First-Seen-Sandbox</p>
+                        <Badge variant={service.securityStatus === "FLAGGED" ? "destructive" : "secondary"}>
+                          {securityStatusLabel(service.securityStatus)}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <span>Erstmals gesehen</span>
+                        <strong>{format(new Date(service.firstSeenAt), "dd.MM.yyyy HH:mm", { locale: de })}</strong>
+                        <span>Sandbox beobachtet</span>
+                        <strong>{service.sandboxObservedAt ? format(new Date(service.sandboxObservedAt), "dd.MM.yyyy HH:mm", { locale: de }) : "Noch nicht"}</strong>
+                        <span>Samples</span>
+                        <strong>{service.trustMetrics.sampleCount}</strong>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                        Positive Einstufungen werden erst nach mehreren beobachteten Live-Checks möglich. Ein fehlender Fund ist keine Sicherheitsgarantie.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">Letzte Security-Bewertung</p>
+                      {service.checks[0]?.securitySignals ? (
+                        <>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                            <span>Threats</span>
+                            <Badge variant={securitySignalVariant(service.checks[0].securitySignals.threatIndicators.status)} className="w-fit">
+                              {securitySignalStatusLabel(service.checks[0].securitySignals.threatIndicators.status)}
+                            </Badge>
+                            <span>Historische Abweichung</span>
+                            <Badge variant={securitySignalVariant(service.checks[0].securitySignals.historicalDrift.status)} className="w-fit">
+                              {securitySignalStatusLabel(service.checks[0].securitySignals.historicalDrift.status)}
+                            </Badge>
+                          </div>
+                          {service.checks[0].securitySignals.threatIndicators.indicators.length > 0 && (
+                            <p className="mt-3 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                              Indikatoren: {service.checks[0].securitySignals.threatIndicators.indicators.join(", ")}
+                            </p>
+                          )}
+                          {service.checks[0].securitySignals.historicalDrift.indicators.length > 0 && (
+                            <p className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
+                              Abweichungen: {service.checks[0].securitySignals.historicalDrift.indicators.join(", ")}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="mt-3 text-sm text-muted-foreground">Noch keine Security-Beobachtung vorhanden.</p>
+                      )}
                     </div>
                   </div>
                   {shouldShowDomainVerification(service.domainRelationship) && (

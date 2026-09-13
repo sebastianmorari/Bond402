@@ -48,6 +48,8 @@ import type {
   DomainVerificationResult,
   HealthStatus,
   PublicDiscovery,
+  PublicExternalCheckBody,
+  PublicExternalCheckResponse,
   PublicExternalDiscoveryDetail,
   PublicPreActionBody,
   PublicPreActionCheck,
@@ -2601,6 +2603,81 @@ export const usePostPublicPreActionCheck = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getPostPublicPreActionCheckMutationOptions(options));
+    }
+
+export const getPostPublicExternalCheckUrl = (id: string,) => {
+
+
+
+
+  return `/api/public/services/${id}/external-check`
+}
+
+/**
+ * Runs a rate-limited Bond402 check only for the exact HTTPS GET/HEAD endpoint
+ * that Bond402 derived from the external OpenAPI document. No credentials are
+ * sent, the result is not persisted, and the endpoint remains unverified external.
+ * @summary Run one safe, read-only check for an external discovery candidate
+ */
+export const postPublicExternalCheck = async (id: string,
+    publicExternalCheckBody: PublicExternalCheckBody, options?: Parameters<typeof customFetch>[1]): Promise<PublicExternalCheckResponse> => {
+
+  return customFetch<PublicExternalCheckResponse>(getPostPublicExternalCheckUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(publicExternalCheckBody)
+  }
+);}
+
+
+
+
+
+export const getPostPublicExternalCheckMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPublicExternalCheck>>, TError,{id: string;data: BodyType<PublicExternalCheckBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postPublicExternalCheck>>, TError,{id: string;data: BodyType<PublicExternalCheckBody>}, TContext> => {
+
+const mutationKey = ['postPublicExternalCheck'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postPublicExternalCheck>>, {id: string;data: BodyType<PublicExternalCheckBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postPublicExternalCheck(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostPublicExternalCheckMutationResult = NonNullable<Awaited<ReturnType<typeof postPublicExternalCheck>>>
+    export type PostPublicExternalCheckMutationBody = BodyType<PublicExternalCheckBody>
+    export type PostPublicExternalCheckMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Run one safe, read-only check for an external discovery candidate
+ */
+export const usePostPublicExternalCheck = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPublicExternalCheck>>, TError,{id: string;data: BodyType<PublicExternalCheckBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof postPublicExternalCheck>>,
+        TError,
+        {id: string;data: BodyType<PublicExternalCheckBody>},
+        TContext
+      > => {
+      return useMutation(getPostPublicExternalCheckMutationOptions(options));
     }
 
 export const getGetPublicOpenApiUrl = () => {
