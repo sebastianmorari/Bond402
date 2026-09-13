@@ -45,15 +45,26 @@ before(async () => {
 
 after(async () => {
   if (server && !server.killed) {
+    const waitForExit = () =>
+      Promise.race([
+        once(server, "exit"),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
+
     try {
-      process.kill(-server.pid, "SIGTERM");
+      process.kill(-server.pid, "SIGINT");
     } catch {
-      server.kill("SIGTERM");
+      server.kill("SIGINT");
     }
-    await Promise.race([
-      once(server, "exit"),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    const exitedGracefully = await waitForExit();
+    if (!server.killed && server.exitCode === null && server.signalCode === null) {
+      try {
+        process.kill(-server.pid, "SIGTERM");
+      } catch {
+        server.kill("SIGTERM");
+      }
+      await exitedGracefully;
+    }
   }
 });
 
