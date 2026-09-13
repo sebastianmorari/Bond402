@@ -128,8 +128,8 @@ async function startAndCheckApi(databaseUrl, env) {
     for (let attempt = 0; attempt < 50; attempt += 1) {
       if (child.exitCode !== null) throw new Error("API-Prozess wurde vor dem Health-Check beendet.");
       try {
-        await waitForHttp(port, "/healthz", 500);
-        await waitForHttp(port, "/readyz", 500);
+        await waitForHttp(port, "/api/healthz", 500);
+        await waitForHttp(port, "/api/readyz", 500);
         return performance.now() - startedAt;
       } catch (error) {
         lastError = error;
