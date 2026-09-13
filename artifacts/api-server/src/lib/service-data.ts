@@ -22,7 +22,7 @@ export { calculateTrustMetrics, weightedRatio };
 
 export function getTargetRequestOptions(service: ApiServiceRow): TargetRequestOptions {
   return {
-    requestMethod: service.requestMethod as "GET" | "POST",
+    requestMethod: service.requestMethod as "GET" | "HEAD" | "POST",
     targetAuthType: service.targetAuthType as "NONE" | "BEARER" | "API_KEY_HEADER",
     targetAuthHeaderName: service.targetAuthHeaderName,
     targetAuthSecretCiphertext: service.targetAuthSecretCiphertext,
@@ -219,7 +219,7 @@ export function buildServiceResponse(
     expectedStructure: service.expectedStructure,
     responseMode: normalizeResponseMode(service.responseMode),
     maxResponseTime: service.maxResponseTime,
-    requestMethod: service.requestMethod as "GET" | "POST",
+    requestMethod: service.requestMethod as "GET" | "HEAD" | "POST",
     targetAuthType: service.targetAuthType as "NONE" | "BEARER" | "API_KEY_HEADER",
     targetAuthHeaderName: service.targetAuthHeaderName ?? null,
     targetAuthSecretConfigured: Boolean(service.targetAuthSecretCiphertext),

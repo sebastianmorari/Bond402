@@ -110,7 +110,7 @@ function hasField<T extends object>(value: T, field: keyof T) {
 
 function normalizeTargetConfiguration(
   input: {
-    requestMethod?: "GET" | "POST";
+    requestMethod?: "GET" | "HEAD" | "POST";
     targetAuthType?: TargetAuthType;
     targetAuthHeaderName?: string | null;
     targetAuthSecret?: string;
@@ -125,7 +125,7 @@ function normalizeTargetConfiguration(
     ? input.requestBody ?? null
     : existing?.requestBody ?? null;
 
-  if (requestMethod === "GET" && requestBody !== null) {
+  if (requestMethod !== "POST" && requestBody !== null) {
     if (bodyWasProvided) {
       throw Object.assign(new Error("Ein Request-Body ist nur für POST erlaubt."), {
         code: "TARGET_REQUEST_CONFIGURATION",

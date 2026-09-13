@@ -103,6 +103,30 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           },
         },
       },
+      "/public/services/{id}/external-check": {
+        post: {
+          operationId: "postPublicExternalCheck",
+          description: "Rate-limited, non-persisted Bond402 check for an exact safe HTTPS GET/HEAD candidate.",
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/PublicExternalCheckBody" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Non-persisted Bond402 observation",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/PublicExternalCheckResponse" } } },
+            },
+            "400": { description: "Endpoint is not an approved safe candidate" },
+            "404": { description: "External discovery record is unknown" },
+            "429": { description: "Rate limited; inspect Retry-After" },
+          },
+        },
+      },
       "/developer/services/{id}/pre-action-check": {
         post: {
           operationId: "developerPreActionCheck",
@@ -130,6 +154,36 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         ActionContext: {
           type: "string",
           enum: ["GENERAL", "READ", "WRITE", "PAYMENT", "CREDENTIAL_USE"],
+        },
+        PublicExternalCheckBody: {
+          type: "object",
+          required: ["method", "path", "url"],
+          properties: {
+            method: { type: "string", enum: ["GET", "HEAD"] },
+            path: { type: "string" },
+            url: { type: "string", format: "uri" },
+          },
+        },
+        PublicExternalCheckResponse: {
+          type: "object",
+          required: ["serviceId", "endpoint", "verification", "check", "usage", "safety"],
+          properties: {
+            serviceId: { type: "string" },
+            endpoint: { $ref: "#/components/schemas/PublicExternalCheckBody" },
+            verification: {
+              type: "object",
+              required: ["status", "trustStatus", "checkedAt", "persisted"],
+              properties: {
+                status: { type: "string", enum: ["CHECKED_EXTERNAL"] },
+                trustStatus: { type: "string", enum: ["UNVERIFIED_EXTERNAL"] },
+                checkedAt: { type: "string", format: "date-time" },
+                persisted: { type: "boolean" },
+              },
+            },
+            check: { type: "object", additionalProperties: true },
+            usage: { type: "object", additionalProperties: true },
+            safety: { type: "object", additionalProperties: true },
+          },
         },
         Freshness: {
           type: "object",
@@ -535,7 +589,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         },
         PublicExternalDiscoveryDetail: {
           type: "object",
-          required: ["id", "kind", "name", "provider", "version", "description", "source", "verification", "specification", "safeEndpoint", "safeEndpointNote"],
+          required: ["id", "kind", "name", "provider", "version", "description", "source", "verification", "specification", "safeEndpoint", "safeEndpoints", "safeEndpointNote"],
           properties: {
             id: { type: "string" },
             kind: { type: "string", enum: ["EXTERNAL_DISCOVERY_DETAIL"] },
@@ -634,6 +688,19 @@ export function getPublicOpenApiDocument(baseUrl: string) {
                   },
                 },
               ],
+            },
+            safeEndpoints: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["method", "path", "url", "reason"],
+                properties: {
+                  method: { type: "string", enum: ["GET", "HEAD"] },
+                  path: { type: "string" },
+                  url: { type: "string", format: "uri" },
+                  reason: { type: "string", enum: ["EXPLICITLY_PUBLIC_PARAMETER_FREE_READ"] },
+                },
+              },
             },
             safeEndpointNote: { type: "string" },
           },

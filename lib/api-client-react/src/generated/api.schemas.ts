@@ -220,6 +220,7 @@ export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof Serv
 
 export const ServiceRequestMethod = {
   GET: 'GET',
+  HEAD: 'HEAD',
   POST: 'POST',
 } as const;
 
@@ -1142,6 +1143,182 @@ export interface PublicServiceCatalog {
   hasNextPage: boolean;
   sort: string;
   source: PublicDiscoverySource;
+}
+
+export type PublicExternalDiscoveryDetailKind = typeof PublicExternalDiscoveryDetailKind[keyof typeof PublicExternalDiscoveryDetailKind];
+
+
+export const PublicExternalDiscoveryDetailKind = {
+  EXTERNAL_DISCOVERY_DETAIL: 'EXTERNAL_DISCOVERY_DETAIL',
+} as const;
+
+export type PublicExternalDiscoveryDetailSourceId = typeof PublicExternalDiscoveryDetailSourceId[keyof typeof PublicExternalDiscoveryDetailSourceId];
+
+
+export const PublicExternalDiscoveryDetailSourceId = {
+  APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+} as const;
+
+export type PublicExternalDiscoveryDetailSource = {
+  id: PublicExternalDiscoveryDetailSourceId;
+  label: string;
+  catalogUrl: string;
+  recordUrl: string;
+  specificationUrl: string;
+};
+
+export type PublicExternalDiscoveryDetailVerificationStatus = typeof PublicExternalDiscoveryDetailVerificationStatus[keyof typeof PublicExternalDiscoveryDetailVerificationStatus];
+
+
+export const PublicExternalDiscoveryDetailVerificationStatus = {
+  UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
+} as const;
+
+export type PublicExternalDiscoveryDetailVerificationReason = typeof PublicExternalDiscoveryDetailVerificationReason[keyof typeof PublicExternalDiscoveryDetailVerificationReason];
+
+
+export const PublicExternalDiscoveryDetailVerificationReason = {
+  SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK: 'SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK',
+} as const;
+
+export type PublicExternalDiscoveryDetailVerification = {
+  status: PublicExternalDiscoveryDetailVerificationStatus;
+  reason: PublicExternalDiscoveryDetailVerificationReason;
+};
+
+export type PublicExternalDiscoveryDetailSpecificationStatus = typeof PublicExternalDiscoveryDetailSpecificationStatus[keyof typeof PublicExternalDiscoveryDetailSpecificationStatus];
+
+
+export const PublicExternalDiscoveryDetailSpecificationStatus = {
+  PARSED: 'PARSED',
+  UNAVAILABLE: 'UNAVAILABLE',
+  UNSUPPORTED: 'UNSUPPORTED',
+} as const;
+
+export type PublicExternalDiscoveryDetailSpecificationServersItem = {
+  url: string;
+  /** @nullable */
+  description: string | null;
+  templated: boolean;
+};
+
+export type PublicExternalDiscoveryDetailSpecificationAuthStatus = typeof PublicExternalDiscoveryDetailSpecificationAuthStatus[keyof typeof PublicExternalDiscoveryDetailSpecificationAuthStatus];
+
+
+export const PublicExternalDiscoveryDetailSpecificationAuthStatus = {
+  REQUIRED: 'REQUIRED',
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  NOT_DECLARED: 'NOT_DECLARED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type PublicExternalDiscoveryDetailSpecificationAuthSchemesItem = {
+  name: string;
+  type: string;
+  /** @nullable */
+  scheme: string | null;
+  /** @nullable */
+  location: string | null;
+};
+
+export type PublicExternalDiscoveryDetailSpecificationAuth = {
+  status: PublicExternalDiscoveryDetailSpecificationAuthStatus;
+  schemes: PublicExternalDiscoveryDetailSpecificationAuthSchemesItem[];
+};
+
+export type PublicExternalDiscoveryDetailSpecificationEndpointsItemAuth = typeof PublicExternalDiscoveryDetailSpecificationEndpointsItemAuth[keyof typeof PublicExternalDiscoveryDetailSpecificationEndpointsItemAuth];
+
+
+export const PublicExternalDiscoveryDetailSpecificationEndpointsItemAuth = {
+  REQUIRED: 'REQUIRED',
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  NOT_DECLARED: 'NOT_DECLARED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type PublicExternalDiscoveryDetailSpecificationEndpointsItem = {
+  method: string;
+  path: string;
+  /** @nullable */
+  summary: string | null;
+  /** @nullable */
+  operationId: string | null;
+  auth: PublicExternalDiscoveryDetailSpecificationEndpointsItemAuth;
+  safeToProbe: boolean;
+  reason: string;
+};
+
+export type PublicExternalDiscoveryDetailSpecification = {
+  status: PublicExternalDiscoveryDetailSpecificationStatus;
+  /** @nullable */
+  openapiVersion: string | null;
+  /** @nullable */
+  title: string | null;
+  /** @nullable */
+  description: string | null;
+  servers: PublicExternalDiscoveryDetailSpecificationServersItem[];
+  auth: PublicExternalDiscoveryDetailSpecificationAuth;
+  endpoints: PublicExternalDiscoveryDetailSpecificationEndpointsItem[];
+};
+
+export type PublicExternalDiscoveryDetailSafeEndpointMethod = typeof PublicExternalDiscoveryDetailSafeEndpointMethod[keyof typeof PublicExternalDiscoveryDetailSafeEndpointMethod];
+
+
+export const PublicExternalDiscoveryDetailSafeEndpointMethod = {
+  GET: 'GET',
+  HEAD: 'HEAD',
+} as const;
+
+export type PublicExternalDiscoveryDetailSafeEndpointReason = typeof PublicExternalDiscoveryDetailSafeEndpointReason[keyof typeof PublicExternalDiscoveryDetailSafeEndpointReason];
+
+
+export const PublicExternalDiscoveryDetailSafeEndpointReason = {
+  EXPLICITLY_PUBLIC_PARAMETER_FREE_READ: 'EXPLICITLY_PUBLIC_PARAMETER_FREE_READ',
+} as const;
+
+export type PublicExternalDiscoveryDetailSafeEndpoint = {
+  method: PublicExternalDiscoveryDetailSafeEndpointMethod;
+  path: string;
+  url: string;
+  reason: PublicExternalDiscoveryDetailSafeEndpointReason;
+} | null;
+
+export type PublicExternalDiscoveryDetailSafeEndpointsItemMethod = typeof PublicExternalDiscoveryDetailSafeEndpointsItemMethod[keyof typeof PublicExternalDiscoveryDetailSafeEndpointsItemMethod];
+
+
+export const PublicExternalDiscoveryDetailSafeEndpointsItemMethod = {
+  GET: 'GET',
+  HEAD: 'HEAD',
+} as const;
+
+export type PublicExternalDiscoveryDetailSafeEndpointsItemReason = typeof PublicExternalDiscoveryDetailSafeEndpointsItemReason[keyof typeof PublicExternalDiscoveryDetailSafeEndpointsItemReason];
+
+
+export const PublicExternalDiscoveryDetailSafeEndpointsItemReason = {
+  EXPLICITLY_PUBLIC_PARAMETER_FREE_READ: 'EXPLICITLY_PUBLIC_PARAMETER_FREE_READ',
+} as const;
+
+export type PublicExternalDiscoveryDetailSafeEndpointsItem = {
+  method: PublicExternalDiscoveryDetailSafeEndpointsItemMethod;
+  path: string;
+  url: string;
+  reason: PublicExternalDiscoveryDetailSafeEndpointsItemReason;
+};
+
+export interface PublicExternalDiscoveryDetail {
+  id: string;
+  kind: PublicExternalDiscoveryDetailKind;
+  name: string;
+  provider: string;
+  version: string;
+  /** @nullable */
+  description: string | null;
+  source: PublicExternalDiscoveryDetailSource;
+  verification: PublicExternalDiscoveryDetailVerification;
+  specification: PublicExternalDiscoveryDetailSpecification;
+  safeEndpoint: PublicExternalDiscoveryDetailSafeEndpoint;
+  safeEndpoints: PublicExternalDiscoveryDetailSafeEndpointsItem[];
+  safeEndpointNote: string;
 }
 
 export type PublicDiscoveryAuthentication = {

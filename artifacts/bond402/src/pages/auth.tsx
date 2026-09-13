@@ -11,6 +11,10 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
   const [, setLocation] = useLocation();
   const { signIn, signUp } = useAuth();
   const isSignUp = mode === "signUp";
+  const requestedReturnTo = new URLSearchParams(window.location.search).get("returnTo");
+  const returnTo = requestedReturnTo && requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")
+    ? requestedReturnTo
+    : null;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,10 +28,10 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
     try {
       if (isSignUp) {
         await signUp(name, email, password);
-        setLocation("/verify-email");
+        setLocation(returnTo ? `/verify-email?returnTo=${encodeURIComponent(returnTo)}` : "/verify-email");
       } else {
         await signIn(email, password);
-        setLocation("/dashboard");
+        setLocation(returnTo || "/dashboard");
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Die Anmeldung ist fehlgeschlagen.");
@@ -102,7 +106,10 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {isSignUp ? "Bereits ein Konto?" : "Noch kein Konto?"}{" "}
-            <Link href={isSignUp ? "/sign-in" : "/sign-up"} className="font-medium text-primary hover:underline">
+            <Link
+              href={`${isSignUp ? "/sign-in" : "/sign-up"}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+              className="font-medium text-primary hover:underline"
+            >
               {isSignUp ? "Anmelden" : "Jetzt registrieren"}
             </Link>
           </p>

@@ -9,11 +9,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
-
-
-export const ServiceRequestMethod = {
-  GET: 'GET',
-  HEAD: 'HEAD',
-  POST: 'POST',
-} as const;
+export type PublicExternalDiscoveryDetailSpecificationServersItem = {
+  url: string;
+  /** @nullable */
+  description: string | null;
+  templated: boolean;
+};

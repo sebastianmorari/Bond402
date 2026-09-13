@@ -8,12 +8,12 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { PublicExternalDiscoveryDetailSourceId } from './publicExternalDiscoveryDetailSourceId';
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
-
-
-export const ServiceRequestMethod = {
-  GET: 'GET',
-  HEAD: 'HEAD',
-  POST: 'POST',
-} as const;
+export type PublicExternalDiscoveryDetailSource = {
+  id: PublicExternalDiscoveryDetailSourceId;
+  label: string;
+  catalogUrl: string;
+  recordUrl: string;
+  specificationUrl: string;
+};

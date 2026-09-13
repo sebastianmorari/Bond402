@@ -114,6 +114,10 @@ export function ForgotPasswordPage() {
 export function VerifyEmailPage() {
   const [location, setLocation] = useLocation();
   const token = useMemo(() => new URLSearchParams(window.location.search).get("token"), [location]);
+  const requestedReturnTo = useMemo(() => new URLSearchParams(window.location.search).get("returnTo"), [location]);
+  const returnTo = requestedReturnTo && requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")
+    ? requestedReturnTo
+    : null;
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(Boolean(token));
   const [error, setError] = useState<string | null>(null);
@@ -164,7 +168,7 @@ export function VerifyEmailPage() {
           <div className="space-y-4">
             {isSubmitting && <p className="text-sm text-muted-foreground">Der Link wird geprüft …</p>}
             <Feedback error={error} success={success} />
-            {success && <Button className="w-full" onClick={() => setLocation("/sign-in")}>Zur Anmeldung</Button>}
+            {success && <Button className="w-full" onClick={() => setLocation(returnTo ? `/sign-in?returnTo=${encodeURIComponent(returnTo)}` : "/sign-in")}>Zur Anmeldung</Button>}
           </div>
         ) : (
           <form className="space-y-4" onSubmit={handleResend}>

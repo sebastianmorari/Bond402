@@ -220,7 +220,7 @@ export const ListServicesResponseItem = zod.object({
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
-  "requestMethod": zod.enum(['GET', 'POST']),
+  "requestMethod": zod.enum(['GET', 'HEAD', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
@@ -407,7 +407,7 @@ export const CreateServiceBody = zod.object({
   "expectedStructure": zod.string().max(createServiceBodyExpectedStructureMax).optional(),
   "responseMode": zod.enum(['JSON', 'HTTP']).default(createServiceBodyResponseModeDefault),
   "maxResponseTime": zod.number().min(createServiceBodyMaxResponseTimeMin).max(createServiceBodyMaxResponseTimeMax),
-  "requestMethod": zod.enum(['GET', 'POST']).default(createServiceBodyRequestMethodDefault),
+  "requestMethod": zod.enum(['GET', 'HEAD', 'POST']).default(createServiceBodyRequestMethodDefault),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']).default(createServiceBodyTargetAuthTypeDefault),
   "targetAuthHeaderName": zod.string().min(1).max(createServiceBodyTargetAuthHeaderNameMax).regex(createServiceBodyTargetAuthHeaderNameRegExp).optional(),
   "targetAuthSecret": zod.string().min(1).max(createServiceBodyTargetAuthSecretMax).optional(),
@@ -422,7 +422,7 @@ export const CreateServiceResponse = zod.object({
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
-  "requestMethod": zod.enum(['GET', 'POST']),
+  "requestMethod": zod.enum(['GET', 'HEAD', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
@@ -593,7 +593,7 @@ export const GetServiceResponse = zod.object({
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
-  "requestMethod": zod.enum(['GET', 'POST']),
+  "requestMethod": zod.enum(['GET', 'HEAD', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
@@ -797,7 +797,7 @@ export const UpdateServiceBody = zod.object({
   "responseMode": zod.enum(['JSON', 'HTTP']).optional(),
   "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional(),
   "visibility": zod.enum(['PRIVATE', 'LISTED']).optional(),
-  "requestMethod": zod.enum(['GET', 'POST']).optional(),
+  "requestMethod": zod.enum(['GET', 'HEAD', 'POST']).optional(),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']).optional(),
   "targetAuthHeaderName": zod.string().max(updateServiceBodyTargetAuthHeaderNameMax).regex(updateServiceBodyTargetAuthHeaderNameRegExp).nullish(),
   "targetAuthSecret": zod.string().min(1).max(updateServiceBodyTargetAuthSecretMax).optional(),
@@ -812,7 +812,7 @@ export const UpdateServiceResponse = zod.object({
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
-  "requestMethod": zod.enum(['GET', 'POST']),
+  "requestMethod": zod.enum(['GET', 'HEAD', 'POST']),
   "targetAuthType": zod.enum(['NONE', 'BEARER', 'API_KEY_HEADER']),
   "targetAuthHeaderName": zod.string().nullable(),
   "targetAuthSecretConfigured": zod.boolean(),
@@ -2361,7 +2361,7 @@ export const SearchPublicServicesResponse = zod.object({
 
 
 /**
- * @summary Read public trust metadata for one listed service
+ * @summary Read public trust metadata or external discovery detail
  */
 
 
@@ -2370,7 +2370,7 @@ export const GetPublicServiceParams = zod.object({
   "id": zod.coerce.string().min(1)
 })
 
-export const GetPublicServiceResponse = zod.object({
+export const GetPublicServiceResponse = zod.union([zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "url": zod.string(),
@@ -2524,7 +2524,67 @@ export const GetPublicServiceResponse = zod.object({
   "preActionCheck": zod.string(),
   "privilegedPreActionCheck": zod.string()
 })
-})
+}),zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['EXTERNAL_DISCOVERY_DETAIL']),
+  "name": zod.string(),
+  "provider": zod.string(),
+  "version": zod.string(),
+  "description": zod.string().nullable(),
+  "source": zod.object({
+  "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY']),
+  "label": zod.string(),
+  "catalogUrl": zod.string().url(),
+  "recordUrl": zod.string().url(),
+  "specificationUrl": zod.string().url()
+}),
+  "verification": zod.object({
+  "status": zod.enum(['UNVERIFIED_EXTERNAL']),
+  "reason": zod.enum(['SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK'])
+}),
+  "specification": zod.object({
+  "status": zod.enum(['PARSED', 'UNAVAILABLE', 'UNSUPPORTED']),
+  "openapiVersion": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "servers": zod.array(zod.object({
+  "url": zod.string().url(),
+  "description": zod.string().nullable(),
+  "templated": zod.boolean()
+})),
+  "auth": zod.object({
+  "status": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']),
+  "schemes": zod.array(zod.object({
+  "name": zod.string(),
+  "type": zod.string(),
+  "scheme": zod.string().nullable(),
+  "location": zod.string().nullable()
+}))
+}),
+  "endpoints": zod.array(zod.object({
+  "method": zod.string(),
+  "path": zod.string(),
+  "summary": zod.string().nullable(),
+  "operationId": zod.string().nullable(),
+  "auth": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']),
+  "safeToProbe": zod.boolean(),
+  "reason": zod.string()
+}))
+}),
+  "safeEndpoint": zod.union([zod.null(),zod.object({
+  "method": zod.enum(['GET', 'HEAD']),
+  "path": zod.string(),
+  "url": zod.string().url(),
+  "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
+})]),
+  "safeEndpoints": zod.array(zod.object({
+  "method": zod.enum(['GET', 'HEAD']),
+  "path": zod.string(),
+  "url": zod.string().url(),
+  "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
+})),
+  "safeEndpointNote": zod.string()
+})])
 
 
 /**

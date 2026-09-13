@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PublicFooter } from "@/components/public-footer";
+import { useAuth } from "@/lib/auth";
 
 const apiBase = `${window.location.origin}/api`;
 
@@ -156,6 +157,12 @@ type ExternalDiscoveryDetail = {
     url: string;
     reason: "EXPLICITLY_PUBLIC_PARAMETER_FREE_READ";
   } | null;
+  safeEndpoints: Array<{
+    method: "GET" | "HEAD";
+    path: string;
+    url: string;
+    reason: "EXPLICITLY_PUBLIC_PARAMETER_FREE_READ";
+  }>;
   safeEndpointNote: string;
 };
 
@@ -462,6 +469,29 @@ export function PublicServicePage() {
 }
 
 function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDetail }) {
+  const { user } = useAuth();
+  const candidates = service.safeEndpoints?.length
+    ? service.safeEndpoints
+    : service.safeEndpoint
+      ? [service.safeEndpoint]
+      : [];
+  const [selectedCandidateKey, setSelectedCandidateKey] = useState(
+    candidates[0] ? `${candidates[0].method}:${candidates[0].path}:${candidates[0].url}` : "",
+  );
+  const [isChecking, setIsChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [checkResult, setCheckResult] = useState<ExternalCheckResult | null>(null);
+
+  useEffect(() => {
+    const first = candidates[0];
+    setSelectedCandidateKey(first ? `${first.method}:${first.path}:${first.url}` : "");
+    setCheckResult(null);
+    setCheckError(null);
+  }, [service.id]);
+
+  const selectedCandidate = candidates.find(
+    (candidate) => `${candidate.method}:${candidate.path}:${candidate.url}` === selectedCandidateKey,
+  ) ?? null;
   const authLabel = service.specification.auth.status === "REQUIRED"
     ? "Authentifizierung erforderlich"
     : service.specification.auth.status === "NOT_REQUIRED"
@@ -469,9 +499,35 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
       : service.specification.auth.status === "NOT_DECLARED"
         ? "Nicht in der Spezifikation erklärt"
         : "Unbekannt";
-  const registerHref = service.safeEndpoint
-    ? `/dashboard?registerUrl=${encodeURIComponent(service.safeEndpoint.url)}&registerName=${encodeURIComponent(service.name)}#service-registration`
+  const registerHref = selectedCandidate
+    ? `/dashboard?registerUrl=${encodeURIComponent(selectedCandidate.url)}&registerName=${encodeURIComponent(service.name)}&registerMethod=${encodeURIComponent(selectedCandidate.method)}#service-registration`
     : null;
+  const signInHref = registerHref
+    ? `/sign-in?returnTo=${encodeURIComponent(registerHref)}`
+    : "/sign-in";
+
+  async function runSafeCheck() {
+    if (!selectedCandidate || isChecking) return;
+    setIsChecking(true);
+    setCheckError(null);
+    setCheckResult(null);
+    try {
+      const response = await fetch(`${apiBase}/public/services/${encodeURIComponent(service.id)}/external-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(selectedCandidate),
+      });
+      const data = await response.json().catch(() => null) as ExternalCheckResult | { error?: string } | null;
+      if (!response.ok) {
+        throw new Error(data && "error" in data && data.error ? data.error : "Die sichere Prüfung konnte nicht gestartet werden.");
+      }
+      setCheckResult(data as ExternalCheckResult);
+    } catch (error) {
+      setCheckError(error instanceof Error ? error.message : "Die sichere Prüfung konnte nicht abgeschlossen werden.");
+    } finally {
+      setIsChecking(false);
+    }
+  }
 
   return (
     <div className="mt-8 max-w-5xl">
@@ -510,19 +566,56 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
         </div>
       </div>
 
-      {service.safeEndpoint && (
+      {candidates.length > 0 && (
         <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-              <Badge variant="outline">Prüf-Kandidat</Badge>
-              <h2 className="mt-3 text-xl font-semibold">{service.safeEndpoint.method} {service.safeEndpoint.path}</h2>
-              <p className="mt-2 break-all font-mono text-xs text-muted-foreground">{service.safeEndpoint.url}</p>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{service.safeEndpointNote}</p>
+              <Badge variant="outline">Sicherer Prüf-Kandidat</Badge>
+              <h2 className="mt-3 text-xl font-semibold">Jetzt sicher prüfen</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Nur explizit öffentliche, parameterfreie GET/HEAD-Ziele ohne bekannte Auth-Anforderung werden angeboten. Der Test ist read-only und wird nicht gespeichert.
+              </p>
             </div>
-            <Button asChild className="shrink-0">
-              <Link href={registerHref || "/dashboard#service-registration"}>Für Bond402-Prüfung übernehmen <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </Button>
+            <div className="flex shrink-0 flex-col gap-2 sm:min-w-56">
+              {candidates.length > 1 && (
+                <select
+                  aria-label="Sicheres Prüfziel auswählen"
+                  value={selectedCandidateKey}
+                  onChange={(event) => {
+                    setSelectedCandidateKey(event.target.value);
+                    setCheckResult(null);
+                    setCheckError(null);
+                  }}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  {candidates.map((candidate) => (
+                    <option key={`${candidate.method}:${candidate.path}:${candidate.url}`} value={`${candidate.method}:${candidate.path}:${candidate.url}`}>
+                      {candidate.method} {candidate.path}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <Button onClick={runSafeCheck} disabled={!selectedCandidate || isChecking} className="gap-2">
+                {isChecking ? "Wird sicher geprüft …" : "Sicher prüfen"}
+                {!isChecking && <CheckCircle2 className="h-4 w-4" />}
+              </Button>
+              <Button asChild variant="outline" disabled={!registerHref} className="gap-2">
+                <Link href={user ? (registerHref || "/dashboard") : signInHref}>
+                  {user ? "Zu meinen Diensten hinzufügen" : "Anmelden und hinzufügen"}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
+          {selectedCandidate && (
+            <div className="mt-5 rounded-xl border border-border/60 bg-background/50 p-4">
+              <p className="font-mono text-sm">{selectedCandidate.method} {selectedCandidate.path}</p>
+              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{selectedCandidate.url}</p>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">{service.safeEndpointNote}</p>
+            </div>
+          )}
+          {checkError && <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{checkError}</p>}
+          {checkResult && <ExternalCheckResultView result={checkResult} />}
         </section>
       )}
       {!service.safeEndpoint && (
@@ -578,6 +671,83 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
 
       <p className="mt-8 text-xs leading-5 text-muted-foreground">
         <a href={service.source.specificationUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">Originale Spezifikation öffnen</a>. Sie wird von Bond402 nur begrenzt gelesen und als Daten behandelt; fremder JavaScript-, Binär- oder Shell-Code wird nicht ausgeführt.
+      </p>
+    </div>
+  );
+}
+
+type ExternalCheckResult = {
+  endpoint: { method: "GET" | "HEAD"; path: string; url: string };
+  verification: {
+    status: "CHECKED_EXTERNAL";
+    trustStatus: "UNVERIFIED_EXTERNAL";
+    checkedAt: string;
+    persisted: false;
+  };
+  check: {
+    status: "PASS" | "FAIL" | "REVIEW";
+    summary: string;
+    reachable: boolean;
+    responseTimeMs: number;
+    httpStatus: number | null;
+    errorCode: string | null;
+    https: boolean;
+    tlsStatus: string;
+    securitySignals: {
+      reachability: { status: string; summary: string };
+      transport: { status: string; summary: string };
+      network: { status: string; summary: string };
+      redirects: { status: string; summary: string };
+      responseType: { status: string; summary: string; kind: string };
+      suspiciousPayload: { status: string; summary: string; indicators: string[] };
+      securityConfidence: { status: string; summary: string; score: number | null };
+      authentication: { status: string; summary: string; required: boolean };
+      rateLimit: { status: string; summary: string; detected: boolean };
+    };
+  };
+  safety: {
+    requestWasReadOnly: boolean;
+    executedMethod: string;
+    secretsSent: boolean;
+    foreignCodeExecuted: boolean;
+    responsePersisted: boolean;
+    note: string;
+  };
+};
+
+function ExternalCheckResultView({ result }: { result: ExternalCheckResult }) {
+  const signalRows = [
+    ["Erreichbarkeit", result.check.securitySignals.reachability],
+    ["Transport / TLS", result.check.securitySignals.transport],
+    ["Netzwerkziel", result.check.securitySignals.network],
+    ["Redirects", result.check.securitySignals.redirects],
+    ["Antworttyp", result.check.securitySignals.responseType],
+    ["Threat-Heuristiken", result.check.securitySignals.suspiciousPayload],
+    ["Security Confidence", result.check.securitySignals.securityConfidence],
+  ] as const;
+  return (
+    <div className="mt-5 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <Badge variant={result.check.status === "PASS" ? "secondary" : "warning"}>Bond402-Prüfung abgeschlossen</Badge>
+          <p className="mt-2 text-sm font-semibold">{result.check.status} · HTTP {result.check.httpStatus ?? "nicht erreicht"}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{result.check.summary}</p>
+        </div>
+        <p className="text-xs text-muted-foreground">{result.check.responseTimeMs} ms · {new Date(result.verification.checkedAt).toLocaleString("de-CH")}</p>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {signalRows.map(([label, signal]) => (
+          <div key={label} className="rounded-lg border border-border/60 bg-background/50 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">{label}</span>
+              <Badge variant="outline">{signal.status}</Badge>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{signal.summary}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-xs leading-5 text-muted-foreground">
+        {result.safety.note} Authentifizierungsfehler oder Rate-Limits sind keine Malware-Erkennung. Diese einzelne öffentliche Beobachtung hebt den Status nicht zu einer Sicherheitsgarantie an; der Treffer bleibt UNVERIFIED_EXTERNAL.
       </p>
     </div>
   );

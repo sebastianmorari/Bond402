@@ -48,6 +48,7 @@ import type {
   DomainVerificationResult,
   HealthStatus,
   PublicDiscovery,
+  PublicExternalDiscoveryDetail,
   PublicPreActionBody,
   PublicPreActionCheck,
   PublicService,
@@ -2381,11 +2382,11 @@ export const getGetPublicServiceUrl = (id: string,) => {
 }
 
 /**
- * @summary Read public trust metadata for one listed service
+ * @summary Read public trust metadata or external discovery detail
  */
-export const getPublicService = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicService> => {
+export const getPublicService = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicService | PublicExternalDiscoveryDetail> => {
 
-  return customFetch<PublicService>(getGetPublicServiceUrl(id),
+  return customFetch<PublicService | PublicExternalDiscoveryDetail>(getGetPublicServiceUrl(id),
   {
     ...options,
     method: 'GET'
@@ -2428,7 +2429,7 @@ export type GetPublicServiceQueryError = ErrorType<ApiError>
 
 
 /**
- * @summary Read public trust metadata for one listed service
+ * @summary Read public trust metadata or external discovery detail
  */
 
 export function useGetPublicService<TData = Awaited<ReturnType<typeof getPublicService>>, TError = ErrorType<ApiError>>(
