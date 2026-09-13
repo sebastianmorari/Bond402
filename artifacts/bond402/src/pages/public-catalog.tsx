@@ -548,7 +548,7 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
   }
 
   async function runPreflight() {
-    if (isChecking || !selectedServerUrl) return;
+    if (isChecking) return;
     setIsChecking(true);
     setCheckError(null);
     setCheckResult(null);
@@ -556,7 +556,7 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
       const response = await fetch(`${apiBase}/public/services/${encodeURIComponent(service.id)}/external-preflight`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serverUrl: selectedServerUrl }),
+        body: JSON.stringify(selectedServerUrl ? { serverUrl: selectedServerUrl } : {}),
       });
       const data = await response.json().catch(() => null) as ExternalCheckResult | { error?: string } | null;
       if (!response.ok) {
@@ -644,13 +644,13 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
                 {safeServers.map((server) => <option key={server.url} value={server.url}>{server.url}</option>)}
               </select>
             ) : null}
-            <Button onClick={hasSafeCandidate ? runSafeCheck : runPreflight} disabled={isChecking || (!hasSafeCandidate && !selectedServerUrl)} className="w-full gap-2">
+            <Button onClick={hasSafeCandidate ? runSafeCheck : runPreflight} disabled={isChecking} className="w-full gap-2">
               {isChecking ? "Wird sicher geprüft …" : hasSafeCandidate ? "Sicher prüfen" : "In Sandbox prüfen"}
               {!isChecking && <CheckCircle2 className="h-4 w-4" />}
             </Button>
             <Button asChild variant="outline" className="w-full gap-2">
               <Link href={user ? registerHref : signInHref}>
-                {user ? "Zu meinen Diensten hinzufügen" : "Anmelden und hinzufügen"}
+                Zu meinen Diensten hinzufügen
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
