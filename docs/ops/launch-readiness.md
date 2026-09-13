@@ -16,9 +16,11 @@
   `test:*`-Scripts in `package.json`
 - Diff-Prüfung: `git diff --check`
 
-Das reproduzierbare Gate enthält jetzt auch den isolierten Restore- und den
-externen Detail-Test. Ein erfolgreicher lokaler Gate-Lauf beweist weder einen
-GitHub-CI-Lauf noch einen Produktionsstand.
+Das reproduzierbare Gate enthält jetzt auch den isolierten Restore-, den
+externen Detail- und den externen Routen-Sicherheitstest. Der aktuelle
+vollständige lokale Lauf ist erfolgreich durchgelaufen. Die kostenlosen
+Dependency-, SAST- und HoundDog-Prüfungen meldeten dabei keine Findings.
+Das beweist weder einen GitHub-CI-Lauf noch einen Produktionsstand.
 
 ## Nicht behaupten
 

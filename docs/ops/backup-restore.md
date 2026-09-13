@@ -69,10 +69,10 @@ aktualisiert werden.
 
 Der letzte lokale Fixture-Lauf am 13.09.2026 maß:
 
-- Backup: 106 ms
-- Restore: 268 ms
-- Restore bis API-Readiness: 562 ms
-- Gesamtlauf: 4.651 ms
+- Backup: 97 ms
+- Restore: 256 ms
+- Restore bis API-Readiness: 552 ms
+- Gesamtlauf: 2.718 ms
 - Lokales Fixture-RPO: 0 Sekunden zwischen Fixture-Schreibvorgang und Backup
 
 Diese Werte gelten nur für die temporäre lokale Testdatenbank und sind keine

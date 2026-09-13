@@ -112,9 +112,9 @@ wurde kein Deployment ausgeführt.
   können ausfallen oder widersprüchlich sein. Discovery ist kein
   Reputations- oder Threat-Intelligence-Dienst.
 - **Tests:** Public-external-discovery, Public-external-detail,
-  Public-service-search, Public-MVP und Katalog-Schema. Die Library- und
-  Katalogverträge sind im lokalen Gate enthalten; direkte Routen-Integration
-  gegen eine kontrollierte externe Quelle sowie ein Browser-E2E fehlen.
+  Public-external-routes, Public-service-search, Public-MVP und
+  Katalog-Schema. Library-, Katalog- und kontrollierte Routenverträge sind im
+  lokalen Gate enthalten; ein Browser-E2E gegen eine reale Umgebung fehlt.
 
 ## Sandbox, First-Seen und Quarantäne
 
@@ -235,8 +235,9 @@ wurde kein Deployment ausgeführt.
   gegen eine isolierte Test-PostgreSQL aus.
 - **Teilweise:** Der Workflow wurde lokal statisch geprüft, aber nicht in
   GitHub ausgeführt. Es gibt keinen echten Browser-E2E-Runner und keine
-  Artefaktaufbewahrung. Dependency-Audit-Ergebnisse sind eine Momentaufnahme
-  und kein kontinuierlicher Überwachungsnachweis.
+  Artefaktaufbewahrung. Der aktuelle lokale Dependency-, SAST- und
+  HoundDog-Lauf ist ohne Findings; das ist eine Momentaufnahme und kein
+  kontinuierlicher Überwachungsnachweis.
 - **Bekannte Hinweise:** Der Frontend-Build meldet bestehende Sourcemap-
   Hinweise und Chunk-Größenwarnungen, beendet sich aber erfolgreich.
 
@@ -303,9 +304,10 @@ wurde kein Deployment ausgeführt.
 Der lokale Code- und Teststand ist für die fünf Launch-Blöcke technisch
 deutlich belastbarer: First-Seen-Promotion, Kompressionsanalyse, IPv6-SSRF-
 Regressionen, explizite externe Zielableitung, Status-Timeouts, lokaler
-Restore-Nachweis und ein erweitertes Launch-Gate sind abgesichert. Nicht
-abgeschlossen bzw. nicht verifiziert bleiben Browser-E2E, echte
-Rebinding-Integration, CI-Ausführung, Produktions-Scans,
-Monitoring/Alerting, externe Mail-/Health-/DNS-Checks, Deployment/Rollback
-und rechtliche Freigaben. Diese Punkte werden nicht als live, produktiv oder
-rechtlich freigegeben dargestellt.
+Restore-Nachweis, kontrollierte externe Routen und ein vollständig
+bestandenes lokales Launch-Gate sind abgesichert. Nicht abgeschlossen bzw.
+nicht verifiziert bleiben Browser-E2E, echte Rebinding-Integration,
+GitHub-CI-Ausführung, Produktions-Scans, Monitoring/Alerting, externe
+Mail-/Health-/DNS-Checks, Deployment/Rollback und rechtliche Freigaben.
+Diese Punkte werden nicht als live, produktiv oder rechtlich freigegeben
+dargestellt.
