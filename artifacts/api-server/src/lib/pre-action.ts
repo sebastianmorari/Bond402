@@ -82,6 +82,33 @@ export function evaluatePreAction(
     if (latest.securityHeaders.status === "WARNING") {
       caution("Mindestens ein geprüfter Security-Header fehlt oder ist auffällig.");
     }
+    const securitySignals = latest.securitySignals;
+    if (securitySignals) {
+      if (securitySignals.network.status === "FAIL") {
+        block("Der SSRF-/Netzwerk-Schutz hat das Ziel als nicht öffentlich oder unsicher blockiert.");
+      } else if (securitySignals.network.status === "WARNING") {
+        caution("Die Host-/Netzwerksicherheit benötigt eine manuelle Prüfung.");
+      }
+      if (securitySignals.transport.status === "FAIL") {
+        block("Das Transport-/TLS-Signal ist fehlgeschlagen.");
+      } else if (securitySignals.transport.status === "WARNING") {
+        caution("Transport/TLS ist auffällig oder nicht vollständig vertrauenswürdig.");
+      }
+      if (securitySignals.suspiciousPayload.status === "WARNING") {
+        caution("Die Response enthält auffällige Payload-Muster; Bond402 hat keinen Code ausgeführt.");
+      }
+      if (securitySignals.responseType.status === "WARNING") {
+        caution(`Der Response-Typ (${securitySignals.responseType.kind}) weicht von einer eindeutigen API-Datenantwort ab.`);
+      }
+      if (securitySignals.securityConfidence.status === "FAIL") {
+        block("Die Security Confidence ist fehlgeschlagen.");
+      } else if (
+        securitySignals.securityConfidence.status === "WARNING" ||
+        securitySignals.securityConfidence.status === "UNKNOWN"
+      ) {
+        caution("Die Security Confidence ist nur eingeschränkt oder unbekannt.");
+      }
+    }
   }
 
   const recent = liveChecks.slice(0, 5);

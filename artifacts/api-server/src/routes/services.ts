@@ -293,6 +293,12 @@ async function toSafeListServiceResponse(
         },
         trustScore: null,
         trustExplanation: "",
+        availabilityScore: null,
+        securityConfidence: {
+          status: "UNKNOWN",
+          score: null,
+          summary: "Security Confidence wurde für diese isolierte Historienprüfung nicht berechnet.",
+        },
         latestCheck: checkResponse,
         checks: [checkResponse],
       });

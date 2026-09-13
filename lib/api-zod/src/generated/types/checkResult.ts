@@ -11,6 +11,7 @@
 import type { CheckResultCheckType } from './checkResultCheckType';
 import type { CheckResultStatus } from './checkResultStatus';
 import type { SecurityHeaders } from './securityHeaders';
+import type { SecuritySignals } from './securitySignals';
 import type { SignalState } from './signalState';
 
 export interface CheckResult {
@@ -36,5 +37,6 @@ export interface CheckResult {
   /** @nullable */
   tlsDaysRemaining: number | null;
   securityHeaders: SecurityHeaders;
+  securitySignals: SecuritySignals;
   probeRegion: string;
 }

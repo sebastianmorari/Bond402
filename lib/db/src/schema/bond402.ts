@@ -32,6 +32,62 @@ export const apiServicesTable = pgTable("bond402_api_services", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
+export type SecuritySignalsJson = {
+  reachability: { status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN"; summary: string };
+  transport: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    summary: string;
+    https: boolean;
+    protocol: string | null;
+    certificateValid: boolean | null;
+    expiresAt: string | null;
+    daysRemaining: number | null;
+  };
+  network: { status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN"; summary: string };
+  redirects: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    summary: string;
+    count: number;
+    crossOrigin: boolean;
+    downgraded: boolean;
+  };
+  responseType: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    summary: string;
+    kind: "JSON" | "TEXT" | "HTML" | "JAVASCRIPT" | "BINARY" | "DOWNLOAD" | "UNKNOWN";
+    contentType: string | null;
+  };
+  suspiciousPayload: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    summary: string;
+    indicators: string[];
+  };
+  securityHeaders: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    summary: string;
+    evaluated: string[];
+    present: string[];
+    missing: string[];
+  };
+  reputation: { status: "UNKNOWN"; summary: string };
+  rateLimit: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    summary: string;
+    detected: boolean;
+    retryAfterSeconds: number | null;
+  };
+  authentication: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    summary: string;
+    required: boolean;
+  };
+  securityConfidence: {
+    status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
+    score: number | null;
+    summary: string;
+  };
+};
+
 export const apiChecksTable = pgTable("bond402_api_checks", {
   id: text("id").primaryKey(),
   serviceId: text("service_id")
@@ -61,6 +117,67 @@ export const apiChecksTable = pgTable("bond402_api_checks", {
     }>()
     .notNull()
     .default({ status: "NOT_EVALUATED", evaluated: [], present: [], missing: [] }),
+  securitySignals: jsonb("security_signals")
+    .$type<SecuritySignalsJson>()
+    .notNull()
+    .default({
+      reachability: { status: "UNKNOWN", summary: "Erreichbarkeit wurde nicht bewertet." },
+      transport: {
+        status: "UNKNOWN",
+        summary: "Transport-/TLS-Signale wurden nicht bewertet.",
+        https: false,
+        protocol: null,
+        certificateValid: null,
+        expiresAt: null,
+        daysRemaining: null,
+      },
+      network: { status: "UNKNOWN", summary: "Host- und Netzwerksicherheit wurde nicht bewertet." },
+      redirects: {
+        status: "UNKNOWN",
+        summary: "Redirect-Verhalten wurde nicht bewertet.",
+        count: 0,
+        crossOrigin: false,
+        downgraded: false,
+      },
+      responseType: {
+        status: "UNKNOWN",
+        summary: "Antworttyp wurde nicht bewertet.",
+        kind: "UNKNOWN",
+        contentType: null,
+      },
+      suspiciousPayload: {
+        status: "UNKNOWN",
+        summary: "Payload-Heuristiken wurden nicht bewertet.",
+        indicators: [],
+      },
+      securityHeaders: {
+        status: "UNKNOWN",
+        summary: "Security-Header wurden nicht bewertet.",
+        evaluated: [],
+        present: [],
+        missing: [],
+      },
+      reputation: {
+        status: "UNKNOWN",
+        summary: "Keine verlässliche kostenlose Reputation-Quelle ist konfiguriert.",
+      },
+      rateLimit: {
+        status: "UNKNOWN",
+        summary: "Rate-Limit-Hinweise wurden nicht erkannt.",
+        detected: false,
+        retryAfterSeconds: null,
+      },
+      authentication: {
+        status: "UNKNOWN",
+        summary: "Authentifizierungsanforderungen wurden nicht bewertet.",
+        required: false,
+      },
+      securityConfidence: {
+        status: "UNKNOWN",
+        score: null,
+        summary: "Security Confidence ist ohne ausreichende Beobachtungen unbekannt.",
+      },
+    }),
   probeRegion: text("probe_region").notNull().default("default"),
 });
 

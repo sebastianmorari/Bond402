@@ -32,20 +32,21 @@ function makeCheck(overrides = {}) {
   };
 }
 
-test("Ein gültiger JSON-Endpunkt ohne Schema erhält einen vollständigen Schemaanteil", () => {
+test("Ein gültiger JSON-Endpunkt ohne Schema erhält den Schemaanteil, aber keinen überhöhten Ein-Sample-Trust", () => {
   const trust = calculateTrust([makeCheck()], 1000, "");
 
-  assert.equal(trust.score, 100);
+  assert.ok(trust.score <= 60);
+  assert.ok(trust.securityConfidence.score <= 60);
   assert.match(trust.explanation, /kein konfiguriertes Schema 100 % \(10 Punkte\)/);
 });
 
-test("Ein expliziter Schemafehler senkt nur den Schemaanteil des Trust Scores", () => {
+test("Ein expliziter Schemafehler bleibt sichtbar und der Ein-Sample-Deckel bleibt aktiv", () => {
   const trust = calculateTrust(
     [makeCheck({ status: "FAIL", structureMatch: false, missingFields: ["status"] })],
     1000,
     "status",
   );
 
-  assert.equal(trust.score, 90);
+  assert.equal(trust.score, 60);
   assert.match(trust.explanation, /Schema-Validierung 0 % \(10 Punkte\)/);
 });

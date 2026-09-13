@@ -15,6 +15,7 @@ import type { PublicServiceLatestCheck } from './publicServiceLatestCheck';
 import type { PublicServiceLatestStatus } from './publicServiceLatestStatus';
 import type { PublicServiceLinks } from './publicServiceLinks';
 import type { PublicServiceVisibility } from './publicServiceVisibility';
+import type { SecurityConfidence } from './securityConfidence';
 import type { SignalStates } from './signalStates';
 import type { TrustMetrics } from './trustMetrics';
 
@@ -28,6 +29,9 @@ export interface PublicService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  /** @nullable */
+  availabilityScore: number | null;
+  securityConfidence: SecurityConfidence;
   trustMetrics: TrustMetrics;
   signals: SignalStates;
   domainVerification: DomainVerification;

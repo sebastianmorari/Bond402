@@ -10,6 +10,7 @@
  */
 import type { PublicServiceLatestCheckStatus } from './publicServiceLatestCheckStatus';
 import type { SecurityHeaders } from './securityHeaders';
+import type { SecuritySignals } from './securitySignals';
 import type { SignalState } from './signalState';
 
 export type PublicServiceLatestCheck = {
@@ -27,5 +28,6 @@ export type PublicServiceLatestCheck = {
   /** @nullable */
   tlsDaysRemaining: number | null;
   securityHeaders: SecurityHeaders;
+  securitySignals: SecuritySignals;
   probeRegion: string;
 } | null;

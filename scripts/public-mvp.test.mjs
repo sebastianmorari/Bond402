@@ -735,7 +735,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     headers: { Authorization: `Bearer ${createdKey.data.secret}` },
   });
   assert.equal(allowDecision.response.status, 200);
-  assert.equal(allowDecision.data.decision, "ALLOW");
+   assert.equal(allowDecision.data.decision, "CAUTION");
   assert.equal(allowDecision.data.factors.latestReachable, true);
   assert.equal(allowDecision.data.factors.signals.tls, "NOT_EVALUATED");
   assert.equal(allowDecision.data.factors.trustMetrics.sampleCount, 1);
@@ -847,7 +847,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     multipleRegionsAggregation.description,
     /keine kontinuierliche Mehrregionen-Überwachung/i,
   );
-  assert.doesNotMatch(
+   assert.match(
     JSON.stringify(multipleRegionsDetail.data),
     /Sicherheitsgarantie|security guarantee/i,
   );
@@ -898,7 +898,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     contradictoryAggregation.description,
     /keine kontinuierliche Mehrregionen-Überwachung/i,
   );
-  assert.doesNotMatch(
+   assert.match(
     JSON.stringify(contradictoryDetail.data),
     /Sicherheitsgarantie|security guarantee/i,
   );

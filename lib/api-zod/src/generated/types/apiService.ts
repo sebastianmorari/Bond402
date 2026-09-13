@@ -13,6 +13,7 @@ import type { ApiServiceVisibility } from './apiServiceVisibility';
 import type { CheckResult } from './checkResult';
 import type { DomainRelationship } from './domainRelationship';
 import type { DomainVerification } from './domainVerification';
+import type { SecurityConfidence } from './securityConfidence';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { ServiceResponseMode } from './serviceResponseMode';
 import type { SignalStates } from './signalStates';
@@ -41,6 +42,9 @@ export interface ApiService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  /** @nullable */
+  availabilityScore: number | null;
+  securityConfidence: SecurityConfidence;
   trustMetrics: TrustMetrics;
   signals: SignalStates;
   domainVerification: DomainVerification;

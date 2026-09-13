@@ -10,12 +10,16 @@
  */
 import type { CheckResult } from './checkResult';
 import type { DeveloperService } from './developerService';
+import type { SecurityConfidence } from './securityConfidence';
 
 export interface DeveloperServiceResult {
   service: DeveloperService;
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  /** @nullable */
+  availabilityScore: number | null;
+  securityConfidence: SecurityConfidence;
   latestCheck: CheckResult | null;
   /** @maxItems 100 */
   checks: CheckResult[];

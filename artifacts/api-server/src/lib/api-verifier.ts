@@ -29,10 +29,12 @@ export type VerificationOutcome = {
   tlsExpiresAt: Date | null;
   tlsDaysRemaining: number | null;
   securityHeaders: SecurityHeadersSnapshot;
+  securitySignals: SecuritySignals;
   probeRegion: string;
 };
 
 export type SignalStatus = "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED";
+export type SecuritySignalStatus = "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
 
 export type ResponseMode = "JSON" | "HTTP";
 
@@ -55,6 +57,71 @@ export type SecurityHeadersSnapshot = {
   missing: string[];
 };
 
+export type ResponseContentKind =
+  | "JSON"
+  | "TEXT"
+  | "HTML"
+  | "JAVASCRIPT"
+  | "BINARY"
+  | "DOWNLOAD"
+  | "UNKNOWN";
+
+export type SecuritySignals = {
+  reachability: { status: SecuritySignalStatus; summary: string };
+  transport: {
+    status: SecuritySignalStatus;
+    summary: string;
+    https: boolean;
+    protocol: string | null;
+    certificateValid: boolean | null;
+    expiresAt: string | null;
+    daysRemaining: number | null;
+  };
+  network: { status: SecuritySignalStatus; summary: string };
+  redirects: {
+    status: SecuritySignalStatus;
+    summary: string;
+    count: number;
+    crossOrigin: boolean;
+    downgraded: boolean;
+  };
+  responseType: {
+    status: SecuritySignalStatus;
+    summary: string;
+    kind: ResponseContentKind;
+    contentType: string | null;
+  };
+  suspiciousPayload: {
+    status: SecuritySignalStatus;
+    summary: string;
+    indicators: string[];
+  };
+  securityHeaders: {
+    status: SecuritySignalStatus;
+    summary: string;
+    evaluated: string[];
+    present: string[];
+    missing: string[];
+  };
+  reputation: { status: "UNKNOWN"; summary: string };
+  rateLimit: {
+    status: SecuritySignalStatus;
+    summary: string;
+    detected: boolean;
+    retryAfterSeconds: number | null;
+  };
+  authentication: {
+    status: SecuritySignalStatus;
+    summary: string;
+    required: boolean;
+  };
+  securityConfidence: {
+    status: SecuritySignalStatus;
+    score: number | null;
+    summary: string;
+  };
+};
+
 export type DomainChallengeFetcher = (
   url: string,
   timeoutMs: number,
@@ -65,6 +132,65 @@ const DEFAULT_SECURITY_HEADERS: SecurityHeadersSnapshot = {
   evaluated: [],
   present: [],
   missing: [],
+};
+
+export const UNKNOWN_SECURITY_SIGNALS: SecuritySignals = {
+  reachability: { status: "UNKNOWN", summary: "Erreichbarkeit wurde nicht bewertet." },
+  transport: {
+    status: "UNKNOWN",
+    summary: "Transport-/TLS-Signale wurden nicht bewertet.",
+    https: false,
+    protocol: null,
+    certificateValid: null,
+    expiresAt: null,
+    daysRemaining: null,
+  },
+  network: { status: "UNKNOWN", summary: "Host- und Netzwerksicherheit wurde nicht bewertet." },
+  redirects: {
+    status: "UNKNOWN",
+    summary: "Redirect-Verhalten wurde nicht bewertet.",
+    count: 0,
+    crossOrigin: false,
+    downgraded: false,
+  },
+  responseType: {
+    status: "UNKNOWN",
+    summary: "Antworttyp wurde nicht bewertet.",
+    kind: "UNKNOWN",
+    contentType: null,
+  },
+  suspiciousPayload: {
+    status: "UNKNOWN",
+    summary: "Payload-Heuristiken wurden nicht bewertet.",
+    indicators: [],
+  },
+  securityHeaders: {
+    status: "UNKNOWN",
+    summary: "Security-Header wurden nicht bewertet.",
+    evaluated: [],
+    present: [],
+    missing: [],
+  },
+  reputation: {
+    status: "UNKNOWN",
+    summary: "Keine verlässliche kostenlose Reputation-Quelle ist konfiguriert.",
+  },
+  rateLimit: {
+    status: "UNKNOWN",
+    summary: "Rate-Limit-Hinweise wurden nicht erkannt.",
+    detected: false,
+    retryAfterSeconds: null,
+  },
+  authentication: {
+    status: "UNKNOWN",
+    summary: "Authentifizierungsanforderungen wurden nicht bewertet.",
+    required: false,
+  },
+  securityConfidence: {
+    status: "UNKNOWN",
+    score: null,
+    summary: "Security Confidence ist ohne ausreichende Beobachtungen unbekannt.",
+  },
 };
 
 const SECURITY_HEADERS = [
@@ -92,6 +218,307 @@ function inspectSecurityHeaders(
   };
 }
 
+function legacySignalToSecurityStatus(status: SignalStatus): SecuritySignalStatus {
+  if (status === "CHECKED") return "PASS";
+  if (status === "WARNING") return "WARNING";
+  return "UNKNOWN";
+}
+
+function classifyResponseContent(
+  body: string,
+  headers: Record<string, string>,
+): SecuritySignals["responseType"] {
+  const contentType = headers["content-type"]?.split(";")[0]?.trim().toLowerCase() || null;
+  const contentDisposition = headers["content-disposition"]?.toLowerCase() || "";
+  const prefix = body.slice(0, 512).trimStart().toLowerCase();
+  const looksBinary = body.slice(0, 128).includes("\u0000");
+  const isJsonMime = Boolean(contentType && (contentType === "application/json" || contentType.endsWith("+json")));
+  const isHtmlMime = contentType === "text/html" || contentType === "application/xhtml+xml";
+  const isJavaScriptMime = Boolean(
+    contentType &&
+      ["application/javascript", "text/javascript", "application/ecmascript", "text/ecmascript"].includes(contentType),
+  );
+  const isBinaryMime = Boolean(
+    contentType &&
+      /^(application\/(octet-stream|zip|pdf|gzip|x-7z-compressed|x-rar-compressed)|image\/|audio\/|video\/|font\/)/.test(
+        contentType,
+      ),
+  );
+
+  if (contentDisposition.includes("attachment")) {
+    return {
+      status: "WARNING",
+      summary: "Die Antwort ist als Download gekennzeichnet und wurde nicht geöffnet oder ausgeführt.",
+      kind: "DOWNLOAD",
+      contentType,
+    };
+  }
+  if (looksBinary || isBinaryMime) {
+    return {
+      status: "WARNING",
+      summary: "Die Antwort sieht binär aus und wurde nur als Datenstrom analysiert.",
+      kind: "BINARY",
+      contentType,
+    };
+  }
+  if (isHtmlMime || prefix.startsWith("<!doctype html") || prefix.startsWith("<html")) {
+    return {
+      status: "WARNING",
+      summary: "Die Antwort ist HTML statt einer erwarteten API-Datenantwort.",
+      kind: "HTML",
+      contentType,
+    };
+  }
+  if (
+    isJavaScriptMime ||
+    prefix.startsWith("(function") ||
+    prefix.startsWith("const ") ||
+    prefix.startsWith("(() =>")
+  ) {
+    return {
+      status: "WARNING",
+      summary: "Die Antwort sieht wie JavaScript aus und wurde nicht ausgeführt.",
+      kind: "JAVASCRIPT",
+      contentType,
+    };
+  }
+  if (isJsonMime) {
+    return {
+      status: "PASS",
+      summary: "Die Antwort ist als JSON gekennzeichnet.",
+      kind: "JSON",
+      contentType,
+    };
+  }
+  if (contentType?.startsWith("text/") || contentType === null) {
+    return {
+      status: "WARNING",
+      summary: "Die Antwort ist Text oder ohne eindeutigen Content-Type.",
+      kind: "TEXT",
+      contentType,
+    };
+  }
+  return {
+    status: "UNKNOWN",
+    summary: "Der Antworttyp konnte nicht sicher klassifiziert werden.",
+    kind: "UNKNOWN",
+    contentType,
+  };
+}
+
+function inspectSuspiciousPayload(body: string): SecuritySignals["suspiciousPayload"] {
+  const indicators: string[] = [];
+  const sample = body.slice(0, MAX_RESPONSE_BYTES);
+  const lower = sample.toLowerCase();
+  if (
+    /\b(eval|new\s+function|function\s*\()\s*\(/i.test(sample) ||
+    /atob\s*\(|fromcharcode\s*\(/i.test(sample)
+  ) {
+    indicators.push("OBFUSCATED_SCRIPT_PATTERN");
+  }
+  if (
+    /(?:curl|wget)\s+[^\n]{0,300}\|\s*(?:ba)?sh\b|powershell(?:\.exe)?\s+-enc(?:odedcommand)?\b|cmd(?:\.exe)?\s+\/c\b|bash\s+-c\b|nc\s+-e\b/i.test(
+      sample,
+    )
+  ) {
+    indicators.push("SHELL_OR_POWERSHELL_PATTERN");
+  }
+  if (/^(?:#!\/bin\/(?:ba)?sh|MZ|\x7fELF|\xca\xfe\xba\xbe|PK\x03\x04)/.test(sample)) {
+    indicators.push("EXECUTABLE_OR_ARCHIVE_SIGNATURE");
+  }
+  if (
+    /[A-Za-z0-9+/]{512,}={0,2}/.test(sample) ||
+    (lower.includes("base64") && /[A-Za-z0-9+/]{128,}/.test(sample))
+  ) {
+    indicators.push("LONG_BASE64_LIKE_PAYLOAD");
+  }
+  return {
+    status: indicators.length > 0 ? "WARNING" : "PASS",
+    summary:
+      indicators.length > 0
+        ? "Heuristiken fanden auffällige Muster. Es wurde kein Code ausgeführt."
+        : "Keine der geprüften einfachen Payload-Heuristiken wurde ausgelöst.",
+    indicators,
+  };
+}
+
+function inspectRateLimit(headers: Record<string, string>, status: number): SecuritySignals["rateLimit"] {
+  const hasRateLimitHeader = Object.keys(headers).some(
+    (name) => name.startsWith("x-ratelimit-") || name === "ratelimit" || name === "retry-after",
+  );
+  const retryAfterRaw = headers["retry-after"];
+  const retryAfterSeconds = retryAfterRaw && /^\d+$/.test(retryAfterRaw) ? Number(retryAfterRaw) : null;
+  if (status === 429) {
+    return {
+      status: "WARNING",
+      summary: "Der Dienst signalisiert eine Rate-Limit-Grenze.",
+      detected: true,
+      retryAfterSeconds,
+    };
+  }
+  return {
+    status: hasRateLimitHeader ? "PASS" : "UNKNOWN",
+    summary: hasRateLimitHeader
+      ? "Rate-Limit-Header wurden erkannt."
+      : "Es wurden keine eindeutigen Rate-Limit-Header erkannt.",
+    detected: hasRateLimitHeader,
+    retryAfterSeconds,
+  };
+}
+
+function inspectAuthentication(headers: Record<string, string>, status: number): SecuritySignals["authentication"] {
+  const required = status === 401 || status === 403 || Boolean(headers["www-authenticate"]);
+  return {
+    status: required ? "WARNING" : "UNKNOWN",
+    summary: required
+      ? "Die Antwort deutet auf erforderliche Authentifizierung oder Berechtigung hin."
+      : "Aus dieser Antwort lässt sich keine Authentifizierungsanforderung sicher ableiten.",
+    required,
+  };
+}
+
+function securityStatusScore(status: SecuritySignalStatus) {
+  return status === "PASS" ? 1 : status === "WARNING" ? 0.5 : status === "UNKNOWN" ? 0.25 : 0;
+}
+
+export function calculateSecurityConfidence(
+  signals: SecuritySignals,
+  sampleCount: number,
+): SecuritySignals["securityConfidence"] {
+  const statuses = [
+    signals.transport.status,
+    signals.network.status,
+    signals.redirects.status,
+    signals.responseType.status,
+    signals.suspiciousPayload.status,
+    signals.securityHeaders.status,
+    signals.reputation.status,
+  ];
+  const rawScore = Math.round(
+    (statuses.reduce((sum, status) => sum + securityStatusScore(status), 0) / statuses.length) * 100,
+  );
+  const sampleCap = sampleCount < 2 ? 60 : sampleCount < 3 ? 70 : sampleCount < 5 ? 80 : 95;
+  const score = Math.min(rawScore, sampleCap, signals.reputation.status === "UNKNOWN" ? 80 : 100);
+  const hasFailure = statuses.some((status) => status === "FAIL");
+  const hasCaution = statuses.some((status) => status === "WARNING" || status === "UNKNOWN");
+  return {
+    status: hasFailure ? "FAIL" : hasCaution ? "WARNING" : "PASS",
+    score,
+    summary:
+      `Security Confidence ${score}% aus beobachteten Transport-, Netzwerk-, Response- und Header-Signalen. ` +
+      "Keine Auffälligkeit gefunden ist keine Sicherheitsgarantie.",
+  };
+}
+
+function createSecuritySignals(input: {
+  reachable: boolean;
+  response?: {
+    status: number;
+    body: string;
+    headers: Record<string, string>;
+    tls: {
+      status: SignalStatus;
+      expiresAt: Date | null;
+      daysRemaining: number | null;
+      protocol: string | null;
+      certificateValid: boolean | null;
+    };
+    redirects: { count: number; crossOrigin: boolean; downgraded: boolean };
+  };
+  networkStatus?: SecuritySignalStatus;
+  networkSummary?: string;
+}): SecuritySignals {
+  if (!input.response) {
+    const unknown = structuredClone(UNKNOWN_SECURITY_SIGNALS);
+    unknown.reachability = {
+      status: input.reachable ? "PASS" : "FAIL",
+      summary: input.reachable ? "Der Dienst war erreichbar." : "Der Dienst war nicht sicher erreichbar.",
+    };
+    unknown.network = {
+      status: input.networkStatus ?? "UNKNOWN",
+      summary: input.networkSummary ?? unknown.network.summary,
+    };
+    return unknown;
+  }
+
+  const response = input.response;
+  const tls = response.tls ?? {
+    status: "UNKNOWN" as SignalStatus,
+    expiresAt: null,
+    daysRemaining: null,
+    protocol: null,
+    certificateValid: null,
+  };
+  const redirects = response.redirects ?? { count: 0, crossOrigin: false, downgraded: false };
+  const content = classifyResponseContent(response.body, response.headers);
+  const payload = inspectSuspiciousPayload(response.body);
+  const legacyHeaders = inspectSecurityHeaders(
+    response.headers,
+    tls.protocol === "https:" || tls.status !== "NOT_EVALUATED",
+  );
+  const redirectStatus: SecuritySignalStatus =
+    redirects.downgraded || redirects.crossOrigin ? "WARNING" : "PASS";
+  const tlsStatus: SecuritySignalStatus =
+    tls.status === "CHECKED"
+      ? "PASS"
+      : tls.status === "WARNING"
+        ? "WARNING"
+        : "UNKNOWN";
+  const signals: SecuritySignals = {
+    reachability: { status: "PASS", summary: "Der Dienst war über den sicheren Prüfpfad erreichbar." },
+    transport: {
+      status: tls.status === "CHECKED" && !redirects.downgraded ? "PASS" : tlsStatus,
+      summary:
+        tls.status === "CHECKED"
+          ? `HTTPS/TLS wurde geprüft${tls.protocol ? ` (${tls.protocol})` : ""}.`
+          : tls.status === "WARNING"
+            ? "HTTPS/TLS ist auffällig oder nicht vollständig vertrauenswürdig."
+            : "TLS konnte nicht vollständig bewertet werden.",
+      https: tls.protocol === "https:" || tls.status !== "NOT_EVALUATED",
+      protocol: tls.protocol,
+      certificateValid: tls.certificateValid,
+      expiresAt: tls.expiresAt?.toISOString() ?? null,
+      daysRemaining: tls.daysRemaining,
+    },
+    network: {
+      status: input.networkStatus ?? "PASS",
+      summary:
+        input.networkSummary ??
+        "DNS-Ziel wurde vor der Verbindung auf öffentliche Adressen geprüft und bei Redirects erneut aufgelöst.",
+    },
+    redirects: {
+      status: redirectStatus,
+      summary:
+        redirects.count === 0
+          ? "Keine Weiterleitung beobachtet."
+          : redirects.downgraded
+            ? "Die Redirect-Kette enthält ein HTTPS-zu-HTTP-Downgrade."
+            : redirects.crossOrigin
+              ? "Die Redirect-Kette wechselte die Origin."
+              : `Es wurden ${redirects.count} Weiterleitung(en) beobachtet.`,
+      ...redirects,
+    },
+    responseType: content,
+    suspiciousPayload: payload,
+    securityHeaders: {
+      status: legacySignalToSecurityStatus(legacyHeaders.status),
+      summary:
+        legacyHeaders.missing.length === 0
+          ? "Die bewerteten API-Security-Header waren vorhanden."
+          : `Es fehlen bewertete Security-Header: ${legacyHeaders.missing.join(", ")}.`,
+      evaluated: legacyHeaders.evaluated,
+      present: legacyHeaders.present,
+      missing: legacyHeaders.missing,
+    },
+    reputation: UNKNOWN_SECURITY_SIGNALS.reputation,
+    rateLimit: inspectRateLimit(response.headers, response.status),
+    authentication: inspectAuthentication(response.headers, response.status),
+    securityConfidence: UNKNOWN_SECURITY_SIGNALS.securityConfidence,
+  };
+  signals.securityConfidence = calculateSecurityConfidence(signals, 1);
+  return signals;
+}
+
 function inspectTls(
   protocol: string,
   socket: import("node:net").Socket | null,
@@ -99,23 +526,45 @@ function inspectTls(
   status: SignalStatus;
   expiresAt: Date | null;
   daysRemaining: number | null;
+  protocol: string | null;
+  certificateValid: boolean | null;
 } {
   if (protocol !== "https:") {
-    return { status: "WARNING", expiresAt: null, daysRemaining: null };
+    return {
+      status: "WARNING",
+      expiresAt: null,
+      daysRemaining: null,
+      protocol: null,
+      certificateValid: null,
+    };
   }
   if (!(socket instanceof tls.TLSSocket) || !socket.authorized) {
-    return { status: "WARNING", expiresAt: null, daysRemaining: null };
+    return {
+      status: "WARNING",
+      expiresAt: null,
+      daysRemaining: null,
+      protocol: socket instanceof tls.TLSSocket ? socket.getProtocol() : null,
+      certificateValid: false,
+    };
   }
   const certificate = socket.getPeerCertificate();
   const expiresAt = certificate.valid_to ? new Date(certificate.valid_to) : null;
   if (!expiresAt || Number.isNaN(expiresAt.getTime())) {
-    return { status: "UNAVAILABLE", expiresAt: null, daysRemaining: null };
+    return {
+      status: "UNAVAILABLE",
+      expiresAt: null,
+      daysRemaining: null,
+      protocol: socket.getProtocol(),
+      certificateValid: null,
+    };
   }
   const daysRemaining = Math.floor((expiresAt.getTime() - Date.now()) / 86_400_000);
   return {
     status: daysRemaining <= 30 ? "WARNING" : "CHECKED",
     expiresAt,
     daysRemaining,
+    protocol: socket.getProtocol(),
+    certificateValid: true,
   };
 }
 
@@ -296,7 +745,13 @@ async function requestOnce(
   location?: string;
   elapsedMs: number;
   headers: Record<string, string>;
-  tls: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null };
+  tls: {
+    status: SignalStatus;
+    expiresAt: Date | null;
+    daysRemaining: number | null;
+    protocol: string | null;
+    certificateValid: boolean | null;
+  };
 }> {
   const hostname = url.hostname.replace(/^\[|\]$/g, "");
   const addresses = await lookupBeforeDeadline(hostname, deadline);
@@ -442,7 +897,24 @@ export function prepareTargetRequest(options: TargetRequestOptions) {
   };
 }
 
-async function safeGet(
+export async function validateRedirectTarget(
+  currentUrl: URL,
+  location: string,
+  initialOrigin: string,
+  hasSecret: boolean,
+  deadline = Date.now() + 5_000,
+) {
+  const nextUrl = await validatePublicUrl(new URL(location, currentUrl).toString(), deadline);
+  if (hasSecret && nextUrl.origin !== initialOrigin) {
+    throw Object.assign(
+      new Error("Authentifizierte Weiterleitungen zu einer anderen Domain werden nicht ausgeführt."),
+      { code: "UNSAFE_REDIRECT" },
+    );
+  }
+  return nextUrl;
+}
+
+export async function safeGet(
   initialUrl: string,
   timeoutMs: number,
   options: TargetRequestOptions = {},
@@ -451,7 +923,14 @@ async function safeGet(
   body: string;
   elapsedMs: number;
   headers: Record<string, string>;
-  tls: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null };
+  tls: {
+    status: SignalStatus;
+    expiresAt: Date | null;
+    daysRemaining: number | null;
+    protocol: string | null;
+    certificateValid: boolean | null;
+  };
+  redirects: { count: number; crossOrigin: boolean; downgraded: boolean };
 }> {
   const deadline = Date.now() + timeoutMs;
   const requestOptions = prepareTargetRequest(options);
@@ -459,11 +938,22 @@ async function safeGet(
   const initialOrigin = url.origin;
   let totalElapsed = 0;
   let headers: Record<string, string> = {};
-  let tlsInfo: { status: SignalStatus; expiresAt: Date | null; daysRemaining: number | null } = {
+  let tlsInfo: {
+    status: SignalStatus;
+    expiresAt: Date | null;
+    daysRemaining: number | null;
+    protocol: string | null;
+    certificateValid: boolean | null;
+  } = {
     status: "UNAVAILABLE",
     expiresAt: null,
     daysRemaining: null,
+    protocol: null,
+    certificateValid: null,
   };
+  let redirectCount = 0;
+  let crossOriginRedirect = false;
+  let downgradedRedirect = false;
 
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
     const sameOrigin = url.origin === initialOrigin;
@@ -491,12 +981,16 @@ async function safeGet(
       if (redirect === MAX_REDIRECTS) {
         throw Object.assign(new Error("Zu viele Weiterleitungen."), { code: "TOO_MANY_REDIRECTS" });
       }
-      const nextUrl = await validatePublicUrl(new URL(response.location, url).toString(), deadline);
-      if (requestOptions.hasSecret && nextUrl.origin !== initialOrigin) {
-        throw Object.assign(new Error("Authentifizierte Weiterleitungen zu einer anderen Domain werden nicht ausgeführt."), {
-          code: "UNSAFE_REDIRECT",
-        });
-      }
+      const nextUrl = await validateRedirectTarget(
+        url,
+        response.location,
+        initialOrigin,
+        requestOptions.hasSecret,
+        deadline,
+      );
+      redirectCount += 1;
+      crossOriginRedirect ||= nextUrl.origin !== url.origin;
+      downgradedRedirect ||= url.protocol === "https:" && nextUrl.protocol === "http:";
       url = nextUrl;
       continue;
     }
@@ -506,6 +1000,11 @@ async function safeGet(
       elapsedMs: totalElapsed,
       headers,
       tls: tlsInfo,
+      redirects: {
+        count: redirectCount,
+        crossOrigin: crossOriginRedirect,
+        downgraded: downgradedRedirect,
+      },
     };
   }
 
@@ -584,6 +1083,7 @@ export async function runLiveVerification(
         tlsExpiresAt: response.tls.expiresAt,
         tlsDaysRemaining: response.tls.daysRemaining,
         securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+        securitySignals: createSecuritySignals({ reachable: true, response }),
         probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
       };
     }
@@ -609,6 +1109,7 @@ export async function runLiveVerification(
         tlsExpiresAt: response.tls.expiresAt,
         tlsDaysRemaining: response.tls.daysRemaining,
         securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+        securitySignals: createSecuritySignals({ reachable: true, response }),
         probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
       };
     }
@@ -632,6 +1133,7 @@ export async function runLiveVerification(
         tlsExpiresAt: response.tls.expiresAt,
         tlsDaysRemaining: response.tls.daysRemaining,
         securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+        securitySignals: createSecuritySignals({ reachable: true, response }),
         probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
       };
     }
@@ -668,6 +1170,7 @@ export async function runLiveVerification(
       tlsExpiresAt: response.tls.expiresAt,
       tlsDaysRemaining: response.tls.daysRemaining,
       securityHeaders: inspectSecurityHeaders(response.headers, url.startsWith("https:")),
+      securitySignals: createSecuritySignals({ reachable: true, response }),
       probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
   } catch (error) {
@@ -694,6 +1197,14 @@ export async function runLiveVerification(
       tlsExpiresAt: null,
       tlsDaysRemaining: null,
       securityHeaders: DEFAULT_SECURITY_HEADERS,
+      securitySignals: createSecuritySignals({
+        reachable: false,
+        networkStatus: code === "PRIVATE_ADDRESS" ? "FAIL" : "UNKNOWN",
+        networkSummary:
+          code === "PRIVATE_ADDRESS"
+            ? "SSRF-Schutz hat ein privates, lokales oder nicht öffentliches Ziel blockiert."
+            : undefined,
+      }),
       probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
   }
@@ -749,6 +1260,7 @@ export function runManualVerification(
       tlsExpiresAt: null,
       tlsDaysRemaining: null,
       securityHeaders: DEFAULT_SECURITY_HEADERS,
+      securitySignals: structuredClone(UNKNOWN_SECURITY_SIGNALS),
       probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
   }
@@ -772,6 +1284,7 @@ export function runManualVerification(
       tlsExpiresAt: null,
       tlsDaysRemaining: null,
       securityHeaders: DEFAULT_SECURITY_HEADERS,
+      securitySignals: structuredClone(UNKNOWN_SECURITY_SIGNALS),
       probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
   }
@@ -798,6 +1311,7 @@ export function runManualVerification(
     tlsExpiresAt: null,
     tlsDaysRemaining: null,
     securityHeaders: DEFAULT_SECURITY_HEADERS,
+    securitySignals: structuredClone(UNKNOWN_SECURITY_SIGNALS),
     probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
   };
 }

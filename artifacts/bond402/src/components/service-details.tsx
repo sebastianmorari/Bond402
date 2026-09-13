@@ -58,6 +58,36 @@ import {
   shouldShowDomainVerification,
 } from "@/lib/service-ui";
 
+const securitySignalLabels = {
+  reachability: "Reachability",
+  transport: "Transport / TLS",
+  network: "Host / Netzwerk",
+  redirects: "Redirects",
+  responseType: "Response Type",
+  suspiciousPayload: "Suspicious Payload",
+  securityHeaders: "Security Headers",
+  reputation: "Reputation",
+  authentication: "Auth-Hinweise",
+  rateLimit: "Rate-Limit",
+  securityConfidence: "Security Confidence",
+} as const;
+
+function securitySignalVariant(status: string): "default" | "destructive" | "secondary" {
+  if (status === "PASS") return "default";
+  if (status === "FAIL") return "destructive";
+  return "secondary";
+}
+
+function securitySignalStatusLabel(status: string) {
+  return status === "PASS"
+    ? "PASS"
+    : status === "FAIL"
+      ? "FAIL"
+      : status === "WARNING"
+        ? "WARNING"
+        : "UNKNOWN";
+}
+
 interface ServiceDetailsProps {
   serviceId: string | null;
   onClose: () => void;
@@ -367,6 +397,24 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Activity className="h-3 w-3" /> Availability
+                  </p>
+                  <p className="text-xl font-bold font-mono">
+                    {service.availabilityScore !== null ? `${service.availabilityScore}%` : "—"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <ShieldAlert className="h-3 w-3" /> Security Confidence
+                  </p>
+                  <p className="text-xl font-bold font-mono">
+                    {service.securityConfidence.score !== null
+                      ? `${service.securityConfidence.score}%`
+                      : "UNKNOWN"}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
                     <Activity className="h-3 w-3" /> Letzter Status
                   </p>
                   <div>
@@ -542,6 +590,49 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                                 </span>
                               </div>
                             </div>
+
+                            {check.securitySignals && (
+                              <div className="mt-4 rounded-lg border border-border/50 bg-background/50 p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Security-Signale
+                                  </p>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    Keine Auffälligkeit gefunden ist keine Sicherheitsgarantie.
+                                  </span>
+                                </div>
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                  {(
+                                    Object.entries(securitySignalLabels) as Array<
+                                      [keyof typeof securitySignalLabels, string]
+                                    >
+                                  ).map(([key, label]) => {
+                                    const signal = check.securitySignals[key];
+                                    return (
+                                      <div
+                                        key={key}
+                                        className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border/40 bg-muted/20 p-2"
+                                        title={signal.summary}
+                                      >
+                                        <span className="truncate text-[11px]">{label}</span>
+                                        <Badge
+                                          variant={securitySignalVariant(signal.status)}
+                                          className="shrink-0 text-[10px]"
+                                        >
+                                          {securitySignalStatusLabel(signal.status)}
+                                        </Badge>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                {check.securitySignals.suspiciousPayload.indicators.length > 0 && (
+                                  <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+                                    Auffällige Muster:{" "}
+                                    {check.securitySignals.suspiciousPayload.indicators.join(", ")}. Es wurde kein Code ausgeführt.
+                                  </p>
+                                )}
+                              </div>
+                            )}
 
                             {service.responseMode === "JSON" && (!check.structureMatch && (check.missingFields.length > 0 || check.foundFields.length > 0)) && (
                               <div className="mt-3 text-xs bg-destructive/5 border border-destructive/20 rounded p-2">

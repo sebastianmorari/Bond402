@@ -103,6 +103,64 @@ function simulatedCheck(serviceId: string): CheckResult {
       present: [],
       missing: [],
     },
+    securitySignals: {
+      reachability: { status: "PASS", summary: "Sandbox-Erreichbarkeit simuliert." },
+      transport: {
+        status: "PASS",
+        summary: "Sandbox-HTTPS/TLS simuliert.",
+        https: true,
+        protocol: "TLSv1.3",
+        certificateValid: true,
+        expiresAt: null,
+        daysRemaining: null,
+      },
+      network: { status: "PASS", summary: "Sandbox-Netzwerkprüfung simuliert." },
+      redirects: {
+        status: "PASS",
+        summary: "Keine Weiterleitung simuliert.",
+        count: 0,
+        crossOrigin: false,
+        downgraded: false,
+      },
+      responseType: {
+        status: "PASS",
+        summary: "JSON-Antwort simuliert.",
+        kind: "JSON",
+        contentType: "application/json",
+      },
+      suspiciousPayload: {
+        status: "PASS",
+        summary: "Keine auffälligen Muster simuliert.",
+        indicators: [],
+      },
+      securityHeaders: {
+        status: "UNKNOWN",
+        summary: "Header-Signale werden in der Sandbox nicht simuliert.",
+        evaluated: [],
+        present: [],
+        missing: [],
+      },
+      reputation: {
+        status: "UNKNOWN",
+        summary: "Keine Reputation simuliert.",
+      },
+      rateLimit: {
+        status: "UNKNOWN",
+        summary: "Kein Rate-Limit-Signal simuliert.",
+        detected: false,
+        retryAfterSeconds: null,
+      },
+      authentication: {
+        status: "UNKNOWN",
+        summary: "Keine Authentifizierung simuliert.",
+        required: false,
+      },
+      securityConfidence: {
+        status: "WARNING",
+        score: 60,
+        summary: "Sandbox-Sicherheitswerte sind simuliert.",
+      },
+    },
     probeRegion: "sandbox",
   };
 }

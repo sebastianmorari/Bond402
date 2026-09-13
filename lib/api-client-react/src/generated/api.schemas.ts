@@ -240,6 +240,23 @@ export const DomainRelationship = {
   THIRD_PARTY: 'THIRD_PARTY',
 } as const;
 
+export type SecuritySignalStatus = typeof SecuritySignalStatus[keyof typeof SecuritySignalStatus];
+
+
+export const SecuritySignalStatus = {
+  PASS: 'PASS',
+  WARNING: 'WARNING',
+  FAIL: 'FAIL',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SecurityConfidence {
+  status: SecuritySignalStatus;
+  /** @nullable */
+  score: number | null;
+  summary: string;
+}
+
 export type CheckResultStatus = typeof CheckResultStatus[keyof typeof CheckResultStatus];
 
 
@@ -274,6 +291,113 @@ export interface SecurityHeaders {
   missing: string[];
 }
 
+export type ResponseContentKind = typeof ResponseContentKind[keyof typeof ResponseContentKind];
+
+
+export const ResponseContentKind = {
+  JSON: 'JSON',
+  TEXT: 'TEXT',
+  HTML: 'HTML',
+  JAVASCRIPT: 'JAVASCRIPT',
+  BINARY: 'BINARY',
+  DOWNLOAD: 'DOWNLOAD',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type SecuritySignalsReputationStatus = typeof SecuritySignalsReputationStatus[keyof typeof SecuritySignalsReputationStatus];
+
+
+export const SecuritySignalsReputationStatus = {
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type SecuritySignalsReachability = {
+  status: SecuritySignalStatus;
+  summary: string;
+};
+
+export type SecuritySignalsTransport = {
+  status: SecuritySignalStatus;
+  summary: string;
+  https: boolean;
+  /** @nullable */
+  protocol: string | null;
+  /** @nullable */
+  certificateValid: boolean | null;
+  /** @nullable */
+  expiresAt: string | null;
+  /** @nullable */
+  daysRemaining: number | null;
+};
+
+export type SecuritySignalsNetwork = {
+  status: SecuritySignalStatus;
+  summary: string;
+};
+
+export type SecuritySignalsRedirects = {
+  status: SecuritySignalStatus;
+  summary: string;
+  count: number;
+  crossOrigin: boolean;
+  downgraded: boolean;
+};
+
+export type SecuritySignalsResponseType = {
+  status: SecuritySignalStatus;
+  summary: string;
+  kind: ResponseContentKind;
+  /** @nullable */
+  contentType: string | null;
+};
+
+export type SecuritySignalsSuspiciousPayload = {
+  status: SecuritySignalStatus;
+  summary: string;
+  indicators: string[];
+};
+
+export type SecuritySignalsSecurityHeaders = {
+  status: SecuritySignalStatus;
+  summary: string;
+  evaluated: string[];
+  present: string[];
+  missing: string[];
+};
+
+export type SecuritySignalsReputation = {
+  status: SecuritySignalsReputationStatus;
+  summary: string;
+};
+
+export type SecuritySignalsRateLimit = {
+  status: SecuritySignalStatus;
+  summary: string;
+  detected: boolean;
+  /** @nullable */
+  retryAfterSeconds: number | null;
+};
+
+export type SecuritySignalsAuthentication = {
+  status: SecuritySignalStatus;
+  summary: string;
+  required: boolean;
+};
+
+export interface SecuritySignals {
+  reachability: SecuritySignalsReachability;
+  transport: SecuritySignalsTransport;
+  network: SecuritySignalsNetwork;
+  redirects: SecuritySignalsRedirects;
+  responseType: SecuritySignalsResponseType;
+  suspiciousPayload: SecuritySignalsSuspiciousPayload;
+  securityHeaders: SecuritySignalsSecurityHeaders;
+  reputation: SecuritySignalsReputation;
+  rateLimit: SecuritySignalsRateLimit;
+  authentication: SecuritySignalsAuthentication;
+  securityConfidence: SecurityConfidence;
+}
+
 export interface CheckResult {
   id: string;
   serviceId: string;
@@ -297,6 +421,7 @@ export interface CheckResult {
   /** @nullable */
   tlsDaysRemaining: number | null;
   securityHeaders: SecurityHeaders;
+  securitySignals: SecuritySignals;
   probeRegion: string;
 }
 
@@ -305,6 +430,9 @@ export interface DeveloperServiceResult {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  /** @nullable */
+  availabilityScore: number | null;
+  securityConfidence: SecurityConfidence;
   latestCheck: CheckResult | null;
   /** @maxItems 100 */
   checks: CheckResult[];
@@ -543,6 +671,9 @@ export interface ApiService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  /** @nullable */
+  availabilityScore: number | null;
+  securityConfidence: SecurityConfidence;
   trustMetrics: TrustMetrics;
   signals: SignalStates;
   domainVerification: DomainVerification;
@@ -749,6 +880,7 @@ export type PublicServiceLatestCheck = {
   /** @nullable */
   tlsDaysRemaining: number | null;
   securityHeaders: SecurityHeaders;
+  securitySignals: SecuritySignals;
   probeRegion: string;
 } | null;
 
@@ -774,6 +906,9 @@ export interface PublicService {
   /** @nullable */
   trustScore: number | null;
   trustExplanation: string;
+  /** @nullable */
+  availabilityScore: number | null;
+  securityConfidence: SecurityConfidence;
   trustMetrics: TrustMetrics;
   signals: SignalStates;
   domainVerification: DomainVerification;

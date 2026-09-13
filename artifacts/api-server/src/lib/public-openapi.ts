@@ -154,6 +154,139 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             missing: { type: "array", items: { type: "string" } },
           },
         },
+        SecuritySignalStatus: {
+          type: "string",
+          enum: ["PASS", "WARNING", "FAIL", "UNKNOWN"],
+        },
+        ResponseContentKind: {
+          type: "string",
+          enum: ["JSON", "TEXT", "HTML", "JAVASCRIPT", "BINARY", "DOWNLOAD", "UNKNOWN"],
+        },
+        SecurityConfidence: {
+          type: "object",
+          required: ["status", "score", "summary"],
+          properties: {
+            status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+            score: { type: ["number", "null"] },
+            summary: { type: "string" },
+          },
+        },
+        SecuritySignals: {
+          type: "object",
+          required: [
+            "reachability",
+            "transport",
+            "network",
+            "redirects",
+            "responseType",
+            "suspiciousPayload",
+            "securityHeaders",
+            "reputation",
+            "rateLimit",
+            "authentication",
+            "securityConfidence",
+          ],
+          properties: {
+            reachability: {
+              type: "object",
+              required: ["status", "summary"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+              },
+            },
+            transport: {
+              type: "object",
+              required: ["status", "summary", "https", "protocol", "certificateValid", "expiresAt", "daysRemaining"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+                https: { type: "boolean" },
+                protocol: { type: ["string", "null"] },
+                certificateValid: { type: ["boolean", "null"] },
+                expiresAt: { type: ["string", "null"] },
+                daysRemaining: { type: ["number", "null"] },
+              },
+            },
+            network: {
+              type: "object",
+              required: ["status", "summary"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+              },
+            },
+            redirects: {
+              type: "object",
+              required: ["status", "summary", "count", "crossOrigin", "downgraded"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+                count: { type: "number" },
+                crossOrigin: { type: "boolean" },
+                downgraded: { type: "boolean" },
+              },
+            },
+            responseType: {
+              type: "object",
+              required: ["status", "summary", "kind", "contentType"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+                kind: { $ref: "#/components/schemas/ResponseContentKind" },
+                contentType: { type: ["string", "null"] },
+              },
+            },
+            suspiciousPayload: {
+              type: "object",
+              required: ["status", "summary", "indicators"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+                indicators: { type: "array", items: { type: "string" } },
+              },
+            },
+            securityHeaders: {
+              type: "object",
+              required: ["status", "summary", "evaluated", "present", "missing"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+                evaluated: { type: "array", items: { type: "string" } },
+                present: { type: "array", items: { type: "string" } },
+                missing: { type: "array", items: { type: "string" } },
+              },
+            },
+            reputation: {
+              type: "object",
+              required: ["status", "summary"],
+              properties: {
+                status: { type: "string", enum: ["UNKNOWN"] },
+                summary: { type: "string" },
+              },
+            },
+            rateLimit: {
+              type: "object",
+              required: ["status", "summary", "detected", "retryAfterSeconds"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+                detected: { type: "boolean" },
+                retryAfterSeconds: { type: ["number", "null"] },
+              },
+            },
+            authentication: {
+              type: "object",
+              required: ["status", "summary", "required"],
+              properties: {
+                status: { $ref: "#/components/schemas/SecuritySignalStatus" },
+                summary: { type: "string" },
+                required: { type: "boolean" },
+              },
+            },
+            securityConfidence: { $ref: "#/components/schemas/SecurityConfidence" },
+          },
+        },
         SignalStates: {
           type: "object",
           required: ["https", "tls", "securityHeaders"],
@@ -311,13 +444,15 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         },
         PublicService: {
           type: "object",
-          required: ["id", "name", "url", "trustScore", "trustExplanation", "trustMetrics", "signals", "domainVerification", "domainRelationship", "latestStatus", "latestCheckAt", "latestCheck", "access", "links"],
+          required: ["id", "name", "url", "trustScore", "trustExplanation", "availabilityScore", "securityConfidence", "trustMetrics", "signals", "domainVerification", "domainRelationship", "latestStatus", "latestCheckAt", "latestCheck", "access", "links"],
           properties: {
             id: { type: "string" },
             name: { type: "string" },
             url: { type: "string" },
             trustScore: { type: ["number", "null"] },
             trustExplanation: { type: "string" },
+            availabilityScore: { type: ["number", "null"] },
+            securityConfidence: { $ref: "#/components/schemas/SecurityConfidence" },
             trustMetrics: { $ref: "#/components/schemas/TrustMetrics" },
             signals: { $ref: "#/components/schemas/SignalStates" },
             domainVerification: { $ref: "#/components/schemas/DomainVerification" },

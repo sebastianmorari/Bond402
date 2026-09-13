@@ -231,6 +231,12 @@ export const ListServicesResponseItem = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
   "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
@@ -298,6 +304,70 @@ export const ListServicesResponseItem = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }))
@@ -363,6 +433,12 @@ export const CreateServiceResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
   "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
@@ -430,6 +506,70 @@ export const CreateServiceResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }))
@@ -464,6 +604,12 @@ export const GetServiceResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
   "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
@@ -531,6 +677,70 @@ export const GetServiceResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }))
@@ -613,6 +823,12 @@ export const UpdateServiceResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
   "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
@@ -681,6 +897,70 @@ export const UpdateServiceResponse = zod.object({
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
 }),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
+}),
   "probeRegion": zod.string()
 }))
 })
@@ -719,6 +999,70 @@ export const RunServiceCheckResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 })
@@ -765,6 +1109,70 @@ export const VerifyServiceResponseResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 })
@@ -921,6 +1329,12 @@ export const DeveloperGetServiceResponse = zod.object({
 }),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "latestCheck": zod.union([zod.object({
   "id": zod.string(),
   "serviceId": zod.string(),
@@ -944,6 +1358,70 @@ export const DeveloperGetServiceResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }),zod.null()]),
@@ -970,6 +1448,70 @@ export const DeveloperGetServiceResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 })).max(developerGetServiceResponseChecksMax)
@@ -1001,6 +1543,12 @@ export const DeveloperRunServiceCheckResponse = zod.object({
 }),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "latestCheck": zod.union([zod.object({
   "id": zod.string(),
   "serviceId": zod.string(),
@@ -1024,6 +1572,70 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }),zod.null()]),
@@ -1050,6 +1662,70 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 })).max(developerRunServiceCheckResponseChecksMax)
@@ -1081,6 +1757,12 @@ export const DeveloperGetLatestCheckResponse = zod.object({
 }),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "latestCheck": zod.union([zod.object({
   "id": zod.string(),
   "serviceId": zod.string(),
@@ -1104,6 +1786,70 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }),zod.null()]),
@@ -1130,6 +1876,70 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 })).max(developerGetLatestCheckResponseChecksMax)
@@ -1334,6 +2144,12 @@ export const SearchPublicServicesResponse = zod.object({
   "listedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
   "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
@@ -1397,6 +2213,70 @@ export const SearchPublicServicesResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }),zod.null()]),
@@ -1498,6 +2378,12 @@ export const GetPublicServiceResponse = zod.object({
   "listedAt": zod.coerce.date().nullable(),
   "trustScore": zod.number().nullable(),
   "trustExplanation": zod.string(),
+  "availabilityScore": zod.number().nullable(),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+}),
   "trustMetrics": zod.object({
   "regionalAggregation": zod.object({
   "state": zod.enum(['SINGLE_REGION', 'MULTIPLE_REGIONS', 'CONTRADICTORY_REGIONAL_RESULTS', 'INSUFFICIENT_REGIONAL_DATA']),
@@ -1561,6 +2447,70 @@ export const GetPublicServiceResponse = zod.object({
   "evaluated": zod.array(zod.string()),
   "present": zod.array(zod.string()),
   "missing": zod.array(zod.string())
+}),
+  "securitySignals": zod.object({
+  "reachability": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "transport": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "https": zod.boolean(),
+  "protocol": zod.string().nullable(),
+  "certificateValid": zod.boolean().nullable(),
+  "expiresAt": zod.string().nullable(),
+  "daysRemaining": zod.number().nullable()
+}),
+  "network": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string()
+}),
+  "redirects": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "count": zod.number(),
+  "crossOrigin": zod.boolean(),
+  "downgraded": zod.boolean()
+}),
+  "responseType": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "kind": zod.enum(['JSON', 'TEXT', 'HTML', 'JAVASCRIPT', 'BINARY', 'DOWNLOAD', 'UNKNOWN']),
+  "contentType": zod.string().nullable()
+}),
+  "suspiciousPayload": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "indicators": zod.array(zod.string())
+}),
+  "securityHeaders": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "evaluated": zod.array(zod.string()),
+  "present": zod.array(zod.string()),
+  "missing": zod.array(zod.string())
+}),
+  "reputation": zod.object({
+  "status": zod.enum(['UNKNOWN']),
+  "summary": zod.string()
+}),
+  "rateLimit": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "detected": zod.boolean(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "authentication": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "summary": zod.string(),
+  "required": zod.boolean()
+}),
+  "securityConfidence": zod.object({
+  "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
+  "score": zod.number().nullable(),
+  "summary": zod.string()
+})
 }),
   "probeRegion": zod.string()
 }),zod.null()]),

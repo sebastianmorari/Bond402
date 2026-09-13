@@ -6,8 +6,12 @@ import {
   type ApiCheckRow,
   type ApiServiceRow,
 } from "@workspace/db";
-import type { TargetRequestOptions, VerificationOutcome } from "./api-verifier";
-import { normalizeResponseMode } from "./api-verifier";
+import type { SecuritySignals, TargetRequestOptions, VerificationOutcome } from "./api-verifier";
+import {
+  calculateSecurityConfidence,
+  normalizeResponseMode,
+  UNKNOWN_SECURITY_SIGNALS,
+} from "./api-verifier";
 import {
   getDomainRelationship,
   getDomainVerificationStatus,
@@ -47,6 +51,12 @@ function signalState(check: ApiCheckRow | undefined) {
   };
 }
 
+function getSecuritySignals(check: ApiCheckRow | undefined): SecuritySignals {
+  return check?.securitySignals
+    ? (check.securitySignals as SecuritySignals)
+    : structuredClone(UNKNOWN_SECURITY_SIGNALS);
+}
+
 export function toCheckResponse(check: ApiCheckRow) {
   return {
     id: check.id,
@@ -67,21 +77,9 @@ export function toCheckResponse(check: ApiCheckRow) {
     tlsExpiresAt: check.tlsExpiresAt?.toISOString() ?? null,
     tlsDaysRemaining: check.tlsDaysRemaining,
     securityHeaders: check.securityHeaders,
+    securitySignals: getSecuritySignals(check),
     probeRegion: check.probeRegion,
   };
-}
-
-function signalQuality(check: ApiCheckRow) {
-  const values = [
-    check.https ? 1 : 0,
-    check.tlsStatus === "CHECKED" ? 1 : check.tlsStatus === "WARNING" ? 0.5 : 0,
-    check.securityHeaders.status === "CHECKED"
-      ? 1
-      : check.securityHeaders.status === "WARNING"
-        ? 0.5
-        : 0,
-  ];
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 export function calculateTrust(
@@ -94,6 +92,8 @@ export function calculateTrust(
   if (liveChecks.length === 0) {
     return {
       score: null,
+      availabilityScore: null,
+      securityConfidence: structuredClone(UNKNOWN_SECURITY_SIGNALS.securityConfidence),
       explanation: "Noch keine echte Prüfung vorhanden. Starten Sie einen Live-Check.",
       metrics,
     };
@@ -115,30 +115,41 @@ export function calculateTrust(
       check.httpStatus >= 200 &&
       check.httpStatus < 300,
   );
-  const transportSignals = liveChecks.reduce(
-    (sum, check) => sum + signalQuality(check),
-    0,
-  ) / liveChecks.length;
   const schemaConfigured = expectedStructure.trim().length > 0;
   const structure = schemaConfigured
     ? weightedRatio(liveChecks, (check) => check.structureMatch)
     : 1;
+  const latestLiveCheck = liveChecks[0];
+  const securityConfidence = latestLiveCheck
+    ? calculateSecurityConfidence(getSecuritySignals(latestLiveCheck), liveChecks.length)
+    : structuredClone(UNKNOWN_SECURITY_SIGNALS.securityConfidence);
+  const availabilityScore = Math.round(
+    (reachability * 0.4 + httpSuccess * 0.35 + performance * 0.25) * 100,
+  );
   const score = Math.round(
     reachability * 30 +
       httpSuccess * 25 +
       performance * 20 +
-      transportSignals * 15 +
+      (securityConfidence.score ?? 0) * 0.15 +
       structure * 10,
   );
+  const overallSampleCap =
+    liveChecks.length < 2 ? 60 : liveChecks.length < 3 ? 70 : liveChecks.length < 5 ? 80 : liveChecks.length < 10 ? 90 : 95;
   return {
-    score,
+    score: Math.min(score, overallSampleCap),
+    availabilityScore,
+    securityConfidence,
     metrics,
     explanation:
-      `Berechnung aus ${liveChecks.length} echten Prüfungen mit stärkerem Gewicht für neue Daten: ` +
+      `Trennung aus ${liveChecks.length} echten Prüfungen: Verfügbarkeit ${availabilityScore} %, ` +
+      `Security Confidence ${securityConfidence.score ?? "unbekannt"} %, ` +
+      `Gesamtvertrauen wegen begrenzter Samples maximal ${overallSampleCap} %. ` +
+      "Keine Auffälligkeit gefunden ist keine Sicherheitsgarantie. " +
+      `Historische Verfügbarkeit nutzt stärkere Gewichte für neue Daten: ` +
       `Erreichbarkeit ${Math.round(reachability * 100)} % (30 Punkte), ` +
       `HTTP-Erfolg ${Math.round(httpSuccess * 100)} % (25 Punkte), ` +
       `Antwortzeit ${Math.round(performance * 100)} % (20 Punkte), ` +
-      `TLS-/Header-Hinweise ${Math.round(transportSignals * 100)} % (15 Punkte) und ` +
+      `Security Confidence ${securityConfidence.score ?? 0} % (15 Punkte) und ` +
       `${schemaConfigured ? "Schema-Validierung" : "kein konfiguriertes Schema"} ` +
       `${Math.round(structure * 100)} % (10 Punkte).`,
   };
@@ -218,6 +229,8 @@ export function buildServiceResponse(
     createdAt: service.createdAt.toISOString(),
     trustScore: trust.score,
     trustExplanation: trust.explanation,
+    availabilityScore: trust.availabilityScore,
+    securityConfidence: trust.securityConfidence,
     trustMetrics: trust.metrics,
     signals: signalState(latestCheck),
     domainVerification: {
@@ -244,6 +257,8 @@ export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheck
     listedAt: service.listedAt?.toISOString() ?? null,
     trustScore: trust.score,
     trustExplanation: trust.explanation,
+    availabilityScore: trust.availabilityScore,
+    securityConfidence: trust.securityConfidence,
     trustMetrics: trust.metrics,
     signals: signalState(latestCheck),
     domainVerification: {
@@ -269,6 +284,7 @@ export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheck
           tlsExpiresAt: latestCheck.tlsExpiresAt?.toISOString() ?? null,
           tlsDaysRemaining: latestCheck.tlsDaysRemaining,
           securityHeaders: latestCheck.securityHeaders,
+          securitySignals: getSecuritySignals(latestCheck),
           probeRegion: latestCheck.probeRegion,
         }
       : null,
