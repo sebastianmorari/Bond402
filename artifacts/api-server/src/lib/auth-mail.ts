@@ -30,9 +30,11 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function getMailConfig() {
+function getMailConfig(fallbackBaseUrl?: string) {
   const apiKey = process.env.RESEND_API_KEY?.trim();
-  const baseUrl = process.env.PUBLIC_BASE_URL?.trim().replace(/\/+$/, "");
+  const baseUrl =
+    process.env.PUBLIC_BASE_URL?.trim().replace(/\/+$/, "") ||
+    fallbackBaseUrl?.trim().replace(/\/+$/, "");
   const from = process.env.RESEND_FROM_EMAIL?.trim() || DEFAULT_FROM;
 
   if (!apiKey) {
@@ -99,8 +101,13 @@ async function sendResendEmail({
   }
 }
 
-export async function sendVerificationEmail(email: string, displayName: string, rawToken: string) {
-  const { apiKey, baseUrl, from } = getMailConfig();
+export async function sendVerificationEmail(
+  email: string,
+  displayName: string,
+  rawToken: string,
+  options: { fallbackBaseUrl?: string } = {},
+) {
+  const { apiKey, baseUrl, from } = getMailConfig(options.fallbackBaseUrl);
   const link = buildLink(baseUrl, "/verify-email", rawToken);
   const safeName = escapeHtml(displayName);
   await sendResendEmail({
@@ -113,8 +120,13 @@ export async function sendVerificationEmail(email: string, displayName: string, 
   });
 }
 
-export async function sendPasswordResetEmail(email: string, displayName: string, rawToken: string) {
-  const { apiKey, baseUrl, from } = getMailConfig();
+export async function sendPasswordResetEmail(
+  email: string,
+  displayName: string,
+  rawToken: string,
+  options: { fallbackBaseUrl?: string } = {},
+) {
+  const { apiKey, baseUrl, from } = getMailConfig(options.fallbackBaseUrl);
   const link = buildLink(baseUrl, "/reset-password", rawToken);
   const safeName = escapeHtml(displayName);
   await sendResendEmail({

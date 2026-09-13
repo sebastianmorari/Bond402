@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Response } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { eq } from "drizzle-orm";
 import { bond402AuthTokensTable, bond402SessionsTable, bond402UsageTable, bond402UsersTable, db } from "@workspace/db";
 import {
@@ -36,6 +36,7 @@ import {
 } from "../lib/auth-mail";
 import { consumeAuthToken, issueAuthToken } from "../lib/auth-tokens";
 import { logger } from "../lib/logger";
+import { publicBaseUrl } from "../lib/public-sitemap";
 
 const router: IRouter = Router();
 const failedAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -87,6 +88,13 @@ function allowEmailRequest(ip: string, email: string) {
     allowBucketAttempt(emailRequestAttempts, `${ip}:${email}`, 3, 60 * 60_000) &&
     allowBucketAttempt(emailIpAttempts, ip, 12, 60 * 60_000)
   );
+}
+
+function developmentMailOptions(req: Request) {
+  if (process.env.NODE_ENV === "production" || process.env.PUBLIC_BASE_URL?.trim()) {
+    return {};
+  }
+  return { fallbackBaseUrl: publicBaseUrl(req) };
 }
 
 function authError(res: Response) {
@@ -156,7 +164,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   await ensureFreeUsage(user.id);
   const { rawToken } = await issueAuthToken(user.id, AUTH_TOKEN_PURPOSE.EMAIL_VERIFICATION, EMAIL_VERIFICATION_TTL_MS);
   try {
-    await sendVerificationEmail(user.email, user.displayName, rawToken);
+    await sendVerificationEmail(user.email, user.displayName, rawToken, developmentMailOptions(req));
   } catch (error) {
     await db.delete(bond402AuthTokensTable).where(eq(bond402AuthTokensTable.userId, user.id));
     await db.delete(bond402UsageTable).where(eq(bond402UsageTable.userId, user.id));
@@ -255,7 +263,7 @@ router.post("/auth/resend-verification", async (req, res): Promise<void> => {
   if (user && !isEmailVerified(user)) {
     const { rawToken } = await issueAuthToken(user.id, AUTH_TOKEN_PURPOSE.EMAIL_VERIFICATION, EMAIL_VERIFICATION_TTL_MS);
     try {
-      await sendVerificationEmail(user.email, user.displayName, rawToken);
+        await sendVerificationEmail(user.email, user.displayName, rawToken, developmentMailOptions(req));
     } catch (error) {
       // Keep the response generic so account existence is never disclosed.
       logger.warn({ errorType: error instanceof Error ? error.name : typeof error }, "Bestätigungs-E-Mail konnte nicht versendet werden");
@@ -281,7 +289,7 @@ router.post("/auth/password/forgot", async (req, res): Promise<void> => {
   if (user) {
     const { rawToken } = await issueAuthToken(user.id, AUTH_TOKEN_PURPOSE.PASSWORD_RESET, PASSWORD_RESET_TTL_MS);
     try {
-      await sendPasswordResetEmail(user.email, user.displayName, rawToken);
+        await sendPasswordResetEmail(user.email, user.displayName, rawToken, developmentMailOptions(req));
     } catch (error) {
       // Keep the response generic so account existence is never disclosed.
       logger.warn({ errorType: error instanceof Error ? error.name : typeof error }, "Passwort-Reset-E-Mail konnte nicht versendet werden");

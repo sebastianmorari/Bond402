@@ -140,7 +140,7 @@ before(async () => {
       PORT: String(port),
       RESEND_API_KEY: "test-resend-key",
       RESEND_API_URL: `http://127.0.0.1:${port + 1}/emails`,
-      PUBLIC_BASE_URL: baseUrl,
+      PUBLIC_BASE_URL: "",
       RESEND_FROM_EMAIL: "onboarding@resend.dev",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -377,6 +377,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(registeredA.data.user.emailVerified, false);
 
   const verificationEmail = await waitForEmail("Bond402: E-Mail-Adresse bestätigen", verificationEmailIndex);
+  assert.match(String(verificationEmail.text), new RegExp(`${baseUrl}/verify-email\\?token=`));
   const verificationToken = tokenFromEmail(verificationEmail, "/verify-email");
 
   const unverifiedLogin = await request("/api/auth/login", {
