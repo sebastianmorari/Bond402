@@ -14,6 +14,7 @@
     "test:protected-api": "pnpm --filter @workspace/scripts exec tsx --test protected-api.test.mjs",
     "test:auth-session": "node --test scripts/auth-session.test.mjs",
     "test:database-resilience": "pnpm --filter @workspace/scripts exec tsx --test database-resilience.test.mjs",
+    "test:backup-restore": "pnpm --filter @workspace/api-server run build && BOND402_BACKUP_RESTORE_TEST=1 node --test scripts/backup-restore.test.mjs",
     "test:secret-leak": "node --test scripts/secret-leak.test.mjs",
     "test:public-service-search": "node --experimental-strip-types --test scripts/public-service-search.test.mjs",
     "test:public-catalog-schema": "node --test scripts/public-catalog-schema.test.mjs",
