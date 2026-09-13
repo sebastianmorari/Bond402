@@ -69,6 +69,32 @@ function getSecuritySignals(check: ApiCheckRow | undefined): SecuritySignals {
   };
 }
 
+function isQualifyingFirstSeenCheck(check: ApiCheckRow) {
+  if (
+    check.checkType !== "LIVE" ||
+    !check.reachable ||
+    check.httpStatus === null ||
+    check.httpStatus < 200 ||
+    check.httpStatus >= 300 ||
+    !check.securitySignals
+  ) {
+    return false;
+  }
+
+  const signals = getSecuritySignals(check);
+  return (
+    signals.network.status !== "FAIL" &&
+    signals.transport.status !== "FAIL" &&
+    signals.threatIndicators.status === "NONE_DETECTED" &&
+    signals.historicalDrift.status !== "CHANGED" &&
+    signals.securityConfidence.status !== "FAIL"
+  );
+}
+
+export function countQualifyingFirstSeenChecks(checks: ApiCheckRow[]) {
+  return checks.filter(isQualifyingFirstSeenCheck).length;
+}
+
 export function toCheckResponse(check: ApiCheckRow) {
   return {
     id: check.id,
@@ -257,6 +283,7 @@ export async function saveOutcome(
   if (checkType === "LIVE") {
     const recentChecks = await loadChecks(serviceId);
     const liveChecks = recentChecks.filter((item) => item.checkType === "LIVE");
+    const qualifyingChecks = countQualifyingFirstSeenChecks(recentChecks);
     const hasFlag = liveChecks.some((item) => {
       const signals = getSecuritySignals(item);
       return signals.threatIndicators.status === "FLAGGED";
@@ -269,9 +296,11 @@ export async function saveOutcome(
       ? "FLAGGED"
       : hasSuspicion
         ? "SUSPICIOUS"
-        : liveChecks.length >= 3
+        : qualifyingChecks >= 3
           ? "VERIFIED_LOW_RISK"
-          : "SANDBOXED_OBSERVED";
+          : liveChecks.some((item) => item.reachable && item.securitySignals)
+            ? "SANDBOXED_OBSERVED"
+            : "SANDBOX_PENDING";
     const [service] = await db
       .select({ sandboxObservedAt: apiServicesTable.sandboxObservedAt })
       .from(apiServicesTable)
@@ -281,7 +310,9 @@ export async function saveOutcome(
       .update(apiServicesTable)
       .set({
         securityStatus: nextSecurityStatus,
-        sandboxObservedAt: service?.sandboxObservedAt ?? new Date(),
+        sandboxObservedAt:
+          service?.sandboxObservedAt ??
+          (liveChecks.some((item) => item.reachable && item.securitySignals) ? new Date() : null),
       })
       .where(eq(apiServicesTable.id, serviceId));
   }

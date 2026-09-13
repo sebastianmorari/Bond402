@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { calculateTrust } from "../artifacts/api-server/src/lib/service-data.ts";
+import {
+  calculateTrust,
+  countQualifyingFirstSeenChecks,
+} from "../artifacts/api-server/src/lib/service-data.ts";
 
 function makeCheck(overrides = {}) {
   return {
@@ -49,4 +52,49 @@ test("Ein expliziter Schemafehler bleibt sichtbar und der Ein-Sample-Deckel blei
 
   assert.equal(trust.score, 60);
   assert.match(trust.explanation, /Schema-Validierung 0 % \(10 Punkte\)/);
+});
+
+function securitySignals(overrides = {}) {
+  return {
+    network: { status: "PASS" },
+    transport: { status: "PASS" },
+    threatIndicators: { status: "NONE_DETECTED" },
+    historicalDrift: { status: "NONE" },
+    securityConfidence: { status: "WARNING" },
+    ...overrides,
+  };
+}
+
+test("First-Seen-Zählung ignoriert nicht erreichbare oder nicht erfolgreiche Live-Checks", () => {
+  const base = makeCheck({ securitySignals: securitySignals() });
+  assert.equal(
+    countQualifyingFirstSeenChecks([
+      base,
+      base,
+      base,
+      makeCheck({ reachable: false, httpStatus: null, securitySignals: undefined }),
+      makeCheck({ httpStatus: 500, securitySignals: securitySignals() }),
+    ]),
+    3,
+  );
+});
+
+test("First-Seen-Zählung ignoriert verdächtige oder historisch veränderte Antworten", () => {
+  const base = makeCheck({ securitySignals: securitySignals() });
+  assert.equal(
+    countQualifyingFirstSeenChecks([
+      base,
+      makeCheck({
+        securitySignals: securitySignals({
+          threatIndicators: { status: "SUSPICIOUS" },
+        }),
+      }),
+      makeCheck({
+        securitySignals: securitySignals({
+          historicalDrift: { status: "CHANGED" },
+        }),
+      }),
+    ]),
+    1,
+  );
 });
