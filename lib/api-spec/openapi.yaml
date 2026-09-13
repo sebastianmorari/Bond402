@@ -1866,7 +1866,6 @@ components:
           enum: [NOT_USED, USED, UNAVAILABLE]
         sourceUrl:
           type: string
-          format: uri
       required: [source, sourceLabel, scope, externalSources, mode, fallback]
     PublicServiceDiscovery:
       type: object
@@ -1965,10 +1964,8 @@ components:
               type: string
             sourceRecordUrl:
               type: string
-              format: uri
             specificationUrl:
               type: string
-              format: uri
             openapiVersion:
               type: ["string", "null"]
             updatedAt:
@@ -1990,7 +1987,6 @@ components:
           type: ["string", "null"]
         url:
           type: string
-          format: uri
         verification:
           type: object
           properties:
@@ -2008,10 +2004,8 @@ components:
           properties:
             sourceRecord:
               type: string
-              format: uri
             specification:
               type: string
-              format: uri
           required: [sourceRecord, specification]
       required: [id, kind, name, description, url, verification, discovery, links]
     PublicDiscovery:

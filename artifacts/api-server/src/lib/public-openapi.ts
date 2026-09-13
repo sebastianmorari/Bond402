@@ -277,7 +277,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             externalSources: { type: "boolean" },
             mode: { type: "string", enum: ["INTERNAL_PRIMARY", "EXTERNAL_FALLBACK"] },
             fallback: { type: "string", enum: ["NOT_USED", "USED", "UNAVAILABLE"] },
-            sourceUrl: { type: "string", format: "uri" },
+            sourceUrl: { type: "string" },
           },
         },
         PublicServiceDiscovery: {
@@ -353,8 +353,8 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               required: ["provider", "sourceRecordUrl", "specificationUrl", "openapiVersion", "updatedAt"],
               properties: {
                 provider: { type: "string" },
-                sourceRecordUrl: { type: "string", format: "uri" },
-                specificationUrl: { type: "string", format: "uri" },
+                sourceRecordUrl: { type: "string" },
+                specificationUrl: { type: "string" },
                 openapiVersion: { type: ["string", "null"] },
                 updatedAt: { type: ["string", "null"], format: "date-time" },
               },
@@ -369,7 +369,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             kind: { type: "string", enum: ["EXTERNAL_DISCOVERY"] },
             name: { type: "string" },
             description: { type: ["string", "null"] },
-            url: { type: "string", format: "uri" },
+            url: { type: "string" },
             verification: {
               type: "object",
               required: ["status", "reason"],
@@ -383,8 +383,8 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               type: "object",
               required: ["sourceRecord", "specification"],
               properties: {
-                sourceRecord: { type: "string", format: "uri" },
-                specification: { type: "string", format: "uri" },
+                sourceRecord: { type: "string" },
+                specification: { type: "string" },
               },
             },
           },

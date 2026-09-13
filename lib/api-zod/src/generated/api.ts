@@ -1264,7 +1264,7 @@ export const GetPublicDiscoveryResponse = zod.object({
   "externalSources": zod.boolean(),
   "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
   "fallback": zod.enum(['NOT_USED', 'USED', 'UNAVAILABLE']),
-  "sourceUrl": zod.url().optional()
+  "sourceUrl": zod.string().optional()
 })),
   "ranking": zod.array(zod.string())
 }),
@@ -1433,7 +1433,7 @@ export const SearchPublicServicesResponse = zod.object({
   "kind": zod.enum(['EXTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-  "url": zod.url(),
+  "url": zod.string(),
   "verification": zod.object({
   "status": zod.enum(['UNVERIFIED_EXTERNAL']),
   "reason": zod.enum(['SOURCE_METADATA_ONLY_NO_BOND402_CHECK'])
@@ -1451,15 +1451,15 @@ export const SearchPublicServicesResponse = zod.object({
 }),
   "evidence": zod.object({
   "provider": zod.string(),
-  "sourceRecordUrl": zod.url(),
-  "specificationUrl": zod.url(),
+  "sourceRecordUrl": zod.string(),
+  "specificationUrl": zod.string(),
   "openapiVersion": zod.string().nullable(),
   "updatedAt": zod.coerce.date().nullable()
 })
 }),
   "links": zod.object({
-  "sourceRecord": zod.url(),
-  "specification": zod.url()
+  "sourceRecord": zod.string(),
+  "specification": zod.string()
 })
 })])),
   "query": zod.string(),
@@ -1475,7 +1475,7 @@ export const SearchPublicServicesResponse = zod.object({
   "externalSources": zod.boolean(),
   "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
   "fallback": zod.enum(['NOT_USED', 'USED', 'UNAVAILABLE']),
-  "sourceUrl": zod.url().optional()
+  "sourceUrl": zod.string().optional()
 })
 })
 
