@@ -6,7 +6,7 @@ export const PUBLIC_EXTERNAL_DISCOVERY_SCOPE = "PUBLIC_UNVERIFIED_OPENAPI" as co
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 2500;
-const MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
+const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
 
 type UnknownRecord = Record<string, unknown>;
 

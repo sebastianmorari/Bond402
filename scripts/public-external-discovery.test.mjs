@@ -103,3 +103,27 @@ test("eine blockierte öffentliche Quelle wird sicher übersprungen", async () =
   const result = await loadApisGuruCatalog(async () => new Response("", { status: 402 }), referenceNow);
   assert.deepEqual(result, { status: "UNAVAILABLE", records: [] });
 });
+
+test("das aktuelle APIs.guru-Verzeichnis bleibt innerhalb des begrenzten Antwortlimits nutzbar", async () => {
+  resetApisGuruCatalogCacheForTests();
+  const payload = {
+    "weather.example": {
+      preferred: "1.0.0",
+      versions: {
+        "1.0.0": {
+          updated: "2026-09-12T11:00:00.000Z",
+          openapiVer: "3.0.0",
+          swaggerUrl: "https://api.apis.guru/v2/specs/weather.example/1.0.0/openapi.json",
+          info: { title: "Weather API" },
+        },
+      },
+    },
+  };
+  const paddedResponse = `${JSON.stringify(payload)}${" ".repeat(8 * 1024 * 1024 + 1024)}`;
+  const result = await loadApisGuruCatalog(
+    async () => new Response(paddedResponse, { status: 200 }),
+    referenceNow,
+  );
+  assert.equal(result.status, "AVAILABLE");
+  assert.equal(result.records.length, 1);
+});
