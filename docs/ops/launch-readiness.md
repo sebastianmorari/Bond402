@@ -7,9 +7,17 @@
 - API-Build: `pnpm --filter @workspace/api-server run build`
 - Web-Build: `PORT=4173 BASE_PATH=/ pnpm --filter @workspace/bond402 run build`
 - Sicherheitsregressionen: `pnpm run test:security-signals`
+- Auth-/Datenbank-Resilienz und lokaler Secret-Leak-Test:
+  `pnpm run test:auth-session`, `pnpm run test:database-resilience`,
+  `pnpm run test:secret-leak`
 - Öffentliche MVP-/Discovery-/Service-Routentests: die jeweiligen
   `test:*`-Scripts in `package.json`
 - Diff-Prüfung: `git diff --check`
+
+Der vollständige lokale Gate-Lauf wurde für den aktuellen Arbeitsstand erfolgreich
+ausgeführt. Die kostenlosen Dependency-, SAST- und HoundDog-Prüfungen meldeten für
+diesen Arbeitsstand keine Funde. Diese Ergebnisse ersetzen weder CI-Aufbewahrung
+noch einen Produktionsnachweis.
 
 ## Nicht behaupten
 

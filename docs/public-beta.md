@@ -29,7 +29,8 @@ account details, sessions, API-key values or hashes, or internal check details.
 ## Limits and key model
 
 Public catalog, detail, discovery and stored pre-action requests share a limit of 60 requests
-per minute per IP. A `429` response includes `Retry-After`.
+per minute per IP. The read-only external-check and external-preflight routes use a stricter
+limit of 12 requests per minute per IP. A `429` response includes `Retry-After`.
 
 The public-beta Developer API key model is owner-bound. It supports create-and-revoke
 rotation, but not cross-account delegation, selectable scopes or expiration dates yet.

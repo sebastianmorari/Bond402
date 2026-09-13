@@ -3,7 +3,8 @@
 ## Status
 
 E-Mail-Verifizierung und Passwort-Wiederherstellung sind für den öffentlichen
-Beta-Launch aktiv. Neue Konten bestätigen ihre E-Mail-Adresse über einen
+Beta-Launch implementiert. Eine tatsächliche Aktivierung in Produktion ist aus
+diesem Repository nicht verifiziert. Neue Konten bestätigen ihre E-Mail-Adresse über einen
 24 Stunden gültigen Einmal-Link. Passwort-Reset-Links sind 30 Minuten gültig.
 
 Die Auth-Mail-Implementierung verwendet Resend ausschließlich serverseitig.
