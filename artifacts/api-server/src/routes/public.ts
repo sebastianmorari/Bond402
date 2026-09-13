@@ -13,8 +13,9 @@ import {
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
-  loadApisGuruCatalog,
+  getCachedApisGuruCatalog,
   rankExternalDiscoveryResults,
+  warmApisGuruCatalog,
 } from "../lib/public-external-discovery";
 import { getExternalApiDetail } from "../lib/public-external-detail";
 import { runLiveVerification } from "../lib/api-verifier";
@@ -245,7 +246,10 @@ router.get("/public/services", async (req, res): Promise<void> => {
     return;
   }
 
-  const externalCatalog = await loadApisGuruCatalog();
+  const externalCatalog = getCachedApisGuruCatalog();
+  if (externalCatalog.status === "UNAVAILABLE") {
+    warmApisGuruCatalog();
+  }
   const externalResults = rankExternalDiscoveryResults(externalCatalog.records, q);
   if (externalCatalog.status === "AVAILABLE") {
     const items = externalResults.slice((page - 1) * pageSize, page * pageSize);

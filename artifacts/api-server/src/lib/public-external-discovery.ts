@@ -87,6 +87,7 @@ export type ExternalDiscoveryLoadResult = {
 type ExternalFetch = (input: string, init?: RequestInit) => Promise<Response>;
 
 let cachedRecords: { expiresAt: number; records: ExternalApiRecord[] } | null = null;
+let catalogLoadPromise: Promise<ExternalDiscoveryLoadResult> | null = null;
 
 function asRecord(value: unknown): UnknownRecord | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -317,32 +318,62 @@ export async function loadApisGuruCatalog(
     return { status: "AVAILABLE", records: cachedRecords.records };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const response = await fetcher(PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error(`APIs.guru returned ${response.status}.`);
-
-    const text = await response.text();
-    if (new TextEncoder().encode(text).byteLength > MAX_RESPONSE_BYTES) {
-      throw new Error("APIs.guru response exceeded the safety limit.");
-    }
-    const records = parseApisGuruCatalog(JSON.parse(text));
-    if (records.length === 0) throw new Error("APIs.guru returned no usable OpenAPI records.");
-
-    cachedRecords = { expiresAt: now + CACHE_TTL_MS, records };
-    return { status: "AVAILABLE", records };
-  } catch {
-    return { status: "UNAVAILABLE", records: [] };
-  } finally {
-    clearTimeout(timeout);
+  if (fetcher === fetch && catalogLoadPromise) {
+    return catalogLoadPromise;
   }
+
+  const load = (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const response = await fetcher(PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`APIs.guru returned ${response.status}.`);
+
+      const text = await response.text();
+      if (new TextEncoder().encode(text).byteLength > MAX_RESPONSE_BYTES) {
+        throw new Error("APIs.guru response exceeded the safety limit.");
+      }
+      const records = parseApisGuruCatalog(JSON.parse(text));
+      if (records.length === 0) throw new Error("APIs.guru returned no usable OpenAPI records.");
+
+      cachedRecords = { expiresAt: now + CACHE_TTL_MS, records };
+      return { status: "AVAILABLE" as const, records };
+    } catch {
+      return { status: "UNAVAILABLE" as const, records: [] };
+    } finally {
+      clearTimeout(timeout);
+    }
+  })();
+
+  if (fetcher !== fetch) return load;
+
+  catalogLoadPromise = load;
+  try {
+    return await load;
+  } finally {
+    if (catalogLoadPromise === load) catalogLoadPromise = null;
+  }
+}
+
+export function getCachedApisGuruCatalog(now = Date.now()): ExternalDiscoveryLoadResult {
+  return cachedRecords && cachedRecords.expiresAt > now
+    ? { status: "AVAILABLE", records: cachedRecords.records }
+    : { status: "UNAVAILABLE", records: [] };
+}
+
+export function warmApisGuruCatalog(
+  fetcher: ExternalFetch = fetch,
+  now = Date.now(),
+): void {
+  if (fetcher === fetch && getCachedApisGuruCatalog(now).status === "AVAILABLE") return;
+  void loadApisGuruCatalog(fetcher, now);
 }
 
 export function resetApisGuruCatalogCacheForTests() {
   cachedRecords = null;
+  catalogLoadPromise = null;
 }

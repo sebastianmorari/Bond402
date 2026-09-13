@@ -3,10 +3,12 @@ import { test } from "node:test";
 import {
   PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+  getCachedApisGuruCatalog,
   loadApisGuruCatalog,
   parseApisGuruCatalog,
   rankExternalDiscoveryResults,
   resetApisGuruCatalogCacheForTests,
+  warmApisGuruCatalog,
 } from "../artifacts/api-server/src/lib/public-external-discovery.ts";
 import {
   rankPublicServiceResults,
@@ -126,4 +128,35 @@ test("das aktuelle APIs.guru-Verzeichnis bleibt innerhalb des begrenzten Antwort
   );
   assert.equal(result.status, "AVAILABLE");
   assert.equal(result.records.length, 1);
+});
+
+test("externe Discovery blockiert den internen Katalog bei leerem Cache nicht", async () => {
+  resetApisGuruCatalogCacheForTests();
+  let resolveFetch;
+  const slowFetcher = () =>
+    new Promise((resolve) => {
+      resolveFetch = resolve;
+    });
+
+  assert.deepEqual(getCachedApisGuruCatalog(referenceNow), { status: "UNAVAILABLE", records: [] });
+  const warmupResult = warmApisGuruCatalog(slowFetcher, referenceNow);
+  assert.equal(warmupResult, undefined);
+  assert.deepEqual(getCachedApisGuruCatalog(referenceNow), { status: "UNAVAILABLE", records: [] });
+
+  resolveFetch(new Response(JSON.stringify({
+    "weather.example": {
+      preferred: "1.0.0",
+      versions: {
+        "1.0.0": {
+          updated: "2026-09-12T11:00:00.000Z",
+          openapiVer: "3.0.0",
+          swaggerUrl: "https://api.apis.guru/v2/specs/weather.example/1.0.0/openapi.json",
+          info: { title: "Weather API" },
+        },
+      },
+    },
+  }), { status: 200 }));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(getCachedApisGuruCatalog(referenceNow).status, "AVAILABLE");
 });

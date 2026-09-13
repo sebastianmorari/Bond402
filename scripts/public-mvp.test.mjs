@@ -204,6 +204,20 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.equal("keyHash" in catalog.data, false);
   assert.doesNotMatch(JSON.stringify(catalog.data), /api[_-]?key|session|password|ownerId|keyHash/i);
 
+  const coldExternalFallbackStart = performance.now();
+  const coldExternalFallback = await request(
+    `/api/public/services?q=${encodeURIComponent(`${testPrefix}-external-only`)}`,
+  );
+  const coldExternalFallbackDuration = performance.now() - coldExternalFallbackStart;
+  assert.equal(coldExternalFallback.response.status, 200);
+  assert.equal(coldExternalFallback.data.items.length, 0);
+  assert.equal(coldExternalFallback.data.source.source, "BOND402_INTERNAL_CATALOG");
+  assert.equal(coldExternalFallback.data.source.fallback, "UNAVAILABLE");
+  assert.ok(
+    coldExternalFallbackDuration < 1_000,
+    `Kalter externer Fallback blockierte den internen Katalog ${Math.round(coldExternalFallbackDuration)} ms.`,
+  );
+
   const invalidPage = await request("/api/public/services?pageSize=51");
   assert.equal(invalidPage.response.status, 400);
   assert.equal(invalidPage.data.code, "INVALID_QUERY");
