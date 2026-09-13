@@ -1827,7 +1827,9 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/PublicServiceSearchResult"
+            oneOf:
+              - $ref: "#/components/schemas/PublicServiceSearchResult"
+              - $ref: "#/components/schemas/PublicExternalService"
         query:
           type: string
         page:
@@ -1848,16 +1850,24 @@ components:
       properties:
         source:
           type: string
-          enum: [BOND402_INTERNAL_CATALOG]
+          enum: [BOND402_INTERNAL_CATALOG, APIS_GURU_OPENAPI_DIRECTORY]
         sourceLabel:
           type: string
         scope:
           type: string
-          enum: [LISTED_SERVICES_ONLY]
+          enum: [LISTED_SERVICES_ONLY, PUBLIC_UNVERIFIED_OPENAPI]
         externalSources:
           type: boolean
-          enum: [false]
-      required: [source, sourceLabel, scope, externalSources]
+        mode:
+          type: string
+          enum: [INTERNAL_PRIMARY, EXTERNAL_FALLBACK]
+        fallback:
+          type: string
+          enum: [NOT_USED, USED, UNAVAILABLE]
+        sourceUrl:
+          type: string
+          format: uri
+      required: [source, sourceLabel, scope, externalSources, mode, fallback]
     PublicServiceDiscovery:
       type: object
       properties:
@@ -1914,6 +1924,96 @@ components:
             discovery:
               $ref: "#/components/schemas/PublicServiceDiscovery"
           required: [discovery]
+    PublicExternalDiscovery:
+      type: object
+      properties:
+        source:
+          type: string
+          enum: [APIS_GURU_OPENAPI_DIRECTORY]
+        sourceLabel:
+          type: string
+        scope:
+          type: string
+          enum: [PUBLIC_UNVERIFIED_OPENAPI]
+        verification:
+          type: string
+          enum: [UNVERIFIED_EXTERNAL]
+        matchScore:
+          type: number
+          minimum: 0
+          maximum: 100
+        rankingFactors:
+          type: object
+          properties:
+            textRelevance:
+              type: number
+              minimum: 0
+              maximum: 1
+            sourceFreshness:
+              type: number
+              minimum: 0
+              maximum: 1
+            openApiMetadata:
+              type: number
+              minimum: 0
+              maximum: 1
+          required: [textRelevance, sourceFreshness, openApiMetadata]
+        evidence:
+          type: object
+          properties:
+            provider:
+              type: string
+            sourceRecordUrl:
+              type: string
+              format: uri
+            specificationUrl:
+              type: string
+              format: uri
+            openapiVersion:
+              type: ["string", "null"]
+            updatedAt:
+              type: ["string", "null"]
+              format: date-time
+          required: [provider, sourceRecordUrl, specificationUrl, openapiVersion, updatedAt]
+      required: [source, sourceLabel, scope, verification, matchScore, rankingFactors, evidence]
+    PublicExternalService:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [EXTERNAL_DISCOVERY]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        url:
+          type: string
+          format: uri
+        verification:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [UNVERIFIED_EXTERNAL]
+            reason:
+              type: string
+              enum: [SOURCE_METADATA_ONLY_NO_BOND402_CHECK]
+          required: [status, reason]
+        discovery:
+          $ref: "#/components/schemas/PublicExternalDiscovery"
+        links:
+          type: object
+          properties:
+            sourceRecord:
+              type: string
+              format: uri
+            specification:
+              type: string
+              format: uri
+          required: [sourceRecord, specification]
+      required: [id, kind, name, description, url, verification, discovery, links]
     PublicDiscovery:
       type: object
       properties:
@@ -1970,7 +2070,30 @@ components:
               type: boolean
           required: [publicCatalogRequestsPerMinutePerIp, publicPreActionCountsAgainstMonthlyDeveloperQuota, developerPreActionRequiresKey]
         dataSource:
-          $ref: "#/components/schemas/PublicDiscoverySource"
+          type: object
+          properties:
+            source:
+              type: string
+              enum: [BOND402_INTERNAL_CATALOG]
+            sourceLabel:
+              type: string
+            scope:
+              type: string
+              enum: [LISTED_SERVICES_ONLY]
+            externalSources:
+              type: boolean
+              enum: [false]
+            fallbackPolicy:
+              type: string
+            fallbacks:
+              type: array
+              items:
+                $ref: "#/components/schemas/PublicDiscoverySource"
+            ranking:
+              type: array
+              items:
+                type: string
+          required: [source, sourceLabel, scope, externalSources, fallbackPolicy, fallbacks, ranking]
         policy:
           $ref: "#/components/schemas/PreActionPolicy"
       required: [name, description, version, disclaimer, authentication, endpoints, dataSource, publicResponseFields, limits, policy]

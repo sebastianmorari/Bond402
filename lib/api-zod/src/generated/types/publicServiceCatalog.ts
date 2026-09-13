@@ -8,14 +8,17 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { PublicService } from './publicService';
+import type { PublicDiscoverySource } from './publicDiscoverySource';
+import type { PublicExternalService } from './publicExternalService';
+import type { PublicServiceSearchResult } from './publicServiceSearchResult';
 
 export interface PublicServiceCatalog {
-  items: PublicService[];
+  items: (PublicServiceSearchResult | PublicExternalService)[];
   query: string;
   page: number;
   pageSize: number;
   total: number;
   hasNextPage: boolean;
   sort: string;
+  source: PublicDiscoverySource;
 }

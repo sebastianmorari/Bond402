@@ -80,19 +80,56 @@ type PublicService = {
   access: { preActionRequiresDeveloperKey: boolean; liveCheckRequiresDeveloperKey: boolean };
 };
 
+type ExternalDiscoveryItem = {
+  id: string;
+  kind: "EXTERNAL_DISCOVERY";
+  name: string;
+  description: string | null;
+  url: string;
+  verification: {
+    status: "UNVERIFIED_EXTERNAL";
+    reason: "SOURCE_METADATA_ONLY_NO_BOND402_CHECK";
+  };
+  discovery: {
+    source: "APIS_GURU_OPENAPI_DIRECTORY";
+    sourceLabel: string;
+    scope: "PUBLIC_UNVERIFIED_OPENAPI";
+    verification: "UNVERIFIED_EXTERNAL";
+    matchScore: number;
+    rankingFactors: {
+      textRelevance: number;
+      sourceFreshness: number;
+      openApiMetadata: number;
+    };
+    evidence: {
+      provider: string;
+      sourceRecordUrl: string;
+      specificationUrl: string;
+      openapiVersion: string | null;
+      updatedAt: string | null;
+    };
+  };
+  links: { sourceRecord: string; specification: string };
+};
+
+type CatalogSource = {
+  source: "BOND402_INTERNAL_CATALOG" | "APIS_GURU_OPENAPI_DIRECTORY";
+  sourceLabel: string;
+  scope: "LISTED_SERVICES_ONLY" | "PUBLIC_UNVERIFIED_OPENAPI";
+  externalSources: boolean;
+  mode: "INTERNAL_PRIMARY" | "EXTERNAL_FALLBACK";
+  fallback: "NOT_USED" | "USED" | "UNAVAILABLE";
+  sourceUrl?: string;
+};
+
 type CatalogResponse = {
-  items: PublicService[];
+  items: (PublicService | ExternalDiscoveryItem)[];
   query: string;
   page: number;
   pageSize: number;
   total: number;
   hasNextPage: boolean;
-  source: {
-    source: "BOND402_INTERNAL_CATALOG";
-    sourceLabel: string;
-    scope: "LISTED_SERVICES_ONLY";
-    externalSources: false;
-  };
+  source: CatalogSource;
 };
 
 type DecisionResponse = {
@@ -145,6 +182,10 @@ function regionalStateLabel(value: PublicService["trustMetrics"]["regionalAggreg
         : "Unzureichende Regionaldaten";
 }
 
+function isExternalDiscovery(item: PublicService | ExternalDiscoveryItem): item is ExternalDiscoveryItem {
+  return "kind" in item && item.kind === "EXTERNAL_DISCOVERY";
+}
+
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
@@ -192,6 +233,53 @@ function ServiceCard({ service }: { service: PublicService }) {
   );
 }
 
+function ExternalServiceCard({ service }: { service: ExternalDiscoveryItem }) {
+  return (
+    <a
+      href={service.links.specification}
+      target="_blank"
+      rel="noreferrer"
+      className="group block rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 transition hover:border-amber-500/60 hover:bg-amber-500/10 hover:shadow-lg"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+            <Bot className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate font-semibold">{service.name}</h2>
+            <p className="truncate font-mono text-xs text-muted-foreground">{service.discovery.evidence.provider}</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Badge variant="outline">{service.discovery.sourceLabel}</Badge>
+          <Badge variant="secondary">Unverifiziert</Badge>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-xl bg-muted/40 p-3">
+          <p className="text-xs text-muted-foreground">Suchtreffer</p>
+          <p className="mt-1 text-xl font-bold">{service.discovery.matchScore}/100</p>
+        </div>
+        <div className="rounded-xl bg-muted/40 p-3">
+          <p className="text-xs text-muted-foreground">OpenAPI-Version</p>
+          <p className="mt-1 font-medium">{service.discovery.evidence.openapiVersion || "Nicht angegeben"}</p>
+        </div>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-muted-foreground">
+        {service.description || "Die Quelle liefert keine Beschreibung."}
+      </p>
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+        Nur Quelldaten aus dem öffentlichen APIs.guru-Verzeichnis. Bond402 hat diesen Eintrag nicht geprüft und vergibt
+        keinen Trust-Status.
+      </p>
+      <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
+        OpenAPI-Quelle öffnen <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+      </span>
+    </a>
+  );
+}
+
 export function PublicCatalogPage() {
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -222,8 +310,8 @@ export function PublicCatalogPage() {
         <Button type="submit"><Search className="mr-2 h-4 w-4" />Suchen</Button>
       </form>
       {error && <div className="mt-8 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{error}</div>}
-      <div className="mt-10 flex items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">Gelistete Dienste</h2><p className="mt-1 text-sm text-muted-foreground">{data ? `${data.total} öffentliche Einträge` : "Öffentliche Einträge werden geladen"}</p></div><a href={`${apiBase}/openapi.json`} className="hidden text-sm font-medium text-primary hover:underline sm:block">OpenAPI JSON</a></div>
-      {loading ? <div className="mt-6 grid gap-4 md:grid-cols-2"><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /></div> : data?.items.length ? <div className="mt-6 grid gap-4 md:grid-cols-2">{data.items.map((service) => <ServiceCard key={service.id} service={service} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-border/70 p-12 text-center text-muted-foreground">Noch keine Dienste entsprechen dieser Suche.</div>}
+       <div className="mt-10 flex items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Öffentliche OpenAPI-Fundstellen" : "Gelistete Dienste"}</h2><p className="mt-1 text-sm text-muted-foreground">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Externe, unverifizierte Quelldaten als Fallback" : data ? `${data.total} öffentliche Einträge` : "Öffentliche Einträge werden geladen"}</p></div><a href={`${apiBase}/openapi.json`} className="hidden text-sm font-medium text-primary hover:underline sm:block">OpenAPI JSON</a></div>
+       {loading ? <div className="mt-6 grid gap-4 md:grid-cols-2"><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /></div> : data?.items.length ? <div className="mt-6 grid gap-4 md:grid-cols-2">{data.items.map((service) => isExternalDiscovery(service) ? <ExternalServiceCard key={service.id} service={service} /> : <ServiceCard key={service.id} service={service} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-border/70 p-12 text-center text-muted-foreground">Noch keine Dienste entsprechen dieser Suche.</div>}
       <div className="mt-8 flex items-center justify-between"><Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ArrowLeft className="mr-2 h-4 w-4" />Zurück</Button><span className="text-sm text-muted-foreground">Seite {page}</span><Button variant="outline" disabled={!data?.hasNextPage} onClick={() => setPage((value) => value + 1)}>Weiter<ArrowRight className="ml-2 h-4 w-4" /></Button></div>
     </PublicLayout>
   );

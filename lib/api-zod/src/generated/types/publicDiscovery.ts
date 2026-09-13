@@ -10,6 +10,7 @@
  */
 import type { PreActionPolicy } from './preActionPolicy';
 import type { PublicDiscoveryAuthentication } from './publicDiscoveryAuthentication';
+import type { PublicDiscoveryDataSource } from './publicDiscoveryDataSource';
 import type { PublicDiscoveryEndpoints } from './publicDiscoveryEndpoints';
 import type { PublicDiscoveryLimits } from './publicDiscoveryLimits';
 
@@ -22,5 +23,6 @@ export interface PublicDiscovery {
   endpoints: PublicDiscoveryEndpoints;
   publicResponseFields: string[];
   limits: PublicDiscoveryLimits;
+  dataSource: PublicDiscoveryDataSource;
   policy: PreActionPolicy;
 }

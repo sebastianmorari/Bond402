@@ -5,8 +5,17 @@ import { consumePublicRateLimit } from "../lib/api-key-auth";
 import {
   PUBLIC_DISCOVERY_SOURCE,
   PUBLIC_DISCOVERY_SOURCE_LABEL,
+  shouldUseExternalDiscoveryFallback,
   rankPublicServiceResults,
 } from "../lib/public-service-search";
+import {
+  PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
+  PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+  PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
+  PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
+  loadApisGuruCatalog,
+  rankExternalDiscoveryResults,
+} from "../lib/public-external-discovery";
 import { loadChecks, toPublicServiceResponse } from "../lib/service-data";
 import {
   evaluatePreAction,
@@ -62,6 +71,31 @@ async function loadListedService(id: string) {
   return service;
 }
 
+function internalCatalogSource(
+  fallback: "NOT_USED" | "UNAVAILABLE" = "NOT_USED",
+) {
+  return {
+    source: PUBLIC_DISCOVERY_SOURCE,
+    sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
+    scope: "LISTED_SERVICES_ONLY" as const,
+    externalSources: false as const,
+    mode: "INTERNAL_PRIMARY" as const,
+    fallback,
+  };
+}
+
+function externalCatalogSource() {
+  return {
+    source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+    sourceLabel: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
+    scope: PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
+    externalSources: true as const,
+    mode: "EXTERNAL_FALLBACK" as const,
+    fallback: "USED" as const,
+    sourceUrl: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
+  };
+}
+
 router.get("/openapi.json", async (req, res): Promise<void> => {
   if (!(await requirePublicRateLimit(req, res))) return;
   res.type("application/json").json(getPublicOpenApiDocument(publicBaseUrl(req)));
@@ -99,11 +133,28 @@ router.get("/public/discovery", async (req, res): Promise<void> => {
       sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
       scope: "LISTED_SERVICES_ONLY",
       externalSources: false,
+      fallbackPolicy:
+        "Interne gelistete Bond402-Treffer zuerst; öffentliche OpenAPI-Quellen nur bei fehlender ausreichender interner Relevanz.",
+      fallbacks: [
+        {
+          source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+          sourceLabel: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
+          scope: PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
+          externalSources: true,
+          mode: "EXTERNAL_FALLBACK",
+          fallback: "NOT_USED",
+          access: "PUBLIC_NO_API_KEY",
+          verification: "UNVERIFIED_EXTERNAL",
+          sourceUrl: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
+        },
+      ],
       ranking: [
         "textRelevance",
         "observationCoverage",
         "observationFreshness",
         "publicSource",
+        "externalSourceFreshness",
+        "externalOpenApiMetadata",
       ],
     },
     publicResponseFields: [
@@ -155,28 +206,57 @@ router.get("/public/services", async (req, res): Promise<void> => {
   );
   const rankedServices = rankPublicServiceResults(publicServices, q);
   const publicServicesById = new Map(publicServices.map((service) => [service.id, service]));
-  const items = rankedServices
-    .slice((page - 1) * pageSize, page * pageSize)
-    .map(({ id, discovery }) => {
-      const service = publicServicesById.get(id);
-      if (!service) throw new Error("Public search result lost its listed service.");
-      return { ...service, discovery };
+  const hasAdequateInternalMatch = !shouldUseExternalDiscoveryFallback(q, rankedServices);
+
+  if (hasAdequateInternalMatch) {
+    const items = rankedServices
+      .slice((page - 1) * pageSize, page * pageSize)
+      .map(({ id, discovery }) => {
+        const service = publicServicesById.get(id);
+        if (!service) throw new Error("Public search result lost its listed service.");
+        return { ...service, discovery };
+      });
+    const totalCount = Number(total);
+    res.json({
+      items,
+      query: q,
+      page,
+      pageSize,
+      total: totalCount,
+      hasNextPage: page * pageSize < totalCount,
+      sort: "matchScore.desc,textRelevance.desc,observationFreshness.desc,name.asc,id.asc",
+      source: internalCatalogSource(),
     });
-  const totalCount = Number(total);
+    return;
+  }
+
+  const externalCatalog = await loadApisGuruCatalog();
+  const externalResults = rankExternalDiscoveryResults(externalCatalog.records, q);
+  if (externalCatalog.status === "AVAILABLE") {
+    const items = externalResults.slice((page - 1) * pageSize, page * pageSize);
+    const totalCount = externalResults.length;
+    res.json({
+      items,
+      query: q,
+      page,
+      pageSize,
+      total: totalCount,
+      hasNextPage: page * pageSize < totalCount,
+      sort: "matchScore.desc,textRelevance.desc,sourceFreshness.desc,name.asc,id.asc",
+      source: externalCatalogSource(),
+    });
+    return;
+  }
+
   res.json({
-    items,
+    items: [],
     query: q,
     page,
     pageSize,
-    total: totalCount,
-    hasNextPage: page * pageSize < totalCount,
-    sort: "matchScore.desc,textRelevance.desc,observationFreshness.desc,name.asc,id.asc",
-    source: {
-      source: PUBLIC_DISCOVERY_SOURCE,
-      sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
-      scope: "LISTED_SERVICES_ONLY",
-      externalSources: false,
-    },
+    total: 0,
+    hasNextPage: false,
+    sort: "matchScore.desc,textRelevance.desc,sourceFreshness.desc,name.asc,id.asc",
+    source: internalCatalogSource("UNAVAILABLE"),
   });
 });
 

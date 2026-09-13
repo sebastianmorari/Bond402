@@ -12,7 +12,12 @@ export function getPublicOpenApiDocument(baseUrl: string) {
       "/public/discovery": {
         get: {
           operationId: "getPublicDiscovery",
-          responses: { "200": { description: "Agent discovery metadata" } },
+          responses: {
+            "200": {
+              description: "Agent discovery metadata",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/PublicDiscovery" } } },
+            },
+          },
         },
       },
       "/public/services": {
@@ -258,12 +263,21 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         },
         PublicDiscoverySource: {
           type: "object",
-          required: ["source", "sourceLabel", "scope", "externalSources"],
+          required: ["source", "sourceLabel", "scope", "externalSources", "mode", "fallback"],
           properties: {
-            source: { type: "string", enum: ["BOND402_INTERNAL_CATALOG"] },
+            source: {
+              type: "string",
+              enum: ["BOND402_INTERNAL_CATALOG", "APIS_GURU_OPENAPI_DIRECTORY"],
+            },
             sourceLabel: { type: "string" },
-            scope: { type: "string", enum: ["LISTED_SERVICES_ONLY"] },
-            externalSources: { type: "boolean", enum: [false] },
+            scope: {
+              type: "string",
+              enum: ["LISTED_SERVICES_ONLY", "PUBLIC_UNVERIFIED_OPENAPI"],
+            },
+            externalSources: { type: "boolean" },
+            mode: { type: "string", enum: ["INTERNAL_PRIMARY", "EXTERNAL_FALLBACK"] },
+            fallback: { type: "string", enum: ["NOT_USED", "USED", "UNAVAILABLE"] },
+            sourceUrl: { type: "string", format: "uri" },
           },
         },
         PublicServiceDiscovery: {
@@ -316,11 +330,78 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             discovery: { $ref: "#/components/schemas/PublicServiceDiscovery" },
           },
         },
+        PublicExternalDiscovery: {
+          type: "object",
+          required: ["source", "sourceLabel", "scope", "verification", "matchScore", "rankingFactors", "evidence"],
+          properties: {
+            source: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY"] },
+            sourceLabel: { type: "string" },
+            scope: { type: "string", enum: ["PUBLIC_UNVERIFIED_OPENAPI"] },
+            verification: { type: "string", enum: ["UNVERIFIED_EXTERNAL"] },
+            matchScore: { type: "number", minimum: 0, maximum: 100 },
+            rankingFactors: {
+              type: "object",
+              required: ["textRelevance", "sourceFreshness", "openApiMetadata"],
+              properties: {
+                textRelevance: { type: "number", minimum: 0, maximum: 1 },
+                sourceFreshness: { type: "number", minimum: 0, maximum: 1 },
+                openApiMetadata: { type: "number", minimum: 0, maximum: 1 },
+              },
+            },
+            evidence: {
+              type: "object",
+              required: ["provider", "sourceRecordUrl", "specificationUrl", "openapiVersion", "updatedAt"],
+              properties: {
+                provider: { type: "string" },
+                sourceRecordUrl: { type: "string", format: "uri" },
+                specificationUrl: { type: "string", format: "uri" },
+                openapiVersion: { type: ["string", "null"] },
+                updatedAt: { type: ["string", "null"], format: "date-time" },
+              },
+            },
+          },
+        },
+        PublicExternalService: {
+          type: "object",
+          required: ["id", "kind", "name", "description", "url", "verification", "discovery", "links"],
+          properties: {
+            id: { type: "string" },
+            kind: { type: "string", enum: ["EXTERNAL_DISCOVERY"] },
+            name: { type: "string" },
+            description: { type: ["string", "null"] },
+            url: { type: "string", format: "uri" },
+            verification: {
+              type: "object",
+              required: ["status", "reason"],
+              properties: {
+                status: { type: "string", enum: ["UNVERIFIED_EXTERNAL"] },
+                reason: { type: "string", enum: ["SOURCE_METADATA_ONLY_NO_BOND402_CHECK"] },
+              },
+            },
+            discovery: { $ref: "#/components/schemas/PublicExternalDiscovery" },
+            links: {
+              type: "object",
+              required: ["sourceRecord", "specification"],
+              properties: {
+                sourceRecord: { type: "string", format: "uri" },
+                specification: { type: "string", format: "uri" },
+              },
+            },
+          },
+        },
         PublicServiceCatalog: {
           type: "object",
           required: ["items", "query", "page", "pageSize", "total", "hasNextPage", "sort", "source"],
           properties: {
-            items: { type: "array", items: { $ref: "#/components/schemas/PublicService" } },
+            items: {
+              type: "array",
+              items: {
+                oneOf: [
+                  { $ref: "#/components/schemas/PublicService" },
+                  { $ref: "#/components/schemas/PublicExternalService" },
+                ],
+              },
+            },
             query: { type: "string" },
             page: { type: "number" },
             pageSize: { type: "number" },
@@ -328,6 +409,29 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             hasNextPage: { type: "boolean" },
             sort: { type: "string" },
             source: { $ref: "#/components/schemas/PublicDiscoverySource" },
+          },
+        },
+        PublicDiscovery: {
+          type: "object",
+          required: ["version", "dataSource"],
+          properties: {
+            version: { type: "string" },
+            dataSource: {
+              type: "object",
+              required: ["source", "sourceLabel", "scope", "externalSources", "fallbackPolicy", "fallbacks", "ranking"],
+              properties: {
+                source: { type: "string", enum: ["BOND402_INTERNAL_CATALOG"] },
+                sourceLabel: { type: "string" },
+                scope: { type: "string", enum: ["LISTED_SERVICES_ONLY"] },
+                externalSources: { type: "boolean", enum: [false] },
+                fallbackPolicy: { type: "string" },
+                fallbacks: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/PublicDiscoverySource" },
+                },
+                ranking: { type: "array", items: { type: "string" } },
+              },
+            },
           },
         },
         PublicPreActionCheck: {

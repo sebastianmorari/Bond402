@@ -1,5 +1,6 @@
 export const PUBLIC_DISCOVERY_SOURCE = "BOND402_INTERNAL_CATALOG" as const;
 export const PUBLIC_DISCOVERY_SOURCE_LABEL = "Interne Bond402-Katalogdaten" as const;
+export const INTERNAL_RELEVANCE_THRESHOLD = 50;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -152,4 +153,14 @@ export function rankPublicServiceResults<T extends PublicSearchService>(
       return compareStrings(left.service.id, right.service.id);
     })
     .map(({ service, discovery }) => ({ id: service.id, discovery }));
+}
+
+export function shouldUseExternalDiscoveryFallback(
+  query: string,
+  rankedResults: readonly { discovery: { matchScore: number } }[],
+) {
+  return (
+    query.trim().length > 0 &&
+    !rankedResults.some(({ discovery }) => discovery.matchScore >= INTERNAL_RELEVANCE_THRESHOLD)
+  );
 }

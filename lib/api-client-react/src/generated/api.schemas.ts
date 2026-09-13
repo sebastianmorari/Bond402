@@ -787,14 +787,226 @@ export interface PublicService {
   links: PublicServiceLinks;
 }
 
+export type PublicServiceDiscoverySource = typeof PublicServiceDiscoverySource[keyof typeof PublicServiceDiscoverySource];
+
+
+export const PublicServiceDiscoverySource = {
+  BOND402_INTERNAL_CATALOG: 'BOND402_INTERNAL_CATALOG',
+} as const;
+
+export type PublicServiceDiscoveryScope = typeof PublicServiceDiscoveryScope[keyof typeof PublicServiceDiscoveryScope];
+
+
+export const PublicServiceDiscoveryScope = {
+  LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
+} as const;
+
+export type PublicServiceDiscoveryRankingFactors = {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  textRelevance: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  observationCoverage: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  observationFreshness: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  publicSource: number;
+};
+
+export type PublicServiceDiscoveryEvidence = {
+  /** @minimum 0 */
+  liveObservationCount: number;
+  /** @nullable */
+  latestObservationAt: string | null;
+  publicSourceUrl: string;
+};
+
+export interface PublicServiceDiscovery {
+  source: PublicServiceDiscoverySource;
+  sourceLabel: string;
+  scope: PublicServiceDiscoveryScope;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  matchScore: number;
+  rankingFactors: PublicServiceDiscoveryRankingFactors;
+  evidence: PublicServiceDiscoveryEvidence;
+}
+
+export type PublicServiceSearchResult = PublicService & {
+  discovery: PublicServiceDiscovery;
+};
+
+export type PublicExternalServiceKind = typeof PublicExternalServiceKind[keyof typeof PublicExternalServiceKind];
+
+
+export const PublicExternalServiceKind = {
+  EXTERNAL_DISCOVERY: 'EXTERNAL_DISCOVERY',
+} as const;
+
+export type PublicExternalServiceVerificationStatus = typeof PublicExternalServiceVerificationStatus[keyof typeof PublicExternalServiceVerificationStatus];
+
+
+export const PublicExternalServiceVerificationStatus = {
+  UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
+} as const;
+
+export type PublicExternalServiceVerificationReason = typeof PublicExternalServiceVerificationReason[keyof typeof PublicExternalServiceVerificationReason];
+
+
+export const PublicExternalServiceVerificationReason = {
+  SOURCE_METADATA_ONLY_NO_BOND402_CHECK: 'SOURCE_METADATA_ONLY_NO_BOND402_CHECK',
+} as const;
+
+export type PublicExternalDiscoverySource = typeof PublicExternalDiscoverySource[keyof typeof PublicExternalDiscoverySource];
+
+
+export const PublicExternalDiscoverySource = {
+  APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+} as const;
+
+export type PublicExternalDiscoveryScope = typeof PublicExternalDiscoveryScope[keyof typeof PublicExternalDiscoveryScope];
+
+
+export const PublicExternalDiscoveryScope = {
+  PUBLIC_UNVERIFIED_OPENAPI: 'PUBLIC_UNVERIFIED_OPENAPI',
+} as const;
+
+export type PublicExternalDiscoveryVerification = typeof PublicExternalDiscoveryVerification[keyof typeof PublicExternalDiscoveryVerification];
+
+
+export const PublicExternalDiscoveryVerification = {
+  UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
+} as const;
+
+export type PublicExternalDiscoveryRankingFactors = {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  textRelevance: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  sourceFreshness: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  openApiMetadata: number;
+};
+
+export type PublicExternalDiscoveryEvidence = {
+  provider: string;
+  sourceRecordUrl: string;
+  specificationUrl: string;
+  /** @nullable */
+  openapiVersion: string | null;
+  /** @nullable */
+  updatedAt: string | null;
+};
+
+export interface PublicExternalDiscovery {
+  source: PublicExternalDiscoverySource;
+  sourceLabel: string;
+  scope: PublicExternalDiscoveryScope;
+  verification: PublicExternalDiscoveryVerification;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  matchScore: number;
+  rankingFactors: PublicExternalDiscoveryRankingFactors;
+  evidence: PublicExternalDiscoveryEvidence;
+}
+
+export type PublicExternalServiceVerification = {
+  status: PublicExternalServiceVerificationStatus;
+  reason: PublicExternalServiceVerificationReason;
+};
+
+export type PublicExternalServiceLinks = {
+  sourceRecord: string;
+  specification: string;
+};
+
+export interface PublicExternalService {
+  id: string;
+  kind: PublicExternalServiceKind;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  url: string;
+  verification: PublicExternalServiceVerification;
+  discovery: PublicExternalDiscovery;
+  links: PublicExternalServiceLinks;
+}
+
+export type PublicDiscoverySourceSource = typeof PublicDiscoverySourceSource[keyof typeof PublicDiscoverySourceSource];
+
+
+export const PublicDiscoverySourceSource = {
+  BOND402_INTERNAL_CATALOG: 'BOND402_INTERNAL_CATALOG',
+  APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+} as const;
+
+export type PublicDiscoverySourceScope = typeof PublicDiscoverySourceScope[keyof typeof PublicDiscoverySourceScope];
+
+
+export const PublicDiscoverySourceScope = {
+  LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
+  PUBLIC_UNVERIFIED_OPENAPI: 'PUBLIC_UNVERIFIED_OPENAPI',
+} as const;
+
+export type PublicDiscoverySourceMode = typeof PublicDiscoverySourceMode[keyof typeof PublicDiscoverySourceMode];
+
+
+export const PublicDiscoverySourceMode = {
+  INTERNAL_PRIMARY: 'INTERNAL_PRIMARY',
+  EXTERNAL_FALLBACK: 'EXTERNAL_FALLBACK',
+} as const;
+
+export type PublicDiscoverySourceFallback = typeof PublicDiscoverySourceFallback[keyof typeof PublicDiscoverySourceFallback];
+
+
+export const PublicDiscoverySourceFallback = {
+  NOT_USED: 'NOT_USED',
+  USED: 'USED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface PublicDiscoverySource {
+  source: PublicDiscoverySourceSource;
+  sourceLabel: string;
+  scope: PublicDiscoverySourceScope;
+  externalSources: boolean;
+  mode: PublicDiscoverySourceMode;
+  fallback: PublicDiscoverySourceFallback;
+  sourceUrl?: string;
+}
+
 export interface PublicServiceCatalog {
-  items: PublicService[];
+  items: (PublicServiceSearchResult | PublicExternalService)[];
   query: string;
   page: number;
   pageSize: number;
   total: number;
   hasNextPage: boolean;
   sort: string;
+  source: PublicDiscoverySource;
 }
 
 export type PublicDiscoveryAuthentication = {
@@ -820,6 +1032,30 @@ export type PublicDiscoveryLimits = {
   developerPreActionRequiresKey: boolean;
 };
 
+export type PublicDiscoveryDataSourceSource = typeof PublicDiscoveryDataSourceSource[keyof typeof PublicDiscoveryDataSourceSource];
+
+
+export const PublicDiscoveryDataSourceSource = {
+  BOND402_INTERNAL_CATALOG: 'BOND402_INTERNAL_CATALOG',
+} as const;
+
+export type PublicDiscoveryDataSourceScope = typeof PublicDiscoveryDataSourceScope[keyof typeof PublicDiscoveryDataSourceScope];
+
+
+export const PublicDiscoveryDataSourceScope = {
+  LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
+} as const;
+
+export type PublicDiscoveryDataSource = {
+  source: PublicDiscoveryDataSourceSource;
+  sourceLabel: string;
+  scope: PublicDiscoveryDataSourceScope;
+  externalSources: false;
+  fallbackPolicy: string;
+  fallbacks: PublicDiscoverySource[];
+  ranking: string[];
+};
+
 export interface PublicDiscovery {
   name: string;
   description: string;
@@ -829,6 +1065,7 @@ export interface PublicDiscovery {
   endpoints: PublicDiscoveryEndpoints;
   publicResponseFields: string[];
   limits: PublicDiscoveryLimits;
+  dataSource: PublicDiscoveryDataSource;
   policy: PreActionPolicy;
 }
 
