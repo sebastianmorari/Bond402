@@ -2,6 +2,7 @@
 
 ## Nachweisbare lokale Gates
 
+- Kombinierter Lauf: `pnpm run test:launch-gate`
 - Typecheck: `pnpm run typecheck`
 - API-Build: `pnpm --filter @workspace/api-server run build`
 - Web-Build: `PORT=4173 BASE_PATH=/ pnpm --filter @workspace/bond402 run build`
