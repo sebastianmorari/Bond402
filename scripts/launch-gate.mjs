@@ -24,6 +24,7 @@ const checks = [
   ["test:public-mvp", "Public MVP"],
   ["build", "Workspace build"],
   ["test:frontend-smoke", "Frontend smoke"],
+  ["test:frontend-e2e", "Browser E2E"],
   ["test:frontend-seo", "Frontend SEO"],
 ];
 

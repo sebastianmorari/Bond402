@@ -28,6 +28,7 @@
     "test:trust-metrics": "node --experimental-strip-types --test scripts/trust-metrics.test.mjs",
     "test:trust-score": "pnpm --filter @workspace/scripts exec tsx --test trust-score.test.mjs",
     "test:frontend-smoke": "node --test scripts/frontend-smoke.test.mjs",
+    "test:frontend-e2e": "node --test scripts/frontend-e2e.test.mjs",
     "test:frontend-seo": "PORT=4173 BASE_PATH=/ pnpm --filter @workspace/bond402 run build && node --test scripts/frontend-seo.test.mjs",
     "test:launch-gate": "node scripts/launch-gate.mjs"
   },
