@@ -230,93 +230,95 @@ export async function saveOutcome(
   checkType: "LIVE" | "MANUAL",
   outcome: VerificationOutcome,
 ) {
-  const observation = outcome.securityObservation;
-  const previousObservation = observation
-    ? (
-        await db
-          .select()
-          .from(bond402SecurityObservationsTable)
-          .where(eq(bond402SecurityObservationsTable.serviceId, serviceId))
-          .orderBy(desc(bond402SecurityObservationsTable.observedAt))
-          .limit(1)
-      )[0]
-    : undefined;
-  const securitySignals = withHistoricalDrift(outcome.securitySignals, previousObservation, observation);
-  const { securityObservation: _securityObservation, ...checkOutcome } = outcome;
-  const [check] = await db
-    .insert(apiChecksTable)
-    .values({ id: crypto.randomUUID(), serviceId, checkType, ...checkOutcome, securitySignals })
-    .returning();
-  if (observation) {
-    await db.insert(bond402SecurityObservationsTable).values({
-      id: crypto.randomUUID(),
-      serviceId,
-      status: securitySignals.threatIndicators.status,
-      ...observation,
-      indicators: securitySignals.threatIndicators.indicators,
-    });
-    if (securitySignals.threatIndicators.indicators.length > 0) {
-      await db.insert(bond402ThreatIndicatorsTable).values(
-        securitySignals.threatIndicators.indicators.map((indicator) => ({
-          id: crypto.randomUUID(),
-          indicatorType: "PAYLOAD_HEURISTIC",
-          normalizedValue: indicator,
-          verdict: securitySignals.threatIndicators.status,
-          severity: securitySignals.threatIndicators.severity,
-          confidence: String(securitySignals.threatIndicators.confidence),
-          source: "BOND402_HEURISTICS",
-          metadata: { serviceId },
-        })),
-      );
+  return db.transaction(async (tx) => {
+    const observation = outcome.securityObservation;
+    const previousObservation = observation
+      ? (
+          await tx
+            .select()
+            .from(bond402SecurityObservationsTable)
+            .where(eq(bond402SecurityObservationsTable.serviceId, serviceId))
+            .orderBy(desc(bond402SecurityObservationsTable.observedAt))
+            .limit(1)
+        )[0]
+      : undefined;
+    const securitySignals = withHistoricalDrift(outcome.securitySignals, previousObservation, observation);
+    const { securityObservation: _securityObservation, ...checkOutcome } = outcome;
+    const [check] = await tx
+      .insert(apiChecksTable)
+      .values({ id: crypto.randomUUID(), serviceId, checkType, ...checkOutcome, securitySignals })
+      .returning();
+    if (observation) {
+      await tx.insert(bond402SecurityObservationsTable).values({
+        id: crypto.randomUUID(),
+        serviceId,
+        status: securitySignals.threatIndicators.status,
+        ...observation,
+        indicators: securitySignals.threatIndicators.indicators,
+      });
+      if (securitySignals.threatIndicators.indicators.length > 0) {
+        await tx.insert(bond402ThreatIndicatorsTable).values(
+          securitySignals.threatIndicators.indicators.map((indicator) => ({
+            id: crypto.randomUUID(),
+            indicatorType: "PAYLOAD_HEURISTIC",
+            normalizedValue: indicator,
+            verdict: securitySignals.threatIndicators.status,
+            severity: securitySignals.threatIndicators.severity,
+            confidence: String(securitySignals.threatIndicators.confidence),
+            source: "BOND402_HEURISTICS",
+            metadata: { serviceId },
+          })),
+        );
+      }
     }
-  }
-  await db.execute(sql`
-    DELETE FROM ${apiChecksTable}
-    WHERE ${apiChecksTable.id} IN (
-      SELECT ${apiChecksTable.id}
-      FROM ${apiChecksTable}
-      WHERE ${apiChecksTable.serviceId} = ${serviceId}
-      ORDER BY ${apiChecksTable.checkedAt} DESC
-      OFFSET 100
-    )
-  `);
-  if (checkType === "LIVE") {
-    const recentChecks = await loadChecks(serviceId);
-    const liveChecks = recentChecks.filter((item) => item.checkType === "LIVE");
-    const qualifyingChecks = countQualifyingFirstSeenChecks(recentChecks);
-    const hasFlag = liveChecks.some((item) => {
-      const signals = getSecuritySignals(item);
-      return signals.threatIndicators.status === "FLAGGED";
-    });
-    const hasSuspicion = liveChecks.some((item) => {
-      const signals = getSecuritySignals(item);
-      return signals.threatIndicators.status === "SUSPICIOUS" || signals.historicalDrift.status === "CHANGED";
-    });
-    const nextSecurityStatus = hasFlag
-      ? "FLAGGED"
-      : hasSuspicion
-        ? "SUSPICIOUS"
-        : qualifyingChecks >= 3
-          ? "VERIFIED_LOW_RISK"
-          : liveChecks.some((item) => item.reachable && item.securitySignals)
-            ? "SANDBOXED_OBSERVED"
-            : "SANDBOX_PENDING";
-    const [service] = await db
-      .select({ sandboxObservedAt: apiServicesTable.sandboxObservedAt })
-      .from(apiServicesTable)
-      .where(eq(apiServicesTable.id, serviceId))
-      .limit(1);
-    await db
-      .update(apiServicesTable)
-      .set({
-        securityStatus: nextSecurityStatus,
-        sandboxObservedAt:
-          service?.sandboxObservedAt ??
-          (liveChecks.some((item) => item.reachable && item.securitySignals) ? new Date() : null),
-      })
-      .where(eq(apiServicesTable.id, serviceId));
-  }
-  return check;
+    await tx.execute(sql`
+      DELETE FROM ${apiChecksTable}
+      WHERE ${apiChecksTable.id} IN (
+        SELECT ${apiChecksTable.id}
+        FROM ${apiChecksTable}
+        WHERE ${apiChecksTable.serviceId} = ${serviceId}
+        ORDER BY ${apiChecksTable.checkedAt} DESC
+        OFFSET 100
+      )
+    `);
+    if (checkType === "LIVE") {
+      const recentChecks = await loadChecks(serviceId, tx);
+      const liveChecks = recentChecks.filter((item) => item.checkType === "LIVE");
+      const qualifyingChecks = countQualifyingFirstSeenChecks(recentChecks);
+      const hasFlag = liveChecks.some((item) => {
+        const signals = getSecuritySignals(item);
+        return signals.threatIndicators.status === "FLAGGED";
+      });
+      const hasSuspicion = liveChecks.some((item) => {
+        const signals = getSecuritySignals(item);
+        return signals.threatIndicators.status === "SUSPICIOUS" || signals.historicalDrift.status === "CHANGED";
+      });
+      const nextSecurityStatus = hasFlag
+        ? "FLAGGED"
+        : hasSuspicion
+          ? "SUSPICIOUS"
+          : qualifyingChecks >= 3
+            ? "VERIFIED_LOW_RISK"
+            : liveChecks.some((item) => item.reachable && item.securitySignals)
+              ? "SANDBOXED_OBSERVED"
+              : "SANDBOX_PENDING";
+      const [service] = await tx
+        .select({ sandboxObservedAt: apiServicesTable.sandboxObservedAt })
+        .from(apiServicesTable)
+        .where(eq(apiServicesTable.id, serviceId))
+        .limit(1);
+      await tx
+        .update(apiServicesTable)
+        .set({
+          securityStatus: nextSecurityStatus,
+          sandboxObservedAt:
+            service?.sandboxObservedAt ??
+            (liveChecks.some((item) => item.reachable && item.securitySignals) ? new Date() : null),
+        })
+        .where(eq(apiServicesTable.id, serviceId));
+    }
+    return check;
+  });
 }
 
 function withHistoricalDrift(
