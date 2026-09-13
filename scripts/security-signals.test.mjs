@@ -38,6 +38,18 @@ test("SSRF-Schutz blockiert Loopback- und private Ziele", async () => {
     () => validatePublicUrl("http://localhost/health"),
     (error) => error?.code === "PRIVATE_ADDRESS",
   );
+  await assert.rejects(
+    () => validatePublicUrl("http://[::1]/health"),
+    (error) => error?.code === "PRIVATE_ADDRESS",
+  );
+  await assert.rejects(
+    () => validatePublicUrl("http://[::ffff:127.0.0.1]/health"),
+    (error) => error?.code === "PRIVATE_ADDRESS",
+  );
+  await assert.rejects(
+    () => validatePublicUrl("http://[fc00::1]/health"),
+    (error) => error?.code === "PRIVATE_ADDRESS",
+  );
 });
 
 test("Redirects auf interne Ziele werden vor dem Request blockiert", async () => {
@@ -311,5 +323,15 @@ test("Unbekannte oder mehrfach verkettete Kompression wird nicht analysiert", as
   await assert.rejects(
     () => decodeResponseBody(Buffer.from("payload"), { "content-encoding": "gzip, br" }),
     (error) => error?.code === "UNSUPPORTED_COMPRESSION",
+  );
+});
+
+test("Komprimierte Antworten über dem entpackten Größenlimit werden abgelehnt", async () => {
+  const { gzipSync } = await import("node:zlib");
+  const oversizedPayload = Buffer.alloc(1_000_001, "x");
+
+  await assert.rejects(
+    () => decodeResponseBody(gzipSync(oversizedPayload), { "content-encoding": "gzip" }),
+    (error) => error?.code === "RESPONSE_TOO_LARGE",
   );
 });
