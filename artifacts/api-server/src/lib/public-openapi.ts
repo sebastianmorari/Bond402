@@ -127,6 +127,29 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           },
         },
       },
+      "/public/services/{id}/external-preflight": {
+        post: {
+          operationId: "postPublicExternalPreflight",
+          description: "Rate-limited, non-authenticated HEAD preflight for an exact HTTPS server declared by an external OpenAPI document. No token is sent and the result is not persisted.",
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          requestBody: {
+            required: false,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/PublicExternalPreflightBody" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Non-persisted passive or HEAD preflight observation",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/PublicExternalPreflightResponse" } } },
+            },
+            "404": { description: "External discovery record is unknown" },
+            "429": { description: "Rate limited; inspect Retry-After" },
+          },
+        },
+      },
       "/developer/services/{id}/pre-action-check": {
         post: {
           operationId: "developerPreActionCheck",
@@ -180,6 +203,25 @@ export function getPublicOpenApiDocument(baseUrl: string) {
                 persisted: { type: "boolean" },
               },
             },
+            check: { type: "object", additionalProperties: true },
+            usage: { type: "object", additionalProperties: true },
+            safety: { type: "object", additionalProperties: true },
+          },
+        },
+        PublicExternalPreflightBody: {
+          type: "object",
+          properties: {
+            serverUrl: { type: "string", format: "uri" },
+          },
+        },
+        PublicExternalPreflightResponse: {
+          type: "object",
+          required: ["serviceId", "mode", "serverUrl", "verification", "check", "usage", "safety"],
+          properties: {
+            serviceId: { type: "string" },
+            mode: { type: "string", enum: ["PREFLIGHT", "PASSIVE_ONLY"] },
+            serverUrl: { type: ["string", "null"] },
+            verification: { type: "object", additionalProperties: true },
             check: { type: "object", additionalProperties: true },
             usage: { type: "object", additionalProperties: true },
             safety: { type: "object", additionalProperties: true },

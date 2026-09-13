@@ -100,6 +100,29 @@ paths:
   assert.deepEqual(parsed.candidates, []);
 });
 
+test("external descriptions werden als lesbarer Text ohne HTML-Markup ausgegeben", () => {
+  const parsed = parseExternalSpecification(
+    record("html-description"),
+    JSON.stringify({
+      openapi: "3.0.3",
+      info: {
+        title: "HTML Description API",
+        description: 'Use <a href="https://evil.example">our API</a> &amp; stay safe.<script>alert(1)</script>',
+      },
+      servers: [{ url: "https://html-description.example.test" }],
+      security: [],
+      paths: {},
+    }),
+    "application/json",
+  );
+
+  assert.equal(
+    parsed.detail.description,
+    "Use our API & stay safe.",
+  );
+  assert.equal(parsed.detail.description?.includes("<"), false);
+});
+
 test("external details expose multiple safe GET/HEAD candidates without enabling mutation", () => {
   const parsed = parseExternalSpecification(
     record("multiple-safe"),

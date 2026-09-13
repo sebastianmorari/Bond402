@@ -990,6 +990,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /public/services/{id}/external-preflight:
+    post:
+      operationId: postPublicExternalPreflight
+      tags: [developer]
+      summary: Run a safe preflight for an external API server
+      description: |
+        Runs a rate-limited, non-authenticated HEAD preflight against an exact
+        HTTPS server declared by the external OpenAPI document. No API token is
+        invented or sent, no function endpoint is called, and the result is not persisted.
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicExternalPreflightBody"
+      responses:
+        "200":
+          description: Non-persisted passive or HEAD preflight observation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicExternalPreflightResponse"
+        "404":
+          description: External discovery record is unknown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: External preflight rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /openapi.json:
     get:
       operationId: getPublicOpenApi
@@ -1243,6 +1279,12 @@ components:
     TargetAuthType:
       type: string
       enum: [NONE, BEARER, API_KEY_HEADER]
+    ServiceSourceType:
+      type: string
+      enum: [MANUAL, EXTERNAL_DISCOVERY]
+    AuthRequirement:
+      type: string
+      enum: [REQUIRED, NOT_REQUIRED, NOT_DECLARED, UNKNOWN]
     DomainRelationship:
       type: string
       enum: [OWNED, THIRD_PARTY]
@@ -1280,6 +1322,23 @@ components:
           type: string
           maxLength: 2048
           pattern: "^https?://"
+        sourceType:
+          $ref: "#/components/schemas/ServiceSourceType"
+          default: MANUAL
+        sourceProvider:
+          type: string
+          maxLength: 200
+        sourceUrl:
+          type: string
+          maxLength: 2048
+          pattern: "^https?://"
+        authRequirement:
+          $ref: "#/components/schemas/AuthRequirement"
+          default: UNKNOWN
+        discoveryMetadata:
+          type: object
+          additionalProperties: true
+          maxProperties: 30
         expectedStructure:
           type: string
           maxLength: 4000
@@ -1325,6 +1384,21 @@ components:
           type: string
           maxLength: 2048
           pattern: "^https?://"
+        sourceType:
+          $ref: "#/components/schemas/ServiceSourceType"
+        sourceProvider:
+          type: ["string", "null"]
+          maxLength: 200
+        sourceUrl:
+          type: ["string", "null"]
+          maxLength: 2048
+          pattern: "^https?://"
+        authRequirement:
+          $ref: "#/components/schemas/AuthRequirement"
+        discoveryMetadata:
+          type: ["object", "null"]
+          additionalProperties: true
+          maxProperties: 30
         expectedStructure:
           type: string
           maxLength: 4000
@@ -1365,6 +1439,17 @@ components:
           type: string
         url:
           type: string
+        sourceType:
+          $ref: "#/components/schemas/ServiceSourceType"
+        sourceProvider:
+          type: ["string", "null"]
+        sourceUrl:
+          type: ["string", "null"]
+        authRequirement:
+          $ref: "#/components/schemas/AuthRequirement"
+        discoveryMetadata:
+          type: ["object", "null"]
+          additionalProperties: true
         expectedStructure:
           type: string
         responseMode:
@@ -2575,6 +2660,35 @@ components:
           type: object
           additionalProperties: true
       required: [serviceId, endpoint, verification, check, usage, safety]
+    PublicExternalPreflightBody:
+      type: object
+      properties:
+        serverUrl:
+          type: string
+          format: uri
+    PublicExternalPreflightResponse:
+      type: object
+      properties:
+        serviceId:
+          type: string
+        mode:
+          type: string
+          enum: [PREFLIGHT, PASSIVE_ONLY]
+        serverUrl:
+          type: ["string", "null"]
+        verification:
+          type: object
+          additionalProperties: true
+        check:
+          type: object
+          additionalProperties: true
+        safety:
+          type: object
+          additionalProperties: true
+        usage:
+          type: object
+          additionalProperties: true
+      required: [serviceId, mode, serverUrl, verification, check, safety, usage]
     DemoService:
       type: object
       properties:

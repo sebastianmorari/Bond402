@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Link } from "wouter";
 import { useCreateService, getListServicesQueryKey, getGetDashboardQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +37,25 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
   const suggestedParams = new URLSearchParams(window.location.search);
   const suggestedUrl = suggestedParams.get("registerUrl") || "";
   const suggestedName = suggestedParams.get("registerName") || "";
+  const suggestedSourceType = suggestedParams.get("registerSourceType") === "EXTERNAL_DISCOVERY"
+    ? "EXTERNAL_DISCOVERY"
+    : "MANUAL";
+  const suggestedAuthRequirement = (suggestedParams.get("registerAuthRequirement") || "UNKNOWN") as
+    | "REQUIRED"
+    | "NOT_REQUIRED"
+    | "NOT_DECLARED"
+    | "UNKNOWN";
+  const suggestedDiscoveryMetadata = (() => {
+    const raw = suggestedParams.get("registerDiscoveryMetadata");
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [createdServiceId, setCreatedServiceId] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -87,14 +108,20 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
       {
         data: {
           ...rest,
+          sourceType: suggestedSourceType,
+          sourceProvider: suggestedParams.get("registerProvider") || undefined,
+          sourceUrl: suggestedParams.get("registerSourceUrl") || undefined,
+          authRequirement: suggestedAuthRequirement,
+          ...(suggestedDiscoveryMetadata ? { discoveryMetadata: suggestedDiscoveryMetadata } : {}),
           ...(expectedStructure ? { expectedStructure } : {}),
           ...(requestBody ? { requestBody } : {}),
           ...buildTargetAuthPayload(data),
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (createdService) => {
           toast({ title: "Erfolg", description: "API-Dienst wurde registriert." });
+          setCreatedServiceId(createdService.id);
           queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() });
           form.reset();
@@ -102,7 +129,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
         },
         onError: (error) => {
           toast({
-            title: "Fehler bei der Registrierung",
+            title: error.data?.code === "SERVICE_EXISTS" ? "Dienst bereits hinzugefügt" : "Fehler bei der Registrierung",
             description: error.data?.error || "Ein unbekannter Fehler ist aufgetreten.",
             variant: "destructive",
           });
@@ -120,6 +147,25 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {suggestedAuthRequirement === "REQUIRED" && (
+          <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm leading-6 text-amber-800 dark:text-amber-200">
+            <strong>Auth erforderlich / noch nicht konfiguriert.</strong>{" "}
+            Der Dienst wird trotzdem sicher als eigener Eintrag angelegt. Hinterlegen Sie das eigene Bearer-Token oder den eigenen API-Key erst danach in der Dienstkonfiguration. Bond402 übernimmt keine fremden Zugangsdaten.
+          </div>
+        )}
+        {createdServiceId && (
+          <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+            <p className="font-semibold text-emerald-800 dark:text-emerald-200">Dienst erfolgreich hinzugefügt.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild size="sm">
+                <Link href={`/dashboard?serviceId=${encodeURIComponent(createdServiceId)}`}>Dienst öffnen</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/dashboard">Zu meinen Diensten</Link>
+              </Button>
+            </div>
+          </div>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField

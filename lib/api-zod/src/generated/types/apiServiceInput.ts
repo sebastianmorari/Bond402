@@ -8,10 +8,13 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceInputDiscoveryMetadata } from './apiServiceInputDiscoveryMetadata';
 import type { ApiServiceInputRequestBody } from './apiServiceInputRequestBody';
+import type { AuthRequirement } from './authRequirement';
 import type { DomainRelationship } from './domainRelationship';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { ServiceResponseMode } from './serviceResponseMode';
+import type { ServiceSourceType } from './serviceSourceType';
 import type { TargetAuthType } from './targetAuthType';
 
 export interface ApiServiceInput {
@@ -25,6 +28,16 @@ export interface ApiServiceInput {
      * @pattern ^https?://
      */
   url: string;
+  sourceType?: ServiceSourceType;
+  /** @maxLength 200 */
+  sourceProvider?: string;
+  /**
+     * @maxLength 2048
+     * @pattern ^https?://
+     */
+  sourceUrl?: string;
+  authRequirement?: AuthRequirement;
+  discoveryMetadata?: ApiServiceInputDiscoveryMetadata;
   /** @maxLength 4000 */
   expectedStructure?: string;
   responseMode?: ServiceResponseMode;

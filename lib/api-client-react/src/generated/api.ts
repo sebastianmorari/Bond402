@@ -51,6 +51,8 @@ import type {
   PublicExternalCheckBody,
   PublicExternalCheckResponse,
   PublicExternalDiscoveryDetail,
+  PublicExternalPreflightBody,
+  PublicExternalPreflightResponse,
   PublicPreActionBody,
   PublicPreActionCheck,
   PublicService,
@@ -2678,6 +2680,81 @@ export const usePostPublicExternalCheck = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getPostPublicExternalCheckMutationOptions(options));
+    }
+
+export const getPostPublicExternalPreflightUrl = (id: string,) => {
+
+
+
+
+  return `/api/public/services/${id}/external-preflight`
+}
+
+/**
+ * Runs a rate-limited, non-authenticated HEAD preflight against an exact
+ * HTTPS server declared by the external OpenAPI document. No API token is
+ * invented or sent, no function endpoint is called, and the result is not persisted.
+ * @summary Run a safe preflight for an external API server
+ */
+export const postPublicExternalPreflight = async (id: string,
+    publicExternalPreflightBody?: PublicExternalPreflightBody, options?: Parameters<typeof customFetch>[1]): Promise<PublicExternalPreflightResponse> => {
+
+  return customFetch<PublicExternalPreflightResponse>(getPostPublicExternalPreflightUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(publicExternalPreflightBody)
+  }
+);}
+
+
+
+
+
+export const getPostPublicExternalPreflightMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPublicExternalPreflight>>, TError,{id: string;data?: BodyType<PublicExternalPreflightBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postPublicExternalPreflight>>, TError,{id: string;data?: BodyType<PublicExternalPreflightBody>}, TContext> => {
+
+const mutationKey = ['postPublicExternalPreflight'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postPublicExternalPreflight>>, {id: string;data?: BodyType<PublicExternalPreflightBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  postPublicExternalPreflight(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostPublicExternalPreflightMutationResult = NonNullable<Awaited<ReturnType<typeof postPublicExternalPreflight>>>
+    export type PostPublicExternalPreflightMutationBody = BodyType<PublicExternalPreflightBody> | undefined
+    export type PostPublicExternalPreflightMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Run a safe preflight for an external API server
+ */
+export const usePostPublicExternalPreflight = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postPublicExternalPreflight>>, TError,{id: string;data?: BodyType<PublicExternalPreflightBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof postPublicExternalPreflight>>,
+        TError,
+        {id: string;data?: BodyType<PublicExternalPreflightBody>},
+        TContext
+      > => {
+      return useMutation(getPostPublicExternalPreflightMutationOptions(options));
     }
 
 export const getGetPublicOpenApiUrl = () => {

@@ -108,6 +108,32 @@ function hasField<T extends object>(value: T, field: keyof T) {
   return Object.prototype.hasOwnProperty.call(value, field);
 }
 
+function normalizeDiscoveryMetadata(input: {
+  sourceType?: "MANUAL" | "EXTERNAL_DISCOVERY";
+  sourceProvider?: string | null;
+  sourceUrl?: string | null;
+  authRequirement?: "REQUIRED" | "NOT_REQUIRED" | "NOT_DECLARED" | "UNKNOWN";
+  discoveryMetadata?: Record<string, unknown> | null;
+}) {
+  const sourceProvider = input.sourceProvider?.trim().slice(0, 200) || null;
+  const sourceUrl = input.sourceUrl?.trim().slice(0, 2_048) || null;
+  if (sourceUrl) {
+    const parsed = new URL(sourceUrl);
+    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) {
+      throw Object.assign(new Error("Die Quellen-URL ist ungültig."), { code: "INVALID_SOURCE_URL" });
+    }
+  }
+  const sourceType = input.sourceType === "EXTERNAL_DISCOVERY" ? "EXTERNAL_DISCOVERY" : "MANUAL";
+  const authRequirement = input.authRequirement ?? "UNKNOWN";
+  return {
+    sourceType,
+    sourceProvider,
+    sourceUrl,
+    authRequirement,
+    discoveryMetadata: input.discoveryMetadata ?? null,
+  };
+}
+
 function normalizeTargetConfiguration(
   input: {
     requestMethod?: "GET" | "HEAD" | "POST";
@@ -409,6 +435,13 @@ router.post("/services", async (req, res): Promise<void> => {
     res.status(result.status).json({ error: result.error, code: result.code });
     return;
   }
+  let discoveryMetadata;
+  try {
+    discoveryMetadata = normalizeDiscoveryMetadata(parsed.data);
+  } catch {
+    res.status(400).json({ error: "Die Quellen-Metadaten sind ungültig.", code: "INVALID_SOURCE_METADATA" });
+    return;
+  }
 
   try {
     await validatePublicUrl(parsed.data.url);
@@ -428,6 +461,24 @@ router.post("/services", async (req, res): Promise<void> => {
     const response = await runServiceCreationTransaction(
       (callback) => db.transaction(callback),
       async (tx) => {
+      if (discoveryMetadata.sourceType === "EXTERNAL_DISCOVERY") {
+        const [existingService] = await tx
+          .select({ id: apiServicesTable.id })
+          .from(apiServicesTable)
+          .where(and(
+            eq(apiServicesTable.ownerId, userId),
+            eq(apiServicesTable.sourceType, "EXTERNAL_DISCOVERY"),
+            discoveryMetadata.sourceUrl
+              ? eq(apiServicesTable.sourceUrl, discoveryMetadata.sourceUrl)
+              : eq(apiServicesTable.url, parsed.data.url),
+          ))
+          .limit(1);
+        if (existingService) {
+          throw Object.assign(new Error("Dieser Dienst ist bereits für Ihr Konto hinzugefügt."), {
+            code: "SERVICE_EXISTS",
+          });
+        }
+      }
       const [service] = await tx
         .insert(apiServicesTable)
         .values({
@@ -435,6 +486,7 @@ router.post("/services", async (req, res): Promise<void> => {
           ownerId: userId,
           name: normalizedName,
           url: parsed.data.url,
+          ...discoveryMetadata,
           expectedStructure: normalizedStructure,
           responseMode,
           maxResponseTime: parsed.data.maxResponseTime,

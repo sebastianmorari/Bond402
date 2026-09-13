@@ -217,6 +217,11 @@ export const ListServicesResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "url": zod.string(),
+  "sourceType": zod.enum(['MANUAL', 'EXTERNAL_DISCOVERY']).optional(),
+  "sourceProvider": zod.string().nullish(),
+  "sourceUrl": zod.string().nullish(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']).optional(),
+  "discoveryMetadata": zod.record(zod.string(), zod.unknown()).nullish(),
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
@@ -403,6 +408,14 @@ export const createServiceBodyUrlMax = 2048;
 
 
 export const createServiceBodyUrlRegExp = new RegExp('^https?:/');
+export const createServiceBodySourceTypeDefault = `MANUAL`;
+export const createServiceBodySourceProviderMax = 200;
+
+export const createServiceBodySourceUrlMax = 2048;
+
+
+export const createServiceBodySourceUrlRegExp = new RegExp('^https?:/');
+export const createServiceBodyAuthRequirementDefault = `UNKNOWN`;
 export const createServiceBodyExpectedStructureMax = 4000;
 
 export const createServiceBodyResponseModeDefault = `JSON`;
@@ -422,6 +435,11 @@ export const createServiceBodyDomainRelationshipDefault = `THIRD_PARTY`;
 export const CreateServiceBody = zod.object({
   "name": zod.string().min(createServiceBodyNameMin).max(createServiceBodyNameMax),
   "url": zod.string().max(createServiceBodyUrlMax).regex(createServiceBodyUrlRegExp),
+  "sourceType": zod.enum(['MANUAL', 'EXTERNAL_DISCOVERY']).default(createServiceBodySourceTypeDefault),
+  "sourceProvider": zod.string().max(createServiceBodySourceProviderMax).optional(),
+  "sourceUrl": zod.string().max(createServiceBodySourceUrlMax).regex(createServiceBodySourceUrlRegExp).optional(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']).default(createServiceBodyAuthRequirementDefault),
+  "discoveryMetadata": zod.record(zod.string(), zod.unknown()).optional(),
   "expectedStructure": zod.string().max(createServiceBodyExpectedStructureMax).optional(),
   "responseMode": zod.enum(['JSON', 'HTTP']).default(createServiceBodyResponseModeDefault),
   "maxResponseTime": zod.number().min(createServiceBodyMaxResponseTimeMin).max(createServiceBodyMaxResponseTimeMax),
@@ -437,6 +455,11 @@ export const CreateServiceResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "url": zod.string(),
+  "sourceType": zod.enum(['MANUAL', 'EXTERNAL_DISCOVERY']).optional(),
+  "sourceProvider": zod.string().nullish(),
+  "sourceUrl": zod.string().nullish(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']).optional(),
+  "discoveryMetadata": zod.record(zod.string(), zod.unknown()).nullish(),
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
@@ -626,6 +649,11 @@ export const GetServiceResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "url": zod.string(),
+  "sourceType": zod.enum(['MANUAL', 'EXTERNAL_DISCOVERY']).optional(),
+  "sourceProvider": zod.string().nullish(),
+  "sourceUrl": zod.string().nullish(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']).optional(),
+  "discoveryMetadata": zod.record(zod.string(), zod.unknown()).nullish(),
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
@@ -831,6 +859,12 @@ export const updateServiceBodyUrlMax = 2048;
 
 
 export const updateServiceBodyUrlRegExp = new RegExp('^https?:/');
+export const updateServiceBodySourceProviderMax = 200;
+
+export const updateServiceBodySourceUrlMax = 2048;
+
+
+export const updateServiceBodySourceUrlRegExp = new RegExp('^https?:/');
 export const updateServiceBodyExpectedStructureMax = 4000;
 
 export const updateServiceBodyMaxResponseTimeMin = 100;
@@ -847,6 +881,11 @@ export const updateServiceBodyTargetAuthSecretMax = 4096;
 export const UpdateServiceBody = zod.object({
   "name": zod.string().min(updateServiceBodyNameMin).max(updateServiceBodyNameMax).optional(),
   "url": zod.string().max(updateServiceBodyUrlMax).regex(updateServiceBodyUrlRegExp).optional(),
+  "sourceType": zod.enum(['MANUAL', 'EXTERNAL_DISCOVERY']).optional(),
+  "sourceProvider": zod.string().max(updateServiceBodySourceProviderMax).nullish(),
+  "sourceUrl": zod.string().max(updateServiceBodySourceUrlMax).regex(updateServiceBodySourceUrlRegExp).nullish(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']).optional(),
+  "discoveryMetadata": zod.record(zod.string(), zod.unknown()).nullish(),
   "expectedStructure": zod.string().max(updateServiceBodyExpectedStructureMax).optional(),
   "responseMode": zod.enum(['JSON', 'HTTP']).optional(),
   "maxResponseTime": zod.number().min(updateServiceBodyMaxResponseTimeMin).max(updateServiceBodyMaxResponseTimeMax).optional(),
@@ -863,6 +902,11 @@ export const UpdateServiceResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "url": zod.string(),
+  "sourceType": zod.enum(['MANUAL', 'EXTERNAL_DISCOVERY']).optional(),
+  "sourceProvider": zod.string().nullish(),
+  "sourceUrl": zod.string().nullish(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']).optional(),
+  "discoveryMetadata": zod.record(zod.string(), zod.unknown()).nullish(),
   "expectedStructure": zod.string(),
   "responseMode": zod.enum(['JSON', 'HTTP']),
   "maxResponseTime": zod.number(),
@@ -2756,9 +2800,9 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "source": zod.object({
   "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY']),
   "label": zod.string(),
-  "catalogUrl": zod.string().url(),
-  "recordUrl": zod.string().url(),
-  "specificationUrl": zod.string().url()
+   "catalogUrl": zod.string().url(),
+   "recordUrl": zod.string().url(),
+   "specificationUrl": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -2770,7 +2814,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "title": zod.string().nullable(),
   "description": zod.string().nullable(),
   "servers": zod.array(zod.object({
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "description": zod.string().nullable(),
   "templated": zod.boolean()
 })),
@@ -2796,13 +2840,13 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "safeEndpoint": zod.union([zod.null(),zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })]),
   "safeEndpoints": zod.array(zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })),
   "safeEndpointNote": zod.string()
@@ -3039,7 +3083,7 @@ export const PostPublicExternalCheckParams = zod.object({
 export const PostPublicExternalCheckBody = zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url()
+   "url": zod.string().url()
 })
 
 export const PostPublicExternalCheckResponse = zod.object({
@@ -3047,7 +3091,7 @@ export const PostPublicExternalCheckResponse = zod.object({
   "endpoint": zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url()
+   "url": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['CHECKED_EXTERNAL']),
@@ -3058,6 +3102,34 @@ export const PostPublicExternalCheckResponse = zod.object({
   "check": zod.record(zod.string(), zod.unknown()),
   "usage": zod.record(zod.string(), zod.unknown()),
   "safety": zod.record(zod.string(), zod.unknown())
+})
+
+
+/**
+ * Runs a rate-limited, non-authenticated HEAD preflight against an exact
+ * HTTPS server declared by the external OpenAPI document. No API token is
+ * invented or sent, no function endpoint is called, and the result is not persisted.
+ * @summary Run a safe preflight for an external API server
+ */
+
+
+
+export const PostPublicExternalPreflightParams = zod.object({
+  "id": zod.coerce.string().min(1)
+})
+
+export const PostPublicExternalPreflightBody = zod.object({
+   "serverUrl": zod.string().url().optional()
+})
+
+export const PostPublicExternalPreflightResponse = zod.object({
+  "serviceId": zod.string(),
+  "mode": zod.enum(['PREFLIGHT', 'PASSIVE_ONLY']),
+  "serverUrl": zod.string().nullable(),
+  "verification": zod.record(zod.string(), zod.unknown()),
+  "check": zod.record(zod.string(), zod.unknown()),
+  "safety": zod.record(zod.string(), zod.unknown()),
+  "usage": zod.record(zod.string(), zod.unknown())
 })
 
 

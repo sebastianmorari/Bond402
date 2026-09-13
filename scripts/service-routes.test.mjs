@@ -116,7 +116,7 @@ test("Authentifizierter GET liefert eine Liste und POST legt einen Dienst an", a
       maxResponseTime: 1000,
     },
   });
-  assert.equal(created.response.status, 201);
+  assert.equal(created.response.status, 201, JSON.stringify(created.data));
   assert.ok(created.data.id);
   assert.equal(created.data.domainRelationship, "THIRD_PARTY");
   assert.equal(created.data.domainVerification.status, "NOT_APPLICABLE");
@@ -126,6 +126,45 @@ test("Authentifizierter GET liefert eine Liste und POST legt einen Dienst an", a
   assert.equal(listed.response.status, 200);
   assert.equal(listed.data.length, 1);
   assert.equal(listed.data[0].id, created.data.id);
+});
+
+test("Externe Discovery-Metadaten werden übernommen und doppelte Importe blockiert", async () => {
+  const sourceUrl = "https://api.apis.guru/v2/specs/example.test/1.0.0/openapi.json";
+  const payload = {
+    name: "Externer Discovery-Import",
+    url: "https://example.com/external-api",
+    responseMode: "HTTP",
+    maxResponseTime: 1000,
+    requestMethod: "HEAD",
+    sourceType: "EXTERNAL_DISCOVERY",
+    sourceProvider: "example.test",
+    sourceUrl,
+    authRequirement: "REQUIRED",
+    discoveryMetadata: {
+      sourceRecordUrl: "https://api.apis.guru/v2/specs/example.test/1.0.0.json",
+      specificationUrl: sourceUrl,
+      authSchemes: [{ name: "oauth_2_0", type: "oauth2" }],
+    },
+  };
+  const created = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: payload,
+  });
+  assert.equal(created.response.status, 201, JSON.stringify(created.data));
+  assert.equal(created.data.sourceType, "EXTERNAL_DISCOVERY");
+  assert.equal(created.data.sourceProvider, "example.test");
+  assert.equal(created.data.authRequirement, "REQUIRED");
+  assert.equal(created.data.discoveryMetadata.authSchemes[0].type, "oauth2");
+  assert.equal(created.data.targetAuthSecretConfigured, false);
+
+  const duplicate = await request("/api/services", {
+    method: "POST",
+    authenticated: true,
+    body: payload,
+  });
+  assert.equal(duplicate.response.status, 409);
+  assert.equal(duplicate.data.code, "SERVICE_EXISTS");
 });
 
 test("HTTP-Dienste benötigen keine erwartete JSON-Struktur", async () => {

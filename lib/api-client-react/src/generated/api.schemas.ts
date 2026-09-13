@@ -233,6 +233,24 @@ export const TargetAuthType = {
   API_KEY_HEADER: 'API_KEY_HEADER',
 } as const;
 
+export type ServiceSourceType = typeof ServiceSourceType[keyof typeof ServiceSourceType];
+
+
+export const ServiceSourceType = {
+  MANUAL: 'MANUAL',
+  EXTERNAL_DISCOVERY: 'EXTERNAL_DISCOVERY',
+} as const;
+
+export type AuthRequirement = typeof AuthRequirement[keyof typeof AuthRequirement];
+
+
+export const AuthRequirement = {
+  REQUIRED: 'REQUIRED',
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  NOT_DECLARED: 'NOT_DECLARED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
 export type DomainRelationship = typeof DomainRelationship[keyof typeof DomainRelationship];
 
 
@@ -499,6 +517,8 @@ export interface DeveloperServiceResult {
   checks: CheckResult[];
 }
 
+export type ApiServiceInputDiscoveryMetadata = { [key: string]: unknown };
+
 export type ApiServiceInputRequestBody = { [key: string]: unknown };
 
 export interface ApiServiceInput {
@@ -512,6 +532,16 @@ export interface ApiServiceInput {
      * @pattern ^https?://
      */
   url: string;
+  sourceType?: ServiceSourceType;
+  /** @maxLength 200 */
+  sourceProvider?: string;
+  /**
+     * @maxLength 2048
+     * @pattern ^https?://
+     */
+  sourceUrl?: string;
+  authRequirement?: AuthRequirement;
+  discoveryMetadata?: ApiServiceInputDiscoveryMetadata;
   /** @maxLength 4000 */
   expectedStructure?: string;
   responseMode?: ServiceResponseMode;
@@ -537,6 +567,11 @@ export interface ApiServiceInput {
   domainRelationship?: DomainRelationship;
 }
 
+/**
+ * @nullable
+ */
+export type ApiServiceUpdateDiscoveryMetadata = { [key: string]: unknown } | null;
+
 export type ApiServiceUpdateVisibility = typeof ApiServiceUpdateVisibility[keyof typeof ApiServiceUpdateVisibility];
 
 
@@ -561,6 +596,21 @@ export interface ApiServiceUpdate {
      * @pattern ^https?://
      */
   url?: string;
+  sourceType?: ServiceSourceType;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  sourceProvider?: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     * @pattern ^https?://
+     */
+  sourceUrl?: string | null;
+  authRequirement?: AuthRequirement;
+  /** @nullable */
+  discoveryMetadata?: ApiServiceUpdateDiscoveryMetadata;
   /** @maxLength 4000 */
   expectedStructure?: string;
   responseMode?: ServiceResponseMode;
@@ -587,6 +637,11 @@ export interface ApiServiceUpdate {
   requestBody?: ApiServiceUpdateRequestBody;
   domainRelationship?: DomainRelationship;
 }
+
+/**
+ * @nullable
+ */
+export type ApiServiceDiscoveryMetadata = { [key: string]: unknown } | null;
 
 /**
  * @nullable
@@ -714,6 +769,14 @@ export interface ApiService {
   id: string;
   name: string;
   url: string;
+  sourceType?: ServiceSourceType;
+  /** @nullable */
+  sourceProvider?: string | null;
+  /** @nullable */
+  sourceUrl?: string | null;
+  authRequirement?: AuthRequirement;
+  /** @nullable */
+  discoveryMetadata?: ApiServiceDiscoveryMetadata;
   expectedStructure: string;
   responseMode: ServiceResponseMode;
   maxResponseTime: number;
@@ -1519,6 +1582,37 @@ export interface PublicExternalCheckResponse {
   check: PublicExternalCheckResponseCheck;
   usage: PublicExternalCheckResponseUsage;
   safety: PublicExternalCheckResponseSafety;
+}
+
+export interface PublicExternalPreflightBody {
+  serverUrl?: string;
+}
+
+export type PublicExternalPreflightResponseMode = typeof PublicExternalPreflightResponseMode[keyof typeof PublicExternalPreflightResponseMode];
+
+
+export const PublicExternalPreflightResponseMode = {
+  PREFLIGHT: 'PREFLIGHT',
+  PASSIVE_ONLY: 'PASSIVE_ONLY',
+} as const;
+
+export type PublicExternalPreflightResponseVerification = { [key: string]: unknown };
+
+export type PublicExternalPreflightResponseCheck = { [key: string]: unknown };
+
+export type PublicExternalPreflightResponseSafety = { [key: string]: unknown };
+
+export type PublicExternalPreflightResponseUsage = { [key: string]: unknown };
+
+export interface PublicExternalPreflightResponse {
+  serviceId: string;
+  mode: PublicExternalPreflightResponseMode;
+  /** @nullable */
+  serverUrl: string | null;
+  verification: PublicExternalPreflightResponseVerification;
+  check: PublicExternalPreflightResponseCheck;
+  safety: PublicExternalPreflightResponseSafety;
+  usage: PublicExternalPreflightResponseUsage;
 }
 
 export interface DemoService {

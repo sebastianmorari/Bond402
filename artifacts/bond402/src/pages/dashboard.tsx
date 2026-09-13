@@ -14,7 +14,9 @@ import { MobileNav } from "@/components/mobile-nav";
 import { QuotaCard } from "@/components/quota-card";
 
 export default function Dashboard() {
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get("serviceId"),
+  );
   const { user, signOut } = useAuth();
 
   return (

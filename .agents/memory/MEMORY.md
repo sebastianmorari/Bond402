@@ -11,3 +11,4 @@
 - [External OpenAPI probing](external-openapi-probing.md) — show declared variable endpoints, but only offer a probe when HTTPS, no-auth, and no required parameters are explicit.
 - [First-seen security gate](first-seen-security-gate.md) — quarantine new services and cap trust until repeated observations support a low-risk status.
 - [Database schema compatibility](database-schema-compatibility.md) — avoid automatic text-to-number casts during ordinary Drizzle schema pushes.
+- [OpenAPI Zod codegen](openapi-zod-codegen.md) — Orval emits zod.url(), which must be normalized to zod.string().url() for this workspace's Zod version.

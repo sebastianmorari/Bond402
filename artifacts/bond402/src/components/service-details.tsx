@@ -933,6 +933,37 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      {service.sourceType === "EXTERNAL_DISCOVERY" && (
+                        <div className="space-y-2 rounded-xl border border-border/60 bg-muted/20 p-4">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground">Discovery-Metadaten</p>
+                          <p className="text-sm font-medium">
+                            {service.sourceProvider || "Externe OpenAPI-Quelle"}
+                          </p>
+                          {service.sourceUrl && (
+                            <a
+                              href={service.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block break-all text-xs text-primary hover:underline"
+                            >
+                              OpenAPI-Quelle öffnen
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      {service.authRequirement === "REQUIRED" && !service.targetAuthSecretConfigured && (
+                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm leading-6 text-amber-800 dark:text-amber-200">
+                              <strong>Auth erforderlich / noch nicht konfiguriert.</strong>{" "}
+                              Hinterlegen Sie hier Ihre eigenen Zugangsdaten, bevor ein authentifizierter Live-Check möglich wird.
+                            </p>
+                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                              Auth konfigurieren
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       <div className="space-y-1">
                         <p className="text-xs text-muted-foreground">Live-Request</p>
                         <p className="text-sm bg-muted/30 p-2 rounded border border-border/50">

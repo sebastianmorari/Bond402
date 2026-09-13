@@ -8,11 +8,14 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceUpdateDiscoveryMetadata } from './apiServiceUpdateDiscoveryMetadata';
 import type { ApiServiceUpdateRequestBody } from './apiServiceUpdateRequestBody';
 import type { ApiServiceUpdateVisibility } from './apiServiceUpdateVisibility';
+import type { AuthRequirement } from './authRequirement';
 import type { DomainRelationship } from './domainRelationship';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { ServiceResponseMode } from './serviceResponseMode';
+import type { ServiceSourceType } from './serviceSourceType';
 import type { TargetAuthType } from './targetAuthType';
 
 export interface ApiServiceUpdate {
@@ -26,6 +29,21 @@ export interface ApiServiceUpdate {
      * @pattern ^https?://
      */
   url?: string;
+  sourceType?: ServiceSourceType;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  sourceProvider?: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     * @pattern ^https?://
+     */
+  sourceUrl?: string | null;
+  authRequirement?: AuthRequirement;
+  /** @nullable */
+  discoveryMetadata?: ApiServiceUpdateDiscoveryMetadata;
   /** @maxLength 4000 */
   expectedStructure?: string;
   responseMode?: ServiceResponseMode;

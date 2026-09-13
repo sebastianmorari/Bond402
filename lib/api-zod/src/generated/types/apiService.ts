@@ -8,8 +8,10 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { ApiServiceDiscoveryMetadata } from './apiServiceDiscoveryMetadata';
 import type { ApiServiceRequestBody } from './apiServiceRequestBody';
 import type { ApiServiceVisibility } from './apiServiceVisibility';
+import type { AuthRequirement } from './authRequirement';
 import type { CheckResult } from './checkResult';
 import type { DomainRelationship } from './domainRelationship';
 import type { DomainVerification } from './domainVerification';
@@ -17,6 +19,7 @@ import type { SecurityConfidence } from './securityConfidence';
 import type { SecurityStatus } from './securityStatus';
 import type { ServiceRequestMethod } from './serviceRequestMethod';
 import type { ServiceResponseMode } from './serviceResponseMode';
+import type { ServiceSourceType } from './serviceSourceType';
 import type { SignalStates } from './signalStates';
 import type { TargetAuthType } from './targetAuthType';
 import type { TrustMetrics } from './trustMetrics';
@@ -25,6 +28,14 @@ export interface ApiService {
   id: string;
   name: string;
   url: string;
+  sourceType?: ServiceSourceType;
+  /** @nullable */
+  sourceProvider?: string | null;
+  /** @nullable */
+  sourceUrl?: string | null;
+  authRequirement?: AuthRequirement;
+  /** @nullable */
+  discoveryMetadata?: ApiServiceDiscoveryMetadata;
   expectedStructure: string;
   responseMode: ServiceResponseMode;
   maxResponseTime: number;

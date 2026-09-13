@@ -367,6 +367,120 @@ router.post("/public/services/:id/external-check", async (req, res): Promise<voi
   });
 });
 
+router.post("/public/services/:id/external-preflight", async (req, res): Promise<void> => {
+  if (!(await requireExternalCheckRateLimit(req, res))) return;
+  const serviceId = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
+  const detail = await getExternalApiDetail(serviceId);
+  if (!detail) {
+    res.status(404).json({ error: "Externer Discovery-Treffer nicht gefunden.", code: "NOT_FOUND" });
+    return;
+  }
+
+  const requestedServer = req.body && typeof req.body.serverUrl === "string"
+    ? req.body.serverUrl
+    : detail.specification.servers.find((server) => !server.templated && server.url.startsWith("https://"))?.url;
+  const server = detail.specification.servers.find(
+    (candidate) =>
+      candidate.url === requestedServer &&
+      !candidate.templated &&
+      candidate.url.startsWith("https://"),
+  );
+
+  if (!server) {
+    res.json({
+      serviceId: detail.id,
+      mode: "PASSIVE_ONLY",
+      serverUrl: null,
+      verification: {
+        status: "CHECKED_EXTERNAL",
+        trustStatus: "UNVERIFIED_EXTERNAL",
+        checkedAt: new Date().toISOString(),
+        persisted: false,
+      },
+      check: {
+        status: "REVIEW",
+        summary: "Es wurde kein sicherer HTTPS-Server aus der Spezifikation gefunden. Es wurde kein Netzwerkziel aufgerufen.",
+        reachable: false,
+        responseTimeMs: 0,
+        httpStatus: null,
+        errorCode: "NO_SAFE_SERVER",
+        https: false,
+        tlsStatus: "NOT_EVALUATED",
+        securitySignals: {
+          reachability: { status: "UNKNOWN", summary: "Kein sicher ableitbarer Server vorhanden." },
+          transport: { status: "UNKNOWN", summary: "HTTPS/TLS konnte nicht geprüft werden." },
+          network: { status: "UNKNOWN", summary: "Kein Netzwerkziel wurde aufgerufen." },
+          redirects: { status: "UNKNOWN", summary: "Keine Redirect-Kette wurde geprüft." },
+          responseType: { status: "UNKNOWN", summary: "Keine Antwort empfangen." },
+          suspiciousPayload: { status: "UNKNOWN", summary: "Keine Antwort-Heuristiken ausgeführt.", indicators: [] },
+          securityHeaders: { status: "UNKNOWN", summary: "Keine Response-Header empfangen." },
+          securityConfidence: { status: "UNKNOWN", score: null, summary: "Keine ausreichenden Beobachtungen vorhanden." },
+          authentication: { status: "UNKNOWN", summary: "Keine Authentifizierung geprüft.", required: detail.specification.auth.status === "REQUIRED" },
+          rateLimit: { status: "UNKNOWN", summary: "Kein Rate-Limit geprüft.", detected: false },
+          reputation: { status: "UNKNOWN", summary: "Keine verlässliche Reputation-Quelle konfiguriert." },
+          threatIndicators: { status: "UNKNOWN", severity: "LOW", confidence: 0, indicators: [], summary: "Keine Antwort-Heuristiken ausgeführt." },
+          historicalDrift: { status: "UNKNOWN", indicators: [], summary: "Keine gespeicherte externe Beobachtung vorhanden." },
+        },
+      },
+      safety: {
+        requestWasReadOnly: true,
+        executedMethod: null,
+        authenticatedRequest: false,
+        secretsSent: false,
+        foreignCodeExecuted: false,
+        responsePersisted: false,
+        note: "Dies war nur ein passiver Preflight. Kein authentifizierter API-Funktionsaufruf wurde durchgeführt.",
+      },
+      usage: {
+        countsAgainstMonthlyPlan: false,
+        rateLimit: `${PUBLIC_EXTERNAL_CHECK_RATE_LIMIT}/minute/IP`,
+      },
+    });
+    return;
+  }
+
+  const outcome = await runLiveVerification(
+    server.url,
+    "",
+    3_000,
+    { requestMethod: "HEAD" },
+    "HTTP",
+  );
+  res.json({
+    serviceId: detail.id,
+    mode: "PREFLIGHT",
+    serverUrl: server.url,
+    verification: {
+      status: "CHECKED_EXTERNAL",
+      trustStatus: "UNVERIFIED_EXTERNAL",
+      checkedAt: new Date().toISOString(),
+      persisted: false,
+    },
+    check: {
+      id: null,
+      serviceId: detail.id,
+      checkedAt: new Date().toISOString(),
+      checkType: "PREFLIGHT",
+      ...outcome,
+    },
+    safety: {
+      requestWasReadOnly: true,
+      executedMethod: "HEAD",
+      authenticatedRequest: false,
+      secretsSent: false,
+      foreignCodeExecuted: false,
+      responsePersisted: false,
+      note: detail.specification.auth.status === "REQUIRED"
+        ? "Es wurde nur ein nicht authentifizierter HEAD-Preflight am bekannten Server ausgeführt. Kein authentifizierter API-Funktionsaufruf wurde durchgeführt, weil die Spezifikation Authentifizierung verlangt."
+        : "Es wurde nur ein nicht authentifizierter HEAD-Preflight am bekannten Server ausgeführt. Kein API-Funktionsaufruf und kein Secret wurden verwendet.",
+    },
+    usage: {
+      countsAgainstMonthlyPlan: false,
+      rateLimit: `${PUBLIC_EXTERNAL_CHECK_RATE_LIMIT}/minute/IP`,
+    },
+  });
+});
+
 async function handlePublicPreActionCheck(req: Request, res: Response, bodyContext?: unknown) {
   if (!(await requirePublicRateLimit(req, res))) return;
   const serviceId = typeof req.params.id === "string" ? req.params.id : req.params.id[0];

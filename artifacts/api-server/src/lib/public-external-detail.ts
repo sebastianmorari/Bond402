@@ -96,6 +96,24 @@ function safeString(value: unknown, maxLength: number) {
   return sanitized ? sanitized.slice(0, maxLength) : null;
 }
 
+function safeDescription(value: unknown, maxLength: number) {
+  const raw = safeString(value, maxLength);
+  if (!raw) return null;
+  return raw
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;|&#x27;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength) || null;
+}
+
 function safeUrl(value: unknown) {
   const candidate = safeString(value, 2_000);
   if (!candidate) return null;
@@ -132,7 +150,7 @@ function parseSpecification(body: string, contentType: string | undefined): Pars
   return {
     status: "PARSED",
     document,
-    bodyDescription: safeString(asRecord(document.info)?.description, 1_000),
+    bodyDescription: safeDescription(asRecord(document.info)?.description, 1_000),
   };
 }
 
@@ -144,7 +162,7 @@ function getInfo(document: UnknownRecord) {
   const info = asRecord(document.info);
   return {
     title: safeString(info?.title, 200),
-    description: safeString(info?.description, 1_000),
+    description: safeDescription(info?.description, 1_000),
   };
 }
 

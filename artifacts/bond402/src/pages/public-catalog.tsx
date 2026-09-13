@@ -481,13 +481,19 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
   const [isChecking, setIsChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [checkResult, setCheckResult] = useState<ExternalCheckResult | null>(null);
+  const [selectedServerUrl, setSelectedServerUrl] = useState(
+    service.specification.servers.find((server) => !server.templated && server.url.startsWith("https://"))?.url ?? "",
+  );
 
   useEffect(() => {
     const first = candidates[0];
     setSelectedCandidateKey(first ? `${first.method}:${first.path}:${first.url}` : "");
+    setSelectedServerUrl(
+      service.specification.servers.find((server) => !server.templated && server.url.startsWith("https://"))?.url ?? "",
+    );
     setCheckResult(null);
     setCheckError(null);
-  }, [service.id]);
+  }, [service.id, service.specification.servers]);
 
   const selectedCandidate = candidates.find(
     (candidate) => `${candidate.method}:${candidate.path}:${candidate.url}` === selectedCandidateKey,
@@ -499,12 +505,24 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
       : service.specification.auth.status === "NOT_DECLARED"
         ? "Nicht in der Spezifikation erklärt"
         : "Unbekannt";
-  const registerHref = selectedCandidate
-    ? `/dashboard?registerUrl=${encodeURIComponent(selectedCandidate.url)}&registerName=${encodeURIComponent(service.name)}&registerMethod=${encodeURIComponent(selectedCandidate.method)}#service-registration`
-    : null;
-  const signInHref = registerHref
-    ? `/sign-in?returnTo=${encodeURIComponent(registerHref)}`
-    : "/sign-in";
+  const importUrl = selectedCandidate?.url
+    ?? selectedServerUrl
+    ?? service.specification.servers[0]?.url
+    ?? service.source.specificationUrl;
+  const registerMetadata = JSON.stringify({
+    sourceRecordUrl: service.source.recordUrl,
+    specificationUrl: service.source.specificationUrl,
+    provider: service.provider,
+    version: service.version,
+    authSchemes: service.specification.auth.schemes.map((scheme) => ({
+      name: scheme.name,
+      type: scheme.type,
+      scheme: scheme.scheme,
+      location: scheme.location,
+    })),
+  });
+  const registerHref = `/dashboard?registerUrl=${encodeURIComponent(importUrl)}&registerName=${encodeURIComponent(service.name)}&registerMethod=${encodeURIComponent(selectedCandidate?.method ?? "HEAD")}&registerSourceType=EXTERNAL_DISCOVERY&registerProvider=${encodeURIComponent(service.provider)}&registerSourceUrl=${encodeURIComponent(service.source.specificationUrl)}&registerAuthRequirement=${encodeURIComponent(service.specification.auth.status)}&registerDiscoveryMetadata=${encodeURIComponent(registerMetadata)}#service-registration`;
+  const signInHref = `/sign-in?returnTo=${encodeURIComponent(registerHref)}`;
 
   async function runSafeCheck() {
     if (!selectedCandidate || isChecking) return;
@@ -529,8 +547,34 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
     }
   }
 
+  async function runPreflight() {
+    if (isChecking || !selectedServerUrl) return;
+    setIsChecking(true);
+    setCheckError(null);
+    setCheckResult(null);
+    try {
+      const response = await fetch(`${apiBase}/public/services/${encodeURIComponent(service.id)}/external-preflight`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serverUrl: selectedServerUrl }),
+      });
+      const data = await response.json().catch(() => null) as ExternalCheckResult | { error?: string } | null;
+      if (!response.ok) {
+        throw new Error(data && "error" in data && data.error ? data.error : "Der sichere Preflight konnte nicht gestartet werden.");
+      }
+      setCheckResult(data as ExternalCheckResult);
+    } catch (error) {
+      setCheckError(error instanceof Error ? error.message : "Der sichere Preflight konnte nicht abgeschlossen werden.");
+    } finally {
+      setIsChecking(false);
+    }
+  }
+
+  const hasSafeCandidate = Boolean(selectedCandidate);
+  const safeServers = service.specification.servers.filter((server) => !server.templated && server.url.startsWith("https://"));
+
   return (
-    <div className="mt-8 max-w-5xl">
+    <div className="mt-8 flex max-w-5xl flex-col">
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
         <div>
           <Badge variant="secondary">Externe Discovery · unverifiziert</Badge>
@@ -544,11 +588,87 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
         </div>
       </div>
 
-      <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground">
+      <p className="order-3 mt-6 max-w-3xl text-base leading-7 text-muted-foreground">
         {service.description || "Die externe Quelle liefert keine Beschreibung."}
       </p>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <section className="order-2 sticky top-[4.25rem] z-10 mt-6 rounded-2xl border border-primary/30 bg-background/95 p-4 shadow-lg shadow-black/5 backdrop-blur sm:p-6">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={hasSafeCandidate ? "outline" : "secondary"}>
+                {hasSafeCandidate ? "Sicherer Prüf-Kandidat" : "Sicherer Preflight"}
+              </Badge>
+              {service.specification.auth.status === "REQUIRED" && (
+                <Badge variant="outline">Auth erforderlich</Badge>
+              )}
+            </div>
+            <h2 className="mt-2 text-xl font-semibold">
+              {hasSafeCandidate ? "API sicher prüfen" : "API ohne Auth-Funktionsaufruf prüfen"}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {hasSafeCandidate
+                ? "Bond402 ruft nur den ausgewählten, explizit öffentlichen GET/HEAD-Endpunkt read-only auf."
+                : "Bond402 führt nur sichere Preflight-/Sandbox-Prüfungen am bekannten HTTPS-Server aus. Es wird kein authentifizierter API-Funktionsaufruf durchgeführt und kein Token erraten."}
+            </p>
+          </div>
+          <div className="flex w-full shrink-0 flex-col gap-2 lg:w-64">
+            {hasSafeCandidate ? candidates.length > 1 && (
+              <select
+                aria-label="Sicheres Prüfziel auswählen"
+                value={selectedCandidateKey}
+                onChange={(event) => {
+                  setSelectedCandidateKey(event.target.value);
+                  setCheckResult(null);
+                  setCheckError(null);
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {candidates.map((candidate) => (
+                  <option key={`${candidate.method}:${candidate.path}:${candidate.url}`} value={`${candidate.method}:${candidate.path}:${candidate.url}`}>
+                    {candidate.method} {candidate.path}
+                  </option>
+                ))}
+              </select>
+            ) : safeServers.length > 1 ? (
+              <select
+                aria-label="Bekannten HTTPS-Server auswählen"
+                value={selectedServerUrl}
+                onChange={(event) => {
+                  setSelectedServerUrl(event.target.value);
+                  setCheckResult(null);
+                  setCheckError(null);
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {safeServers.map((server) => <option key={server.url} value={server.url}>{server.url}</option>)}
+              </select>
+            ) : null}
+            <Button onClick={hasSafeCandidate ? runSafeCheck : runPreflight} disabled={isChecking || (!hasSafeCandidate && !selectedServerUrl)} className="w-full gap-2">
+              {isChecking ? "Wird sicher geprüft …" : hasSafeCandidate ? "Sicher prüfen" : "In Sandbox prüfen"}
+              {!isChecking && <CheckCircle2 className="h-4 w-4" />}
+            </Button>
+            <Button asChild variant="outline" className="w-full gap-2">
+              <Link href={user ? registerHref : signInHref}>
+                {user ? "Zu meinen Diensten hinzufügen" : "Anmelden und hinzufügen"}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl border border-border/60 bg-card/60 p-3 text-xs leading-5 text-muted-foreground">
+          <p className="font-medium text-foreground">
+            {hasSafeCandidate ? `${selectedCandidate?.method} ${selectedCandidate?.path}` : selectedServerUrl || "Kein sicherer Server erkannt"}
+          </p>
+          <p className="mt-1">
+            {hasSafeCandidate ? service.safeEndpointNote : "Der Preflight bewertet DNS/Host, HTTPS/TLS, Redirects, Header und erreichbare Antwortmerkmale soweit ohne Authentifizierung möglich."}
+          </p>
+        </div>
+        {checkError && <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{checkError}</p>}
+        {checkResult && <ExternalCheckResultView result={checkResult} />}
+      </section>
+
+      <div className="order-4 mt-8 grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-border/60 bg-card/50 p-5">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Quelle</p>
           <p className="mt-2 font-semibold">{service.source.label}</p>
@@ -566,65 +686,13 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
         </div>
       </div>
 
-      {candidates.length > 0 && (
-        <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-            <div>
-              <Badge variant="outline">Sicherer Prüf-Kandidat</Badge>
-              <h2 className="mt-3 text-xl font-semibold">Jetzt sicher prüfen</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Nur explizit öffentliche, parameterfreie GET/HEAD-Ziele ohne bekannte Auth-Anforderung werden angeboten. Der Test ist read-only und wird nicht gespeichert.
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-col gap-2 sm:min-w-56">
-              {candidates.length > 1 && (
-                <select
-                  aria-label="Sicheres Prüfziel auswählen"
-                  value={selectedCandidateKey}
-                  onChange={(event) => {
-                    setSelectedCandidateKey(event.target.value);
-                    setCheckResult(null);
-                    setCheckError(null);
-                  }}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {candidates.map((candidate) => (
-                    <option key={`${candidate.method}:${candidate.path}:${candidate.url}`} value={`${candidate.method}:${candidate.path}:${candidate.url}`}>
-                      {candidate.method} {candidate.path}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <Button onClick={runSafeCheck} disabled={!selectedCandidate || isChecking} className="gap-2">
-                {isChecking ? "Wird sicher geprüft …" : "Sicher prüfen"}
-                {!isChecking && <CheckCircle2 className="h-4 w-4" />}
-              </Button>
-              <Button asChild variant="outline" disabled={!registerHref} className="gap-2">
-                <Link href={user ? (registerHref || "/dashboard") : signInHref}>
-                  {user ? "Zu meinen Diensten hinzufügen" : "Anmelden und hinzufügen"}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-          {selectedCandidate && (
-            <div className="mt-5 rounded-xl border border-border/60 bg-background/50 p-4">
-              <p className="font-mono text-sm">{selectedCandidate.method} {selectedCandidate.path}</p>
-              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{selectedCandidate.url}</p>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">{service.safeEndpointNote}</p>
-            </div>
-          )}
-          {checkError && <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{checkError}</p>}
-          {checkResult && <ExternalCheckResultView result={checkResult} />}
-        </section>
-      )}
-      {!service.safeEndpoint && (
-        <div className="mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 text-sm leading-6 text-muted-foreground">
+      {!service.safeEndpoint && !service.safeEndpoints.length && (
+        <div className="order-5 mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 text-sm leading-6 text-muted-foreground">
           {service.safeEndpointNote}
         </div>
       )}
 
-      <section className="mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+      <section className="order-6 mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">Bekannte Server</h2>
@@ -644,7 +712,7 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
         ) : <p className="mt-5 text-sm text-muted-foreground">Keine sicher lesbaren Serverangaben gefunden.</p>}
       </section>
 
-      <section className="mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+      <section className="order-7 mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">Bekannte Endpoints</h2>
@@ -669,7 +737,7 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
         ) : <p className="mt-5 text-sm text-muted-foreground">Keine Endpoints sicher ausgelesen.</p>}
       </section>
 
-      <p className="mt-8 text-xs leading-5 text-muted-foreground">
+      <p className="order-8 mt-8 text-xs leading-5 text-muted-foreground">
         <a href={service.source.specificationUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">Originale Spezifikation öffnen</a>. Sie wird von Bond402 nur begrenzt gelesen und als Daten behandelt; fremder JavaScript-, Binär- oder Shell-Code wird nicht ausgeführt.
       </p>
     </div>
@@ -677,7 +745,9 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
 }
 
 type ExternalCheckResult = {
-  endpoint: { method: "GET" | "HEAD"; path: string; url: string };
+  mode?: "PREFLIGHT" | "PASSIVE_ONLY";
+  serverUrl?: string | null;
+  endpoint?: { method: "GET" | "HEAD"; path: string; url: string };
   verification: {
     status: "CHECKED_EXTERNAL";
     trustStatus: "UNVERIFIED_EXTERNAL";
@@ -707,7 +777,8 @@ type ExternalCheckResult = {
   };
   safety: {
     requestWasReadOnly: boolean;
-    executedMethod: string;
+    executedMethod: string | null;
+    authenticatedRequest?: boolean;
     secretsSent: boolean;
     foreignCodeExecuted: boolean;
     responsePersisted: boolean;
