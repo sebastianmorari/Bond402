@@ -18,6 +18,16 @@ type StatusSignals = {
   database: Signal;
 };
 
+async function fetchStatus(path: string) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 5_000);
+  try {
+    return await fetch(path, { cache: "no-store", signal: controller.signal });
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 const initialSignals: StatusSignals = {
   frontend: {
     state: "operational",
@@ -82,8 +92,8 @@ export function StatusPage() {
     setIsRefreshing(true);
     const checkedAt = new Date().toISOString();
     const [apiResult, readinessResult] = await Promise.allSettled([
-      fetch("/api/healthz", { cache: "no-store" }),
-      fetch("/api/readyz", { cache: "no-store" }),
+      fetchStatus("/api/healthz"),
+      fetchStatus("/api/readyz"),
     ]);
 
     const apiAvailable =

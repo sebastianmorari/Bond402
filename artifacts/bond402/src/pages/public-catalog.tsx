@@ -196,9 +196,22 @@ type DecisionResponse = {
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase}${path}`);
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || "Die öffentlichen Daten konnten nicht geladen werden.");
-  return body as T;
+  const body = await response.text();
+  let parsed: unknown = null;
+  try {
+    parsed = body ? JSON.parse(body) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      parsed && typeof parsed === "object" && "error" in parsed && typeof parsed.error === "string"
+        ? parsed.error
+        : `Die öffentlichen Daten konnten nicht geladen werden (HTTP ${response.status}).`,
+    );
+  }
+  if (parsed === null) throw new Error("Die öffentlichen Daten waren keine gültige JSON-Antwort.");
+  return parsed as T;
 }
 
 async function postJson<T>(path: string, payload: unknown): Promise<T> {
@@ -207,9 +220,22 @@ async function postJson<T>(path: string, payload: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || "Die öffentlichen Daten konnten nicht geladen werden.");
-  return body as T;
+  const body = await response.text();
+  let parsed: unknown = null;
+  try {
+    parsed = body ? JSON.parse(body) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      parsed && typeof parsed === "object" && "error" in parsed && typeof parsed.error === "string"
+        ? parsed.error
+        : `Die öffentlichen Daten konnten nicht geladen werden (HTTP ${response.status}).`,
+    );
+  }
+  if (parsed === null) throw new Error("Die öffentlichen Daten waren keine gültige JSON-Antwort.");
+  return parsed as T;
 }
 
 function decisionVariant(decision: string) {
@@ -393,14 +419,7 @@ export function PublicServicePage() {
     getJson<PublicService | ExternalDiscoveryDetail>(`/public/services/${encodeURIComponent(id)}`)
       .then(async (serviceResult) => {
         setService(serviceResult);
-        if (isExternalDiscoveryDetail(serviceResult)) {
-          setDecision(null);
-          return;
-        }
-        const decisionResult = await getJson<DecisionResponse>(
-          `/public/services/${encodeURIComponent(id)}/pre-action-check`,
-        );
-        setDecision(decisionResult);
+        if (isExternalDiscoveryDetail(serviceResult)) setDecision(null);
       })
       .catch((reason: Error) => setError(reason.message));
   }, [id]);
@@ -410,7 +429,7 @@ export function PublicServicePage() {
     postJson<DecisionResponse>(`/public/services/${encodeURIComponent(id)}/pre-action-check`, { actionContext: context })
       .then(setDecision)
       .catch(() => undefined);
-  }, [context, id]);
+  }, [context, id, service]);
 
   if (service && isExternalDiscoveryDetail(service)) {
     return (
@@ -498,6 +517,10 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
   const selectedCandidate = candidates.find(
     (candidate) => `${candidate.method}:${candidate.path}:${candidate.url}` === selectedCandidateKey,
   ) ?? null;
+  const safeServers = service.specification.servers.filter(
+    (server) => !server.templated && server.url.startsWith("https://"),
+  );
+  const selectedServer = safeServers.find((server) => server.url === selectedServerUrl) ?? null;
   const authLabel = service.specification.auth.status === "REQUIRED"
     ? "Authentifizierung erforderlich"
     : service.specification.auth.status === "NOT_REQUIRED"
@@ -505,10 +528,8 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
       : service.specification.auth.status === "NOT_DECLARED"
         ? "Nicht in der Spezifikation erklärt"
         : "Unbekannt";
-  const importUrl = selectedCandidate?.url
-    ?? selectedServerUrl
-    ?? service.specification.servers[0]?.url
-    ?? service.source.specificationUrl;
+  const importUrl = selectedCandidate?.url ?? selectedServer?.url ?? null;
+  const canImport = Boolean(importUrl);
   const registerMetadata = JSON.stringify({
     sourceRecordUrl: service.source.recordUrl,
     specificationUrl: service.source.specificationUrl,
@@ -521,8 +542,11 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
       location: scheme.location,
     })),
   });
-  const registerHref = `/dashboard?registerUrl=${encodeURIComponent(importUrl)}&registerName=${encodeURIComponent(service.name)}&registerMethod=${encodeURIComponent(selectedCandidate?.method ?? "HEAD")}&registerSourceType=EXTERNAL_DISCOVERY&registerProvider=${encodeURIComponent(service.provider)}&registerSourceUrl=${encodeURIComponent(service.source.specificationUrl)}&registerAuthRequirement=${encodeURIComponent(service.specification.auth.status)}&registerDiscoveryMetadata=${encodeURIComponent(registerMetadata)}#service-registration`;
-  const signInHref = `/sign-in?returnTo=${encodeURIComponent(registerHref)}`;
+  const registerHref = importUrl
+    ? `/dashboard?registerUrl=${encodeURIComponent(importUrl)}&registerName=${encodeURIComponent(service.name)}&registerMethod=${encodeURIComponent(selectedCandidate?.method ?? "HEAD")}&registerSourceType=EXTERNAL_DISCOVERY&registerProvider=${encodeURIComponent(service.provider)}&registerSourceUrl=${encodeURIComponent(service.source.specificationUrl)}&registerAuthRequirement=${encodeURIComponent(service.specification.auth.status)}&registerDiscoveryMetadata=${encodeURIComponent(registerMetadata)}#service-registration`
+    : null;
+  const signInHref = registerHref ? `/sign-in?returnTo=${encodeURIComponent(registerHref)}` : null;
+  const importActionHref = user ? registerHref : signInHref;
 
   async function runSafeCheck() {
     if (!selectedCandidate || isChecking) return;
@@ -571,8 +595,6 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
   }
 
   const hasSafeCandidate = Boolean(selectedCandidate);
-  const safeServers = service.specification.servers.filter((server) => !server.templated && server.url.startsWith("https://"));
-
   return (
     <div className="mt-8 flex max-w-5xl flex-col">
       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
@@ -648,12 +670,18 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
               {isChecking ? "Wird sicher geprüft …" : hasSafeCandidate ? "Sicher prüfen" : "In Sandbox prüfen"}
               {!isChecking && <CheckCircle2 className="h-4 w-4" />}
             </Button>
-            <Button asChild variant="outline" className="w-full gap-2">
-              <Link href={user ? registerHref : signInHref}>
-                Zu meinen Diensten hinzufügen
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            {importActionHref ? (
+              <Button asChild variant="outline" className="w-full gap-2">
+                <Link href={importActionHref}>
+                  Zu meinen Diensten hinzufügen
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" disabled className="w-full gap-2">
+                Kein eindeutiges Prüfziel zum Import
+              </Button>
+            )}
           </div>
         </div>
         <div className="mt-4 rounded-xl border border-border/60 bg-card/60 p-3 text-xs leading-5 text-muted-foreground">
@@ -665,6 +693,11 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
           </p>
         </div>
         {checkError && <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{checkError}</p>}
+        {!canImport && (
+          <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm leading-5 text-amber-800 dark:text-amber-200">
+            Die externe Spezifikation nennt kein eindeutig ableitbares, öffentliches HTTPS-Ziel. Bond402 öffnet deshalb nicht die Quell- oder Spezifikations-URL und rät kein Prüfziel.
+          </p>
+        )}
         {checkResult && <ExternalCheckResultView result={checkResult} />}
       </section>
 
