@@ -29,13 +29,36 @@ const expectedColumns = [
   ["bond402_api_services", "first_seen_at"],
   ["bond402_api_services", "sandbox_observed_at"],
   ["bond402_api_checks", "security_signals"],
+  ["bond402_security_observations", "id"],
+  ["bond402_security_observations", "service_id"],
+  ["bond402_security_observations", "observed_at"],
+  ["bond402_security_observations", "status"],
+  ["bond402_security_observations", "response_fingerprint"],
+  ["bond402_security_observations", "response_kind"],
+  ["bond402_security_observations", "response_size_bucket"],
+  ["bond402_security_observations", "header_fingerprint"],
+  ["bond402_security_observations", "redirect_targets"],
+  ["bond402_security_observations", "tls_fingerprint"],
+  ["bond402_security_observations", "latency_bucket"],
+  ["bond402_security_observations", "indicators"],
+  ["bond402_threat_indicators", "id"],
+  ["bond402_threat_indicators", "indicator_type"],
+  ["bond402_threat_indicators", "normalized_value"],
+  ["bond402_threat_indicators", "verdict"],
+  ["bond402_threat_indicators", "severity"],
+  ["bond402_threat_indicators", "confidence"],
+  ["bond402_threat_indicators", "source"],
+  ["bond402_threat_indicators", "source_checked_at"],
+  ["bond402_threat_indicators", "first_seen_at"],
+  ["bond402_threat_indicators", "last_seen_at"],
+  ["bond402_threat_indicators", "metadata"],
 ];
 
 function sqlLiteral(value) {
   return `'${value.replaceAll("'", "''")}'`;
 }
 
-test("Public-Katalog-Schema enthält alle vom ORM gelesenen Spalten", () => {
+test("Public- und Security-Schema enthält alle vom ORM gelesenen Spalten", () => {
   if (!databaseUrl) {
     throw new Error("DATABASE_URL ist für den Public-Katalog-Schema-Test erforderlich.");
   }
@@ -65,4 +88,52 @@ test("Public-Katalog-Schema enthält alle vom ORM gelesenen Spalten", () => {
   ).trim();
 
   assert.equal(missingColumns, "", `Fehlende Public-Katalog-Spalten: ${missingColumns}`);
+});
+
+test("Security-Schema enthält die erforderlichen Primärschlüssel und Foreign Keys", () => {
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL ist für den Public-Katalog-Schema-Test erforderlich.");
+  }
+
+  const sql = `
+    WITH expected_indexes(table_name, index_name) AS (
+      VALUES
+        ('bond402_security_observations', 'bond402_security_observations_pkey'),
+        ('bond402_threat_indicators', 'bond402_threat_indicators_pkey')
+    ),
+    expected_foreign_keys(table_name, referenced_table) AS (
+      VALUES
+        ('bond402_security_observations', 'bond402_api_services')
+    )
+    SELECT 'index:' || expected_indexes.table_name || '.' || expected_indexes.index_name
+    FROM expected_indexes
+    LEFT JOIN pg_indexes AS actual
+      ON actual.schemaname = 'public'
+      AND actual.tablename = expected_indexes.table_name
+      AND actual.indexname = expected_indexes.index_name
+    WHERE actual.indexname IS NULL
+    UNION ALL
+    SELECT 'foreign-key:' || expected_foreign_keys.table_name || '->' || expected_foreign_keys.referenced_table
+    FROM expected_foreign_keys
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM pg_constraint AS constraint_row
+      JOIN pg_class AS table_row ON table_row.oid = constraint_row.conrelid
+      JOIN pg_class AS referenced_row ON referenced_row.oid = constraint_row.confrelid
+      JOIN pg_namespace AS namespace_row ON namespace_row.oid = table_row.relnamespace
+      WHERE namespace_row.nspname = 'public'
+        AND table_row.relname = expected_foreign_keys.table_name
+        AND referenced_row.relname = expected_foreign_keys.referenced_table
+        AND constraint_row.contype = 'f'
+    )
+    ORDER BY 1;
+  `;
+
+  const missingKeys = execFileSync(
+    "psql",
+    [databaseUrl, "-v", "ON_ERROR_STOP=1", "-At", "-c", sql],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  ).trim();
+
+  assert.equal(missingKeys, "", `Fehlende Security-Schlüssel: ${missingKeys}`);
 });

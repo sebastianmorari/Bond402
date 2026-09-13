@@ -14,3 +14,9 @@ Neon production can lag the current Drizzle model even when the local schema and
 **Why:** The public catalog loaded all service and check columns, so an apparently fixed `response_mode` mismatch still left newer service metadata and `security_signals` absent in production.
 
 **How to apply:** Treat additive production schema synchronization as one idempotent, non-destructive operation, backfill historical timestamps from existing creation timestamps, and add a local required-column regression test alongside the route test.
+
+The security observation flow depends on two separate tables in addition to the service/check tables: observations link to services with cascade deletion, while threat indicators are independent records with only their primary key.
+
+**Why:** Production had the service and check tables but neither security table, so a live check failed only when `saveOutcome` tried to read the previous observation.
+
+**How to apply:** Compare table existence as well as columns, primary-key indexes, and foreign keys; verify the full authenticated check path, not only catalog reads.
