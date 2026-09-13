@@ -4,6 +4,7 @@ import { DemoServices } from "@/components/demo-services";
 import { ServiceRegistration } from "@/components/service-registration";
 import { ServiceList } from "@/components/service-list";
 import { ServiceDetails } from "@/components/service-details";
+import { DashboardSearch } from "@/components/dashboard-search";
 import { Shield, User, LogOut, Terminal } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,10 @@ export default function Dashboard() {
 
         <section className="my-8">
           <QuotaCard />
+        </section>
+
+        <section className="mb-8">
+          <DashboardSearch onSelectService={setSelectedServiceId} />
         </section>
 
         {/* Main Content Layout */}
