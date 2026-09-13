@@ -13,3 +13,4 @@
 - [Database schema compatibility](database-schema-compatibility.md) — avoid automatic text-to-number casts during ordinary Drizzle schema pushes.
 - [OpenAPI Zod codegen](openapi-zod-codegen.md) — Orval emits zod.url(), which must be normalized to zod.string().url() for this workspace's Zod version.
 - [Diverged history integration](git-history-integration.md) — when the remote commit is an older duplicate already present in the local tree, use a verified ours merge to preserve newer product code.
+- [Workspace server-test runner](workspace-server-test-runner.md) — server-side tests with extensionless TypeScript imports must run through the scripts workspace tsx runner.
