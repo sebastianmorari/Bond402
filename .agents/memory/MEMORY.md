@@ -9,3 +9,5 @@
 - [Database read resilience](database-read-resilience.md) — only bounded idempotent GET reads retry transient availability failures; normal SQL errors stay non-503.
 - [Security confidence policy](security-confidence-policy.md) — availability, security confidence, and overall trust stay separate and conservative when reputation or samples are unknown.
 - [External OpenAPI probing](external-openapi-probing.md) — show declared variable endpoints, but only offer a probe when HTTPS, no-auth, and no required parameters are explicit.
+- [First-seen security gate](first-seen-security-gate.md) — quarantine new services and cap trust until repeated observations support a low-risk status.
+- [Database schema compatibility](database-schema-compatibility.md) — avoid automatic text-to-number casts during ordinary Drizzle schema pushes.
