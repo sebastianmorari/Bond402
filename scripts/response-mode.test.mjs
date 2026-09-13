@@ -82,6 +82,23 @@ test("JSON-Modus akzeptiert gültiges JSON auch ohne optionale Struktur", async 
   assert.deepEqual(result.missingFields, []);
 });
 
+test("JSON-Modus bewertet ein ausdrücklich erwartetes, fehlendes Feld als Schemafehler", async () => {
+  const result = await runLiveVerification(
+    "https://service.example.test/data",
+    '{"status": "string"}',
+    1000,
+    {},
+    "JSON",
+    fakeFetcher('{"message":"ok"}', 200, 120, { "content-type": "application/json" }),
+  );
+
+  assert.equal(result.status, "FAIL");
+  assert.equal(result.errorCode, "STRUCTURE_MISMATCH");
+  assert.equal(result.structureMatch, false);
+  assert.deepEqual(result.foundFields, []);
+  assert.deepEqual(result.missingFields, ["status"]);
+});
+
 test("JSON-Modus meldet ungültiges JSON weiterhin als INVALID_JSON", async () => {
   const result = await runLiveVerification(
     "https://service.example.test/data",

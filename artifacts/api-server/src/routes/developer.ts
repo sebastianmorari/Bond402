@@ -25,7 +25,7 @@ const router: IRouter = Router();
 
 async function buildResponse(service: NonNullable<Awaited<ReturnType<typeof findOwnedService>>>) {
   const checks = await loadChecks(service.id);
-  const trust = calculateTrust(checks, service.maxResponseTime);
+  const trust = calculateTrust(checks, service.maxResponseTime, service.expectedStructure);
   return {
     service: {
       id: service.id,

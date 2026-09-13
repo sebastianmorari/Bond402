@@ -38,7 +38,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
     defaultValues: {
       name: "",
       url: "",
-      expectedStructure: '{"status": "ok"}',
+      expectedStructure: "",
       responseMode: "JSON",
       maxResponseTime: 1000,
       requestMethod: "GET",

@@ -71,7 +71,24 @@ export function toCheckResponse(check: ApiCheckRow) {
   };
 }
 
-export function calculateTrust(checks: ApiCheckRow[], maxResponseTime: number) {
+function signalQuality(check: ApiCheckRow) {
+  const values = [
+    check.https ? 1 : 0,
+    check.tlsStatus === "CHECKED" ? 1 : check.tlsStatus === "WARNING" ? 0.5 : 0,
+    check.securityHeaders.status === "CHECKED"
+      ? 1
+      : check.securityHeaders.status === "WARNING"
+        ? 0.5
+        : 0,
+  ];
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+export function calculateTrust(
+  checks: ApiCheckRow[],
+  maxResponseTime: number,
+  expectedStructure = "",
+) {
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
   const metrics = calculateTrustMetrics(checks, maxResponseTime);
   if (liveChecks.length === 0) {
@@ -90,20 +107,40 @@ export function calculateTrust(checks: ApiCheckRow[], maxResponseTime: number) {
       check.responseTimeMs > 0 &&
       check.responseTimeMs <= maxResponseTime,
   );
-  const structure = weightedRatio(liveChecks, (check) => check.structureMatch);
-  const reliability = weightedRatio(liveChecks, (check) => check.status === "PASS");
+  const httpSuccess = weightedRatio(
+    liveChecks,
+    (check) =>
+      check.reachable &&
+      check.httpStatus !== null &&
+      check.httpStatus >= 200 &&
+      check.httpStatus < 300,
+  );
+  const transportSignals = liveChecks.reduce(
+    (sum, check) => sum + signalQuality(check),
+    0,
+  ) / liveChecks.length;
+  const schemaConfigured = expectedStructure.trim().length > 0;
+  const structure = schemaConfigured
+    ? weightedRatio(liveChecks, (check) => check.structureMatch)
+    : 1;
   const score = Math.round(
-    reachability * 40 + performance * 25 + structure * 25 + reliability * 10,
+    reachability * 30 +
+      httpSuccess * 25 +
+      performance * 20 +
+      transportSignals * 15 +
+      structure * 10,
   );
   return {
     score,
     metrics,
     explanation:
       `Berechnung aus ${liveChecks.length} echten Prüfungen mit stärkerem Gewicht für neue Daten: ` +
-      `Erreichbarkeit ${Math.round(reachability * 100)} % (40 Punkte), ` +
-      `Antwortzeit ${Math.round(performance * 100)} % (25 Punkte), ` +
-      `Strukturtreue ${Math.round(structure * 100)} % (25 Punkte) und ` +
-      `fehlerfreie PASS-Prüfungen ${Math.round(reliability * 100)} % (10 Punkte).`,
+      `Erreichbarkeit ${Math.round(reachability * 100)} % (30 Punkte), ` +
+      `HTTP-Erfolg ${Math.round(httpSuccess * 100)} % (25 Punkte), ` +
+      `Antwortzeit ${Math.round(performance * 100)} % (20 Punkte), ` +
+      `TLS-/Header-Hinweise ${Math.round(transportSignals * 100)} % (15 Punkte) und ` +
+      `${schemaConfigured ? "Schema-Validierung" : "kein konfiguriertes Schema"} ` +
+      `${Math.round(structure * 100)} % (10 Punkte).`,
   };
 }
 
@@ -161,7 +198,7 @@ export function buildServiceResponse(
   service: ApiServiceRow,
   checks: ApiCheckRow[],
 ) {
-  const trust = calculateTrust(checks, service.maxResponseTime);
+  const trust = calculateTrust(checks, service.maxResponseTime, service.expectedStructure);
   const latestCheck = checks.find((check) => check.checkType === "LIVE");
   const domainRelationship = getDomainRelationship(service);
   return {
@@ -196,7 +233,7 @@ export function buildServiceResponse(
 }
 
 export function toPublicServiceResponse(service: ApiServiceRow, checks: ApiCheckRow[]) {
-  const trust = calculateTrust(checks, service.maxResponseTime);
+  const trust = calculateTrust(checks, service.maxResponseTime, service.expectedStructure);
   const latestCheck = checks.find((check) => check.checkType === "LIVE");
   const domainRelationship = getDomainRelationship(service);
   return {

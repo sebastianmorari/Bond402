@@ -18,7 +18,7 @@ export function evaluatePreAction(
 ) {
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
   const latest = liveChecks[0];
-  const trust = calculateTrust(checks, service.maxResponseTime);
+  const trust = calculateTrust(checks, service.maxResponseTime, service.expectedStructure);
   const latestSignals = latest
     ? {
         https: latest.https ? ("CHECKED" as const) : ("WARNING" as const),
