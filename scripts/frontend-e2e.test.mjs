@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { test } from "node:test";
 import { chromium } from "playwright-core";
 
 const port = Number(process.env.BOND402_E2E_PORT || 15176);
 const baseUrl = process.env.BOND402_E2E_URL || `http://127.0.0.1:${port}`;
-const chromiumPath = process.env.BOND402_CHROMIUM_PATH || "/repl/tools/bin/chromium";
+const chromiumCandidates = [
+  process.env.BOND402_CHROMIUM_PATH,
+  "/repl/tools/bin/chromium",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+].filter(Boolean);
+const chromiumPath = chromiumCandidates.find((candidate) => existsSync(candidate));
 
 const user = {
   id: "fixture-user",
@@ -196,6 +205,11 @@ test("lokaler Browser-Flow deckt Auth, Discovery, Import, Logout und responsive 
 
   try {
     await waitForServer();
+    if (!chromiumPath) {
+      throw new Error(
+        "Kein Chromium/Chrome gefunden. Für den lokalen Browser-E2E-Test BOND402_CHROMIUM_PATH setzen; der CI-Runner braucht eine verwaltete Browserinstallation.",
+      );
+    }
     browser = await chromium.launch({
       executablePath: chromiumPath,
       headless: true,

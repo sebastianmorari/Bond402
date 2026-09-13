@@ -9,6 +9,8 @@
 - Sicherheitsregressionen: `pnpm run test:security-signals`
 - Externe Detail- und OpenAPI-Kandidaten: `pnpm run test:public-external-detail`
 - Isolierter Backup-/Restore-Test: `pnpm run test:backup-restore`
+- Lokaler Browser-E2E-Test mit synthetischen API-Fixtures:
+  `pnpm run test:frontend-e2e`
 - Auth-/Datenbank-Resilienz und lokaler Secret-Leak-Test:
   `pnpm run test:auth-session`, `pnpm run test:database-resilience`,
   `pnpm run test:secret-leak`
@@ -42,6 +44,8 @@ Das beweist weder einen GitHub-CI-Lauf noch einen Produktionsstand.
 - Monitoring, Alerting und Log-Aufbewahrung
 - Rechtlich freigegebene Support-/Terms-Prozesse
 - Browser-E2E gegen eine reale veröffentlichte Umgebung
+- Browserinstallation und Ausführung des E2E-Tests in GitHub CI
 
-Diese Punkte sind externe Betriebsnachweise; sie werden nicht durch einen
-lokalen Build ersetzt.
+Der lokale Fixture-Browserlauf ist kein Nachweis gegen Produktion und ersetzt
+keine CI-Browserinstallation. Diese Punkte sind externe Betriebsnachweise; sie
+werden nicht durch einen lokalen Build ersetzt.

@@ -40,12 +40,16 @@ wurde kein Deployment ausgeführt.
   wurde. Nicht-JSON-Gatewayfehler werden als kontrollierte Fehlermeldung
   dargestellt. Die Statusseite bricht hängende Health-/Readiness-Anfragen nach
   fünf Sekunden ab.
-- **Teilweise:** Es gibt keinen echten Browser-E2E-Lauf für Login → Dashboard →
-  Suche → Import → Prüfung und keinen automatisierten Mobile-Viewport-Test.
-  Historie und Detail-Sheets sind weiterhin ungepaginiert.
-- **Tests:** Frontend-Smoke, Frontend-SEO, Service-UI, Registrierungs-Payload
-  sowie API-Integrationssuiten. Der lokale Gate-Lauf ersetzt keinen Browser-
-  und keinen externen Produktionslauf.
+- **Teilweise:** Ein lokaler Browser-E2E-Lauf mit synthetischen API-Fixtures
+  deckt Registrierung → Login → Dashboard → interne Suche → externe,
+  unverifizierte Discovery → Import → Logout sowie Desktop/Mobile ab. Ein
+  Browserlauf gegen Produktion und ein CI-Runner mit verwalteter
+  Browserinstallation sind nicht verifiziert. Historie und Detail-Sheets sind
+  weiterhin ungepaginiert.
+- **Tests:** Frontend-Smoke, lokales Browser-E2E, Frontend-SEO, Service-UI,
+  Registrierungs-Payload sowie API-Integrationssuiten. Fixtures beweisen nur
+  UI-Verträge; sie beweisen keine Mailzustellung, Datenbank-Ownership oder
+  Produktionsantworten.
 
 ## Backend, Authentifizierung und Sessions
 
@@ -112,9 +116,10 @@ wurde kein Deployment ausgeführt.
   können ausfallen oder widersprüchlich sein. Discovery ist kein
   Reputations- oder Threat-Intelligence-Dienst.
 - **Tests:** Public-external-discovery, Public-external-detail,
-  Public-external-routes, Public-service-search, Public-MVP und
-  Katalog-Schema. Library-, Katalog- und kontrollierte Routenverträge sind im
-  lokalen Gate enthalten; ein Browser-E2E gegen eine reale Umgebung fehlt.
+  Public-external-routes, Public-service-search, Public-MVP, Katalog-Schema
+  und lokales Browser-E2E mit externen Fixtures. Library-, Katalog- und
+  kontrollierte Routenverträge sind im lokalen Gate enthalten; ein Browser-E2E
+  gegen eine reale Umgebung fehlt.
 
 ## Sandbox, First-Seen und Quarantäne
 
@@ -234,8 +239,10 @@ wurde kein Deployment ausgeführt.
   secrets-freie GitHub-Workflow-Vorlage führt das Gate und `pnpm audit`
   gegen eine isolierte Test-PostgreSQL aus.
 - **Teilweise:** Der Workflow wurde lokal statisch geprüft, aber nicht in
-  GitHub ausgeführt. Es gibt keinen echten Browser-E2E-Runner und keine
-  Artefaktaufbewahrung. Der aktuelle lokale Dependency-, SAST- und
+  GitHub ausgeführt. Der lokale Gate-Lauf enthält Browser-E2E mit einer
+  vorhandenen Chromium-Binary; die CI-Browserinstallation ist nicht
+  verifiziert. Es gibt keine Artefaktaufbewahrung. Der aktuelle lokale
+  Dependency-, SAST- und
   HoundDog-Lauf ist ohne Findings; das ist eine Momentaufnahme und kein
   kontinuierlicher Überwachungsnachweis.
 - **Bekannte Hinweise:** Der Frontend-Build meldet bestehende Sourcemap-
@@ -290,8 +297,8 @@ wurde kein Deployment ausgeführt.
 - **Abhängigkeiten:** Node 24, PNPM, React/Vite, Express, Drizzle/
   PostgreSQL, Zod/Orval, Pino, Vercel-/Render-/Neon-/Resend-
   Betriebsannahmen und die externe APIs.guru-Quelle.
-- **Technische Schulden:** Keine Browser-E2E-Suite, keine globale
-  Rate-Limit-Instanz, keine Observation-Retention, nicht-transaktionale
+- **Technische Schulden:** Kein Produktions-/CI-Browser-E2E-Nachweis, keine
+  globale Rate-Limit-Instanz, keine Observation-Retention, nicht-transaktionale
   Check-/Observation-Speicherung, große Frontend-Bundles und fehlende
   Mehrregionenüberwachung.
 - **Single Points of Failure:** PostgreSQL, API-Prozess, Frontend-Proxy,
@@ -303,10 +310,11 @@ wurde kein Deployment ausgeführt.
 
 Der lokale Code- und Teststand ist für die fünf Launch-Blöcke technisch
 deutlich belastbarer: First-Seen-Promotion, Kompressionsanalyse, IPv6-SSRF-
-Regressionen, explizite externe Zielableitung, Status-Timeouts, lokaler
-Restore-Nachweis, kontrollierte externe Routen und ein vollständig
-bestandenes lokales Launch-Gate sind abgesichert. Nicht abgeschlossen bzw.
-nicht verifiziert bleiben Browser-E2E, echte Rebinding-Integration,
+  Regressionen, explizite externe Zielableitung, Status-Timeouts, lokaler
+  Restore-Nachweis, kontrollierte externe Routen, lokales Fixture-Browser-E2E
+  und ein vollständig bestandenes lokales Launch-Gate sind abgesichert. Nicht
+  abgeschlossen bzw. nicht verifiziert bleiben ein Produktions-/CI-Browser-
+  E2E-Lauf, echte Rebinding-Integration,
 GitHub-CI-Ausführung, Produktions-Scans, Monitoring/Alerting, externe
 Mail-/Health-/DNS-Checks, Deployment/Rollback und rechtliche Freigaben.
 Diese Punkte werden nicht als live, produktiv oder rechtlich freigegeben
