@@ -55,9 +55,11 @@ function cleanupTestData() {
 
 class CookieJar {
   value = "";
+  lastSetCookie = "";
 
   capture(response) {
     const setCookie = response.headers.get("set-cookie");
+    this.lastSetCookie = setCookie ?? "";
     const match = setCookie?.match(/bond402_session=([^;]+)/);
     if (match) this.value = match[1];
   }
@@ -322,6 +324,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const passwordA = "Public-Mvp-A-123!";
   const passwordB = "Public-Mvp-B-123!";
   const jarA = new CookieJar();
+  const jarASecondary = new CookieJar();
   const jarB = new CookieJar();
 
   const health = await request("/api/healthz");
@@ -334,6 +337,12 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const readiness = await request("/api/readyz");
   assert.equal(readiness.response.status, 200);
   assert.deepEqual(readiness.data, { status: "ok" });
+
+  for (const path of ["/api/dashboard", "/api/api-keys", "/api/usage"]) {
+    const anonymous = await request(path);
+    assert.equal(anonymous.response.status, 401, `${path} muss anonym geschützt bleiben`);
+    assert.equal(anonymous.data.code, "UNAUTHORIZED");
+  }
 
   // The helper sends no body here; send a deliberately malformed payload directly.
   const malformedResponse = await fetch(`${baseUrl}/api/auth/login`, {
@@ -441,6 +450,19 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   });
   assert.equal(verifiedLogin.response.status, 200);
   assert.ok(jarA.value);
+  assert.match(jarA.lastSetCookie, /HttpOnly/i);
+  assert.match(jarA.lastSetCookie, /SameSite=Lax/i);
+  assert.match(jarA.lastSetCookie, /Path=\//i);
+  assert.match(jarA.lastSetCookie, /Max-Age=2592000/i);
+  assert.doesNotMatch(jarA.lastSetCookie, /Domain=/i);
+
+  const secondaryLogin = await request("/api/auth/login", {
+    jar: jarASecondary,
+    body: { email: emailA, password: passwordA },
+    headers: { "X-Forwarded-For": "203.0.113.15" },
+  });
+  assert.equal(secondaryLogin.response.status, 200);
+  assert.ok(jarASecondary.value);
 
   const registeredB = await request("/api/auth/register", {
     jar: jarB,
@@ -473,6 +495,8 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     body: { currentPassword: passwordA, newPassword: "New-Public-Mvp-123!" },
   });
   assert.equal(changedPassword.response.status, 204);
+  const secondaryAfterPasswordChange = await request("/api/auth/me", { jar: jarASecondary });
+  assert.equal(secondaryAfterPasswordChange.response.status, 401);
 
   const oldPasswordLogin = await request("/api/auth/login", {
     body: { email: emailA, password: passwordA },
@@ -692,6 +716,17 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     const path = method === "POST" ? `/api/services/${serviceId}/checks` : `/api/services/${serviceId}`;
     const foreign = await request(path, { method, jar: jarB, body });
     assert.equal(foreign.response.status, 404, `${method} auf fremden Dienst muss 404 liefern`);
+    assert.doesNotMatch(JSON.stringify(foreign.data), /ownerId|session|password|keyHash/i);
+  }
+
+  for (const path of [
+    `/api/services/${serviceId}/domain-verification`,
+    `/api/services/${serviceId}/domain-verification/check`,
+  ]) {
+    const foreignDomainAccess = await request(path, { method: "POST", jar: jarB });
+    assert.equal(foreignDomainAccess.response.status, 404);
+    assert.equal(foreignDomainAccess.data.code, "NOT_FOUND");
+    assert.doesNotMatch(JSON.stringify(foreignDomainAccess.data), /ownerId|session|password|keyHash/i);
   }
 
   const createdKey = await request("/api/api-keys", {
@@ -710,6 +745,13 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const keysB = await request("/api/api-keys", { jar: jarB });
   assert.equal(keysB.response.status, 200);
   assert.deepEqual(keysB.data, []);
+  const foreignKeyRevoke = await request(`/api/api-keys/${createdKey.data.id}`, {
+    method: "DELETE",
+    jar: jarB,
+  });
+  assert.equal(foreignKeyRevoke.response.status, 404);
+  assert.equal(foreignKeyRevoke.data.code, "NOT_FOUND");
+  assert.doesNotMatch(JSON.stringify(foreignKeyRevoke.data), /ownerId|session|password|keyHash/i);
 
   const initialUsage = await request("/api/usage", { jar: jarA });
   assert.equal(initialUsage.response.status, 200);
