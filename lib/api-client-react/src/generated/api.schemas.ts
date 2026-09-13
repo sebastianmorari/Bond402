@@ -1142,6 +1142,7 @@ export type PublicExternalDiscoverySource = typeof PublicExternalDiscoverySource
 
 export const PublicExternalDiscoverySource = {
   APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+  PUBLIC_APIS_DIRECTORY: 'PUBLIC_APIS_DIRECTORY',
 } as const;
 
 export type PublicExternalDiscoveryScope = typeof PublicExternalDiscoveryScope[keyof typeof PublicExternalDiscoveryScope];
@@ -1149,6 +1150,7 @@ export type PublicExternalDiscoveryScope = typeof PublicExternalDiscoveryScope[k
 
 export const PublicExternalDiscoveryScope = {
   PUBLIC_UNVERIFIED_OPENAPI: 'PUBLIC_UNVERIFIED_OPENAPI',
+  PUBLIC_UNVERIFIED_API_DIRECTORY: 'PUBLIC_UNVERIFIED_API_DIRECTORY',
 } as const;
 
 export type PublicExternalDiscoveryVerification = typeof PublicExternalDiscoveryVerification[keyof typeof PublicExternalDiscoveryVerification];
@@ -1228,6 +1230,7 @@ export type PublicDiscoverySourceSource = typeof PublicDiscoverySourceSource[key
 export const PublicDiscoverySourceSource = {
   BOND402_INTERNAL_CATALOG: 'BOND402_INTERNAL_CATALOG',
   APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+  PUBLIC_EXTERNAL_CATALOG: 'PUBLIC_EXTERNAL_CATALOG',
 } as const;
 
 export type PublicDiscoverySourceScope = typeof PublicDiscoverySourceScope[keyof typeof PublicDiscoverySourceScope];
@@ -1236,6 +1239,8 @@ export type PublicDiscoverySourceScope = typeof PublicDiscoverySourceScope[keyof
 export const PublicDiscoverySourceScope = {
   LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
   PUBLIC_UNVERIFIED_OPENAPI: 'PUBLIC_UNVERIFIED_OPENAPI',
+  PUBLIC_UNVERIFIED_API_DIRECTORY: 'PUBLIC_UNVERIFIED_API_DIRECTORY',
+  PUBLIC_UNVERIFIED_EXTERNAL_CATALOG: 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG',
 } as const;
 
 export type PublicDiscoverySourceMode = typeof PublicDiscoverySourceMode[keyof typeof PublicDiscoverySourceMode];
@@ -1288,6 +1293,7 @@ export type PublicExternalDiscoveryDetailSourceId = typeof PublicExternalDiscove
 
 export const PublicExternalDiscoveryDetailSourceId = {
   APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+  PUBLIC_APIS_DIRECTORY: 'PUBLIC_APIS_DIRECTORY',
 } as const;
 
 export type PublicExternalDiscoveryDetailSource = {
@@ -1441,7 +1447,8 @@ export interface PublicExternalDiscoveryDetail {
   kind: PublicExternalDiscoveryDetailKind;
   name: string;
   provider: string;
-  version: string;
+  /** @nullable */
+  version: string | null;
   /** @nullable */
   description: string | null;
   source: PublicExternalDiscoveryDetailSource;

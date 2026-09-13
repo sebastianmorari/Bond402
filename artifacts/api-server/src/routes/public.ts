@@ -13,7 +13,16 @@ import {
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
+  PUBLIC_EXTERNAL_CATALOG_SOURCE,
+  PUBLIC_EXTERNAL_CATALOG_SOURCE_LABEL,
+  PUBLIC_API_DIRECTORY_SOURCE,
+  PUBLIC_API_DIRECTORY_SOURCE_LABEL,
+  PUBLIC_API_DIRECTORY_SOURCE_URL,
+  PUBLIC_API_DIRECTORY_SCOPE,
+  dedupeExternalDiscoveryRecords,
+  getCachedPublicApisCatalog,
   getCachedApisGuruCatalog,
+  warmPublicApisCatalog,
   rankExternalDiscoveryResults,
   warmApisGuruCatalog,
 } from "../lib/public-external-discovery";
@@ -102,13 +111,13 @@ function internalCatalogSource(
 
 function externalCatalogSource() {
   return {
-    source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
-    sourceLabel: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
-    scope: PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
+    source: PUBLIC_EXTERNAL_CATALOG_SOURCE,
+    sourceLabel: PUBLIC_EXTERNAL_CATALOG_SOURCE_LABEL,
+    scope: "PUBLIC_UNVERIFIED_EXTERNAL_CATALOG" as const,
     externalSources: true as const,
     mode: "EXTERNAL_FALLBACK" as const,
     fallback: "USED" as const,
-    sourceUrl: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
+    sourceUrl: `${PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL},${PUBLIC_API_DIRECTORY_SOURCE_URL}`,
   };
 }
 
@@ -150,7 +159,7 @@ router.get("/public/discovery", async (req, res): Promise<void> => {
       scope: "LISTED_SERVICES_ONLY",
       externalSources: false,
       fallbackPolicy:
-        "Interne gelistete Bond402-Treffer zuerst; öffentliche OpenAPI-Quellen nur bei fehlender ausreichender interner Relevanz.",
+        "Interne gelistete Bond402-Treffer zuerst; öffentliche API-/OpenAPI-Quellen nur bei fehlender ausreichender interner Relevanz.",
       fallbacks: [
         {
           source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
@@ -162,6 +171,17 @@ router.get("/public/discovery", async (req, res): Promise<void> => {
           access: "PUBLIC_NO_API_KEY",
           verification: "UNVERIFIED_EXTERNAL",
           sourceUrl: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
+        },
+        {
+          source: PUBLIC_API_DIRECTORY_SOURCE,
+          sourceLabel: PUBLIC_API_DIRECTORY_SOURCE_LABEL,
+          scope: PUBLIC_API_DIRECTORY_SCOPE,
+          externalSources: true,
+          mode: "EXTERNAL_FALLBACK",
+          fallback: "NOT_USED",
+          access: "PUBLIC_NO_API_KEY",
+          verification: "UNVERIFIED_EXTERNAL",
+          sourceUrl: PUBLIC_API_DIRECTORY_SOURCE_URL,
         },
       ],
       ranking: [
@@ -246,12 +266,20 @@ router.get("/public/services", async (req, res): Promise<void> => {
     return;
   }
 
-  const externalCatalog = getCachedApisGuruCatalog();
-  if (externalCatalog.status === "UNAVAILABLE") {
+  const apisGuruCatalog = getCachedApisGuruCatalog();
+  const publicApisCatalog = getCachedPublicApisCatalog();
+  if (apisGuruCatalog.status === "UNAVAILABLE") {
     warmApisGuruCatalog();
   }
-  const externalResults = rankExternalDiscoveryResults(externalCatalog.records, q);
-  if (externalCatalog.status === "AVAILABLE") {
+  if (publicApisCatalog.status === "UNAVAILABLE") {
+    warmPublicApisCatalog();
+  }
+  const externalRecords = dedupeExternalDiscoveryRecords(
+    [...apisGuruCatalog.records, ...publicApisCatalog.records],
+    publicServices.map((service) => service.url),
+  );
+  const externalResults = rankExternalDiscoveryResults(externalRecords, q);
+  if (apisGuruCatalog.status === "AVAILABLE" || publicApisCatalog.status === "AVAILABLE") {
     const items = externalResults.slice((page - 1) * pageSize, page * pageSize);
     const totalCount = externalResults.length;
     res.json({

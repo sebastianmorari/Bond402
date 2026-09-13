@@ -1,7 +1,12 @@
 import { CORE_SCHEMA, load as loadYaml } from "js-yaml";
 import {
   externalRecordId,
+  getCachedApisGuruCatalog,
+  getCachedPublicApisCatalog,
   loadApisGuruCatalog,
+  loadPublicApisCatalog,
+  PUBLIC_API_DIRECTORY_SOURCE,
+  PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
   type ExternalApiRecord,
   parseExternalRecordId,
 } from "./public-external-discovery";
@@ -20,12 +25,12 @@ export type ExternalApiDetail = {
   kind: "EXTERNAL_DISCOVERY_DETAIL";
   name: string;
   provider: string;
-  version: string;
+  version: string | null;
   description: string | null;
   source: {
-    id: typeof import("./public-external-discovery").PUBLIC_EXTERNAL_DISCOVERY_SOURCE;
-    label: typeof import("./public-external-discovery").PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL;
-    catalogUrl: typeof import("./public-external-discovery").PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL;
+    id: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE | typeof PUBLIC_API_DIRECTORY_SOURCE;
+    label: string;
+    catalogUrl: string;
     recordUrl: string;
     specificationUrl: string;
   };
@@ -306,9 +311,9 @@ function baseDetail(record: ExternalApiRecord): ExternalApiDetail {
     version: record.version,
     description: record.description,
     source: {
-      id: "APIS_GURU_OPENAPI_DIRECTORY",
-      label: "APIs.guru OpenAPI-Verzeichnis",
-      catalogUrl: "https://api.apis.guru/v2/list.json",
+      id: record.source,
+      label: record.sourceLabel,
+      catalogUrl: record.sourceUrl,
       recordUrl: record.sourceRecordUrl,
       specificationUrl: record.specificationUrl,
     },
@@ -408,12 +413,20 @@ async function loadExternalDetail(record: ExternalApiRecord): Promise<ExternalAp
 export async function getExternalApiDetail(id: string) {
   const parsedId = parseExternalRecordId(id);
   if (!parsedId) return null;
-  const catalog = await loadApisGuruCatalog();
-  const record = catalog.records.find(
+  const catalogs = await Promise.all([
+    parsedId.source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE
+      ? loadApisGuruCatalog()
+      : Promise.resolve(getCachedApisGuruCatalog()),
+    parsedId.source === PUBLIC_API_DIRECTORY_SOURCE
+      ? loadPublicApisCatalog()
+      : Promise.resolve(getCachedPublicApisCatalog()),
+  ]);
+  const record = catalogs.flatMap((catalog) => catalog.records).find(
     (candidate) =>
-      candidate.id === id ||
-      (candidate.provider === parsedId.provider && candidate.version === parsedId.version) ||
-      candidate.id === externalRecordId(parsedId.provider, parsedId.version),
+      candidate.source === parsedId.source &&
+      (candidate.id === id ||
+        (candidate.provider === parsedId.provider && candidate.version === parsedId.version) ||
+        candidate.id === externalRecordId(parsedId.provider, parsedId.version, parsedId.source)),
   );
   return record ? loadExternalDetail(record) : null;
 }

@@ -92,9 +92,9 @@ type ExternalDiscoveryItem = {
     reason: "SOURCE_METADATA_ONLY_NO_BOND402_CHECK";
   };
   discovery: {
-    source: "APIS_GURU_OPENAPI_DIRECTORY";
+    source: "APIS_GURU_OPENAPI_DIRECTORY" | "PUBLIC_APIS_DIRECTORY";
     sourceLabel: string;
-    scope: "PUBLIC_UNVERIFIED_OPENAPI";
+    scope: "PUBLIC_UNVERIFIED_OPENAPI" | "PUBLIC_UNVERIFIED_API_DIRECTORY";
     verification: "UNVERIFIED_EXTERNAL";
     matchScore: number;
     rankingFactors: {
@@ -118,10 +118,10 @@ type ExternalDiscoveryDetail = {
   kind: "EXTERNAL_DISCOVERY_DETAIL";
   name: string;
   provider: string;
-  version: string;
+  version: string | null;
   description: string | null;
   source: {
-    id: "APIS_GURU_OPENAPI_DIRECTORY";
+    id: "APIS_GURU_OPENAPI_DIRECTORY" | "PUBLIC_APIS_DIRECTORY";
     label: string;
     catalogUrl: string;
     recordUrl: string;
@@ -167,9 +167,9 @@ type ExternalDiscoveryDetail = {
 };
 
 type CatalogSource = {
-  source: "BOND402_INTERNAL_CATALOG" | "APIS_GURU_OPENAPI_DIRECTORY";
+  source: "BOND402_INTERNAL_CATALOG" | "PUBLIC_EXTERNAL_CATALOG";
   sourceLabel: string;
-  scope: "LISTED_SERVICES_ONLY" | "PUBLIC_UNVERIFIED_OPENAPI";
+  scope: "LISTED_SERVICES_ONLY" | "PUBLIC_UNVERIFIED_EXTERNAL_CATALOG";
   externalSources: boolean;
   mode: "INTERNAL_PRIMARY" | "EXTERNAL_FALLBACK";
   fallback: "NOT_USED" | "USED" | "UNAVAILABLE";
@@ -344,7 +344,7 @@ function ExternalServiceCard({ service }: { service: ExternalDiscoveryItem }) {
           <p className="mt-1 text-xl font-bold">{service.discovery.matchScore}/100</p>
         </div>
         <div className="rounded-xl bg-muted/40 p-3">
-          <p className="text-xs text-muted-foreground">OpenAPI-Version</p>
+          <p className="text-xs text-muted-foreground">Version</p>
           <p className="mt-1 font-medium">{service.discovery.evidence.openapiVersion || "Nicht angegeben"}</p>
         </div>
       </div>
@@ -352,8 +352,8 @@ function ExternalServiceCard({ service }: { service: ExternalDiscoveryItem }) {
         {service.description || "Die Quelle liefert keine Beschreibung."}
       </p>
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
-        Nur Quelldaten aus dem öffentlichen APIs.guru-Verzeichnis. Bond402 hat diesen Eintrag nicht geprüft und vergibt
-        keinen Trust-Status.
+         Nur Quelldaten aus {service.discovery.sourceLabel}. Bond402 hat diesen Eintrag nicht geprüft und vergibt keinen
+         Trust-Status.
       </p>
        <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
          Bond402-Details öffnen <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -392,7 +392,7 @@ export function PublicCatalogPage() {
         <Button type="submit"><Search className="mr-2 h-4 w-4" />Suchen</Button>
       </form>
       {error && <div className="mt-8 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{error}</div>}
-       <div className="mt-10 flex items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Öffentliche OpenAPI-Fundstellen" : "Gelistete Dienste"}</h2><p className="mt-1 text-sm text-muted-foreground">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Externe, unverifizierte Quelldaten als Fallback" : data ? `${data.total} öffentliche Einträge` : "Öffentliche Einträge werden geladen"}</p></div><a href={`${apiBase}/openapi.json`} className="hidden text-sm font-medium text-primary hover:underline sm:block">OpenAPI JSON</a></div>
+       <div className="mt-10 flex items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Öffentliche API-/OpenAPI-Fundstellen" : "Gelistete Dienste"}</h2><p className="mt-1 text-sm text-muted-foreground">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Externe, unverifizierte Quelldaten als Fallback" : data ? `${data.total} öffentliche Einträge` : "Öffentliche Einträge werden geladen"}</p></div><a href={`${apiBase}/openapi.json`} className="hidden text-sm font-medium text-primary hover:underline sm:block">OpenAPI JSON</a></div>
        {loading ? <div className="mt-6 grid gap-4 md:grid-cols-2"><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /></div> : data?.items.length ? <div className="mt-6 grid gap-4 md:grid-cols-2">{data.items.map((service) => isExternalDiscovery(service) ? <ExternalServiceCard key={service.id} service={service} /> : <ServiceCard key={service.id} service={service} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-border/70 p-12 text-center text-muted-foreground">Noch keine Dienste entsprechen dieser Suche.</div>}
       <div className="mt-8 flex items-center justify-between"><Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ArrowLeft className="mr-2 h-4 w-4" />Zurück</Button><span className="text-sm text-muted-foreground">Seite {page}</span><Button variant="outline" disabled={!data?.hasNextPage} onClick={() => setPage((value) => value + 1)}>Weiter<ArrowRight className="ml-2 h-4 w-4" /></Button></div>
     </PublicLayout>
@@ -601,7 +601,7 @@ function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDe
         <div>
           <Badge variant="secondary">Externe Discovery · unverifiziert</Badge>
           <h1 className="mt-3 text-3xl font-bold tracking-tight">{service.name}</h1>
-          <p className="mt-2 font-mono text-sm text-muted-foreground">{service.provider} · Version {service.version}</p>
+           <p className="mt-2 font-mono text-sm text-muted-foreground">{service.provider} · Version {service.version ?? "Nicht angegeben"}</p>
         </div>
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 sm:max-w-xs">
           <p className="text-xs uppercase tracking-widest text-amber-700 dark:text-amber-300">Verifikationsstatus</p>

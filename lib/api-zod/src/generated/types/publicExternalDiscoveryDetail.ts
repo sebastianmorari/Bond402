@@ -20,7 +20,8 @@ export interface PublicExternalDiscoveryDetail {
   kind: PublicExternalDiscoveryDetailKind;
   name: string;
   provider: string;
-  version: string;
+  /** @nullable */
+  version: string | null;
   /** @nullable */
   description: string | null;
   source: PublicExternalDiscoveryDetailSource;

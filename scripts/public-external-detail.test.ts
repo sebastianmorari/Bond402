@@ -8,6 +8,9 @@ import {
 function record(id: string) {
   return {
     id: `external:apis-guru:${id}:1.0.0`,
+    source: "APIS_GURU_OPENAPI_DIRECTORY",
+    sourceLabel: "APIs.guru OpenAPI-Verzeichnis",
+    sourceUrl: "https://api.apis.guru/v2/list.json",
     provider: `${id}.example`,
     version: "1.0.0",
     name: "External API",

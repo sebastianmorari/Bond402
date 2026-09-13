@@ -2194,12 +2194,12 @@ components:
       properties:
         source:
           type: string
-          enum: [BOND402_INTERNAL_CATALOG, APIS_GURU_OPENAPI_DIRECTORY]
+          enum: [BOND402_INTERNAL_CATALOG, APIS_GURU_OPENAPI_DIRECTORY, PUBLIC_EXTERNAL_CATALOG]
         sourceLabel:
           type: string
         scope:
           type: string
-          enum: [LISTED_SERVICES_ONLY, PUBLIC_UNVERIFIED_OPENAPI]
+          enum: [LISTED_SERVICES_ONLY, PUBLIC_UNVERIFIED_OPENAPI, PUBLIC_UNVERIFIED_API_DIRECTORY, PUBLIC_UNVERIFIED_EXTERNAL_CATALOG]
         externalSources:
           type: boolean
         mode:
@@ -2272,12 +2272,12 @@ components:
       properties:
         source:
           type: string
-          enum: [APIS_GURU_OPENAPI_DIRECTORY]
+          enum: [APIS_GURU_OPENAPI_DIRECTORY, PUBLIC_APIS_DIRECTORY]
         sourceLabel:
           type: string
         scope:
           type: string
-          enum: [PUBLIC_UNVERIFIED_OPENAPI]
+          enum: [PUBLIC_UNVERIFIED_OPENAPI, PUBLIC_UNVERIFIED_API_DIRECTORY]
         verification:
           type: string
           enum: [UNVERIFIED_EXTERNAL]
@@ -2365,7 +2365,7 @@ components:
         provider:
           type: string
         version:
-          type: string
+          type: ["string", "null"]
         description:
           type: ["string", "null"]
         source:
@@ -2373,7 +2373,7 @@ components:
           properties:
             id:
               type: string
-              enum: [APIS_GURU_OPENAPI_DIRECTORY]
+              enum: [APIS_GURU_OPENAPI_DIRECTORY, PUBLIC_APIS_DIRECTORY]
             label:
               type: string
             catalogUrl:

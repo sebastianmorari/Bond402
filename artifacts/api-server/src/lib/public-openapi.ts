@@ -533,12 +533,12 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           properties: {
             source: {
               type: "string",
-              enum: ["BOND402_INTERNAL_CATALOG", "APIS_GURU_OPENAPI_DIRECTORY"],
+              enum: ["BOND402_INTERNAL_CATALOG", "APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_EXTERNAL_CATALOG"],
             },
             sourceLabel: { type: "string" },
             scope: {
               type: "string",
-              enum: ["LISTED_SERVICES_ONLY", "PUBLIC_UNVERIFIED_OPENAPI"],
+              enum: ["LISTED_SERVICES_ONLY", "PUBLIC_UNVERIFIED_OPENAPI", "PUBLIC_UNVERIFIED_API_DIRECTORY", "PUBLIC_UNVERIFIED_EXTERNAL_CATALOG"],
             },
             externalSources: { type: "boolean" },
             mode: { type: "string", enum: ["INTERNAL_PRIMARY", "EXTERNAL_FALLBACK"] },
@@ -605,9 +605,9 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           type: "object",
           required: ["source", "sourceLabel", "scope", "verification", "matchScore", "rankingFactors", "evidence"],
           properties: {
-            source: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY"] },
+            source: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_APIS_DIRECTORY"] },
             sourceLabel: { type: "string" },
-            scope: { type: "string", enum: ["PUBLIC_UNVERIFIED_OPENAPI"] },
+            scope: { type: "string", enum: ["PUBLIC_UNVERIFIED_OPENAPI", "PUBLIC_UNVERIFIED_API_DIRECTORY"] },
             verification: { type: "string", enum: ["UNVERIFIED_EXTERNAL"] },
             matchScore: { type: "number", minimum: 0, maximum: 100 },
             rankingFactors: {
@@ -668,13 +668,13 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             kind: { type: "string", enum: ["EXTERNAL_DISCOVERY_DETAIL"] },
             name: { type: "string" },
             provider: { type: "string" },
-            version: { type: "string" },
+            version: { type: ["string", "null"] },
             description: { type: ["string", "null"] },
             source: {
               type: "object",
               required: ["id", "label", "catalogUrl", "recordUrl", "specificationUrl"],
               properties: {
-                id: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY"] },
+                id: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_APIS_DIRECTORY"] },
                 label: { type: "string" },
                 catalogUrl: { type: "string", format: "uri" },
                 recordUrl: { type: "string", format: "uri" },

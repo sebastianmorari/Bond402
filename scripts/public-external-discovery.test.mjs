@@ -3,8 +3,14 @@ import { test } from "node:test";
 import {
   PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+  PUBLIC_API_DIRECTORY_SCOPE,
+  PUBLIC_API_DIRECTORY_SOURCE,
+  PUBLIC_API_DIRECTORY_SOURCE_URL,
+  dedupeExternalDiscoveryRecords,
   getCachedApisGuruCatalog,
+  loadPublicApisCatalog,
   loadApisGuruCatalog,
+  parsePublicApisCatalog,
   parseApisGuruCatalog,
   rankExternalDiscoveryResults,
   resetApisGuruCatalogCacheForTests,
@@ -19,6 +25,9 @@ const referenceNow = Date.parse("2026-09-12T12:00:00.000Z");
 
 function record({ id, name, updatedAt = "2026-09-12T11:00:00.000Z", description = "Public API" }) {
   return {
+    source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+    sourceLabel: "APIs.guru OpenAPI-Verzeichnis",
+    sourceUrl: "https://api.apis.guru/v2/list.json",
     id,
     provider: `${id}.example`,
     version: "1.0.0",
@@ -51,6 +60,24 @@ test("interne Treffer verhindern den externen Fallback deterministisch", () => {
   assert.equal(shouldUseExternalDiscoveryFallback("Unbekannte API", []), true);
   assert.equal(shouldUseExternalDiscoveryFallback("", []), false);
 });
+
+function publicApisRecord({ name, url = "https://directory.example.test/api" }) {
+  return {
+    source: PUBLIC_API_DIRECTORY_SOURCE,
+    sourceLabel: "Public APIs Community-Verzeichnis",
+    sourceUrl: PUBLIC_API_DIRECTORY_SOURCE_URL,
+    id: `external:public-apis:${encodeURIComponent(url)}:directory`,
+    provider: new URL(url).hostname,
+    version: null,
+    name,
+    description: "Community directory metadata",
+    categories: ["Testing"],
+    openapiVersion: null,
+    updatedAt: null,
+    specificationUrl: url,
+    sourceRecordUrl: PUBLIC_API_DIRECTORY_SOURCE_URL,
+  };
+}
 
 test("ein beobachteter interner Teiltreffer bleibt vor externen Metadaten priorisiert", () => {
   const internal = rankPublicServiceResults(
@@ -129,6 +156,66 @@ test("externe Treffer werden nachvollziehbar und unverifiziert gerankt", () => {
   assert.equal(ranked[0].discovery.scope, PUBLIC_EXTERNAL_DISCOVERY_SCOPE);
   assert.equal(ranked[0].verification.status, "UNVERIFIED_EXTERNAL");
   assert.equal(ranked[0].verification.reason, "SOURCE_METADATA_ONLY_NO_BOND402_CHECK");
+});
+
+test("Public APIs-Verzeichnis wird aus belegbaren Markdown-Feldern normalisiert", () => {
+  const parsed = parsePublicApisCatalog(`
+## Index
+### Weather
+| API | Description | Auth | HTTPS | CORS |
+|:---|:---|:---|:---|:---|
+| [Weather Example](https://weather.example.test/docs?token=should-not-leak) | Current weather | apiKey | Yes | Yes |
+| [Plain Example](http://plain.example.test) | Insecure | No | No | Unknown |
+`);
+
+  assert.equal(parsed.length, 0);
+});
+
+test("Public APIs-Verzeichnis übernimmt nur HTTPS-Links ohne Query-Secrets", () => {
+  const parsed = parsePublicApisCatalog(`
+## Index
+### Weather
+| API | Description | Auth | HTTPS | CORS |
+|:---|:---|:---|:---|:---|
+| [Weather Example](https://weather.example.test/docs) | Current weather | apiKey | Yes | Yes |
+`);
+
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].source, PUBLIC_API_DIRECTORY_SOURCE);
+  assert.equal(parsed[0].sourceUrl, PUBLIC_API_DIRECTORY_SOURCE_URL);
+  assert.equal(parsed[0].version, null);
+  assert.equal(parsed[0].specificationUrl, "https://weather.example.test/docs");
+  assert.doesNotMatch(JSON.stringify(parsed), /apiKey|token|secret|authorization/i);
+});
+
+test("neue externe Quelle lädt nur begrenzte, unverifizierte Verzeichnisdaten", async () => {
+  resetApisGuruCatalogCacheForTests();
+  const result = await loadPublicApisCatalog(async () => new Response(`
+## Index
+### Books
+| API | Description | Auth | HTTPS | CORS |
+|:---|:---|:---|:---|:---|
+| [Books Example](https://books.example.test/docs) | Book data | No | Yes | Yes |
+`, { status: 200 }), referenceNow);
+
+  assert.equal(result.status, "AVAILABLE");
+  assert.equal(result.records[0].source, PUBLIC_API_DIRECTORY_SOURCE);
+  assert.equal(result.records[0].sourceLabel, "Public APIs Community-Verzeichnis");
+  const ranked = rankExternalDiscoveryResults(result.records, "Books", referenceNow);
+  assert.equal(ranked[0].discovery.scope, PUBLIC_API_DIRECTORY_SCOPE);
+  assert.equal(ranked[0].discovery.rankingFactors.openApiMetadata, 0);
+});
+
+test("externe Treffer werden gegen interne und andere externe URLs dedupliziert", () => {
+  const duplicate = publicApisRecord({ name: "Duplicate", url: "https://same.example.test/api?utm_source=directory" });
+  const sameAsInternal = publicApisRecord({ name: "Internal", url: "https://internal.example.test/api" });
+  const unique = record({ id: "unique", name: "Unique API" });
+  const deduped = dedupeExternalDiscoveryRecords(
+    [duplicate, { ...duplicate, source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE, id: "external:apis-guru:same:1", sourceLabel: "APIs.guru", sourceUrl: "https://api.apis.guru/v2/list.json" }, sameAsInternal, unique],
+    ["https://internal.example.test/api/"],
+  );
+
+  assert.deepEqual(deduped.map((entry) => entry.name), ["Duplicate", "Unique API"]);
 });
 
 test("APIs.guru-Normalisierung übernimmt nur ableitbare OpenAPI-Felder", () => {

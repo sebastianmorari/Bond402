@@ -14,4 +14,5 @@ export type PublicExternalDiscoveryDetailSourceId = typeof PublicExternalDiscove
 
 export const PublicExternalDiscoveryDetailSourceId = {
   APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+  PUBLIC_APIS_DIRECTORY: 'PUBLIC_APIS_DIRECTORY',
 } as const;

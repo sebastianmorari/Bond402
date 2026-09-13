@@ -15,4 +15,5 @@ export type PublicDiscoverySourceSource = typeof PublicDiscoverySourceSource[key
 export const PublicDiscoverySourceSource = {
   BOND402_INTERNAL_CATALOG: 'BOND402_INTERNAL_CATALOG',
   APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
+  PUBLIC_EXTERNAL_CATALOG: 'PUBLIC_EXTERNAL_CATALOG',
 } as const;
