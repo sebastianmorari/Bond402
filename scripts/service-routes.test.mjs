@@ -128,6 +128,16 @@ test("Authentifizierter GET liefert eine Liste und POST legt einen Dienst an", a
   assert.equal(listed.data[0].id, created.data.id);
 });
 
+test("Authentifizierte Dashboard-Metriken liefern 200 mit derselben Session", async () => {
+  const dashboard = await request("/api/dashboard", { authenticated: true });
+
+  assert.equal(dashboard.response.status, 200, JSON.stringify(dashboard.data));
+  assert.equal(typeof dashboard.data.serviceCount, "number");
+  assert.equal(typeof dashboard.data.checkCount, "number");
+  assert.equal(typeof dashboard.data.passRate, "number");
+  assert.equal(typeof dashboard.data.averageResponseTimeMs, "number");
+});
+
 test("Externe Discovery-Metadaten werden übernommen und doppelte Importe blockiert", async () => {
   const sourceUrl = "https://api.apis.guru/v2/specs/example.test/1.0.0/openapi.json";
   const payload = {

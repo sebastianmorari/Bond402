@@ -8,3 +8,9 @@ When a development table already exists with a compatible textual representation
 **Why:** Drizzle's schema push refuses an automatic text-to-integer cast instead of silently risking data loss or an invalid migration.
 
 **How to apply:** Preserve the stored format at the database boundary and validate/convert it in application code or plan a separately reviewed migration.
+
+Neon production can lag the current Drizzle model even when the local schema and code are already aligned. Collection routes using `select().from(table)` then fail with PostgreSQL 42703 on the first missing column; compare every ORM column in the full service/check path before testing only one field.
+
+**Why:** The public catalog loaded all service and check columns, so an apparently fixed `response_mode` mismatch still left newer service metadata and `security_signals` absent in production.
+
+**How to apply:** Treat additive production schema synchronization as one idempotent, non-destructive operation, backfill historical timestamps from existing creation timestamps, and add a local required-column regression test alongside the route test.

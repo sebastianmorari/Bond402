@@ -11,6 +11,7 @@ const checks = [
   ["test:trust-score", "Trust score"],
   ["test:service-ui", "Service UI"],
   ["test:domain-verification", "Domain verification"],
+  ["test:public-catalog-schema", "Public catalog schema"],
   ["test:public-service-search", "Public service search"],
   ["test:protected-api", "Protected API"],
   ["test:service-routes", "Service routes"],
