@@ -32,12 +32,15 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createService = useCreateService();
+  const suggestedParams = new URLSearchParams(window.location.search);
+  const suggestedUrl = suggestedParams.get("registerUrl") || "";
+  const suggestedName = suggestedParams.get("registerName") || "";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      url: "",
+      name: suggestedName,
+      url: suggestedUrl,
       expectedStructure: "",
       responseMode: "JSON",
       maxResponseTime: 1000,

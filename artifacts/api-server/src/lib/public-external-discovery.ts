@@ -23,6 +23,25 @@ export type ExternalApiRecord = {
   sourceRecordUrl: string;
 };
 
+export function externalRecordId(provider: string, version: string) {
+  return `external:apis-guru:${encodeURIComponent(provider)}:${encodeURIComponent(version)}`;
+}
+
+export function parseExternalRecordId(id: string) {
+  const prefix = "external:apis-guru:";
+  if (!id.startsWith(prefix)) return null;
+  const encoded = id.slice(prefix.length);
+  const separator = encoded.lastIndexOf(":");
+  if (separator <= 0 || separator === encoded.length - 1) return null;
+  try {
+    const provider = decodeURIComponent(encoded.slice(0, separator));
+    const version = decodeURIComponent(encoded.slice(separator + 1));
+    return provider && version ? { provider, version } : null;
+  } catch {
+    return null;
+  }
+}
+
 export type ExternalDiscoveryMetadata = {
   source: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE;
   sourceLabel: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL;
@@ -267,7 +286,7 @@ function parseRecord(providerKey: string, rawEntry: unknown): ExternalApiRecord 
     .slice(0, 8);
 
   return {
-    id: `external:apis-guru:${encodeURIComponent(provider)}:${encodeURIComponent(preferred)}`,
+    id: externalRecordId(provider, preferred),
     provider,
     version: preferred,
     name,

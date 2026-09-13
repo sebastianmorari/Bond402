@@ -44,8 +44,17 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
           responses: {
             "200": {
-              description: "Public trust metadata",
-              content: { "application/json": { schema: { $ref: "#/components/schemas/PublicService" } } },
+              description: "Public trust metadata or an unverified external discovery detail",
+              content: {
+                "application/json": {
+                  schema: {
+                    oneOf: [
+                      { $ref: "#/components/schemas/PublicService" },
+                      { $ref: "#/components/schemas/PublicExternalDiscoveryDetail" },
+                    ],
+                  },
+                },
+              },
             },
             "404": { description: "Service is not listed or does not exist" },
             "429": { description: "Rate limited; inspect Retry-After" },
@@ -522,6 +531,111 @@ export function getPublicOpenApiDocument(baseUrl: string) {
                 specification: { type: "string" },
               },
             },
+          },
+        },
+        PublicExternalDiscoveryDetail: {
+          type: "object",
+          required: ["id", "kind", "name", "provider", "version", "description", "source", "verification", "specification", "safeEndpoint", "safeEndpointNote"],
+          properties: {
+            id: { type: "string" },
+            kind: { type: "string", enum: ["EXTERNAL_DISCOVERY_DETAIL"] },
+            name: { type: "string" },
+            provider: { type: "string" },
+            version: { type: "string" },
+            description: { type: ["string", "null"] },
+            source: {
+              type: "object",
+              required: ["id", "label", "catalogUrl", "recordUrl", "specificationUrl"],
+              properties: {
+                id: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY"] },
+                label: { type: "string" },
+                catalogUrl: { type: "string", format: "uri" },
+                recordUrl: { type: "string", format: "uri" },
+                specificationUrl: { type: "string", format: "uri" },
+              },
+            },
+            verification: {
+              type: "object",
+              required: ["status", "reason"],
+              properties: {
+                status: { type: "string", enum: ["UNVERIFIED_EXTERNAL"] },
+                reason: { type: "string", enum: ["SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK"] },
+              },
+            },
+            specification: {
+              type: "object",
+              required: ["status", "openapiVersion", "title", "description", "servers", "auth", "endpoints"],
+              properties: {
+                status: { type: "string", enum: ["PARSED", "UNAVAILABLE", "UNSUPPORTED"] },
+                openapiVersion: { type: ["string", "null"] },
+                title: { type: ["string", "null"] },
+                description: { type: ["string", "null"] },
+                servers: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["url", "description", "templated"],
+                    properties: {
+                      url: { type: "string", format: "uri" },
+                      description: { type: ["string", "null"] },
+                      templated: { type: "boolean" },
+                    },
+                  },
+                },
+                auth: {
+                  type: "object",
+                  required: ["status", "schemes"],
+                  properties: {
+                    status: { type: "string", enum: ["REQUIRED", "NOT_REQUIRED", "NOT_DECLARED", "UNKNOWN"] },
+                    schemes: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        required: ["name", "type", "scheme", "location"],
+                        properties: {
+                          name: { type: "string" },
+                          type: { type: "string" },
+                          scheme: { type: ["string", "null"] },
+                          location: { type: ["string", "null"] },
+                        },
+                      },
+                    },
+                  },
+                },
+                endpoints: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["method", "path", "summary", "operationId", "auth", "safeToProbe", "reason"],
+                    properties: {
+                      method: { type: "string" },
+                      path: { type: "string" },
+                      summary: { type: ["string", "null"] },
+                      operationId: { type: ["string", "null"] },
+                      auth: { type: "string", enum: ["REQUIRED", "NOT_REQUIRED", "NOT_DECLARED", "UNKNOWN"] },
+                      safeToProbe: { type: "boolean" },
+                      reason: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+            safeEndpoint: {
+              oneOf: [
+                { type: "null" },
+                {
+                  type: "object",
+                  required: ["method", "path", "url", "reason"],
+                  properties: {
+                    method: { type: "string", enum: ["GET", "HEAD"] },
+                    path: { type: "string" },
+                    url: { type: "string", format: "uri" },
+                    reason: { type: "string", enum: ["EXPLICITLY_PUBLIC_PARAMETER_FREE_READ"] },
+                  },
+                },
+              ],
+            },
+            safeEndpointNote: { type: "string" },
           },
         },
         PublicServiceCatalog: {

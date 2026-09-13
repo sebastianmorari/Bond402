@@ -8,3 +8,4 @@
 - [Resilient collection responses](resilient-collection-responses.md) — aggregate endpoints should isolate malformed stored records and still return valid entries.
 - [Database read resilience](database-read-resilience.md) — only bounded idempotent GET reads retry transient availability failures; normal SQL errors stay non-503.
 - [Security confidence policy](security-confidence-policy.md) — availability, security confidence, and overall trust stay separate and conservative when reputation or samples are unknown.
+- [External OpenAPI probing](external-openapi-probing.md) — show declared variable endpoints, but only offer a probe when HTTPS, no-auth, and no required parameters are explicit.

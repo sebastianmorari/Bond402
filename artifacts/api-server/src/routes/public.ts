@@ -16,6 +16,7 @@ import {
   loadApisGuruCatalog,
   rankExternalDiscoveryResults,
 } from "../lib/public-external-discovery";
+import { getExternalApiDetail } from "../lib/public-external-detail";
 import { loadChecks, toPublicServiceResponse } from "../lib/service-data";
 import {
   evaluatePreAction,
@@ -263,6 +264,11 @@ router.get("/public/services", async (req, res): Promise<void> => {
 router.get("/public/services/:id", async (req, res): Promise<void> => {
   if (!(await requirePublicRateLimit(req, res))) return;
   const serviceId = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
+  const externalDetail = await getExternalApiDetail(serviceId);
+  if (externalDetail) {
+    res.json(externalDetail);
+    return;
+  }
   const service = await loadListedService(serviceId);
   if (!service) {
     res.status(404).json({ error: "Gelisteter Dienst nicht gefunden.", code: "NOT_FOUND" });

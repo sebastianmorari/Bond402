@@ -261,13 +261,11 @@ function ExternalResult({ item }: { item: PublicExternalService }) {
         <div className="flex shrink-0 flex-col gap-1">
           <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 px-2 text-xs" asChild>
             <a
-              href={item.links.specification}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`${item.name}: Spezifikation in neuem Tab öffnen`}
+              href={`/catalog/${encodeURIComponent(item.id)}`}
+              aria-label={`${item.name}: Bond402-Detail öffnen`}
             >
-              Spezifikation
-              <ExternalLink className="h-3 w-3" aria-hidden="true" />
+              Details
+              <ChevronRight className="h-3 w-3" aria-hidden="true" />
             </a>
           </Button>
           <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] text-muted-foreground" asChild>

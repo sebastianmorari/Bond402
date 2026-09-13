@@ -112,6 +112,53 @@ type ExternalDiscoveryItem = {
   links: { sourceRecord: string; specification: string };
 };
 
+type ExternalDiscoveryDetail = {
+  id: string;
+  kind: "EXTERNAL_DISCOVERY_DETAIL";
+  name: string;
+  provider: string;
+  version: string;
+  description: string | null;
+  source: {
+    id: "APIS_GURU_OPENAPI_DIRECTORY";
+    label: string;
+    catalogUrl: string;
+    recordUrl: string;
+    specificationUrl: string;
+  };
+  verification: {
+    status: "UNVERIFIED_EXTERNAL";
+    reason: "SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK";
+  };
+  specification: {
+    status: "PARSED" | "UNAVAILABLE" | "UNSUPPORTED";
+    openapiVersion: string | null;
+    title: string | null;
+    description: string | null;
+    servers: Array<{ url: string; description: string | null; templated: boolean }>;
+    auth: {
+      status: "REQUIRED" | "NOT_REQUIRED" | "NOT_DECLARED" | "UNKNOWN";
+      schemes: Array<{ name: string; type: string; scheme: string | null; location: string | null }>;
+    };
+    endpoints: Array<{
+      method: string;
+      path: string;
+      summary: string | null;
+      operationId: string | null;
+      auth: "REQUIRED" | "NOT_REQUIRED" | "NOT_DECLARED" | "UNKNOWN";
+      safeToProbe: boolean;
+      reason: string;
+    }>;
+  };
+  safeEndpoint: {
+    method: "GET" | "HEAD";
+    path: string;
+    url: string;
+    reason: "EXPLICITLY_PUBLIC_PARAMETER_FREE_READ";
+  } | null;
+  safeEndpointNote: string;
+};
+
 type CatalogSource = {
   source: "BOND402_INTERNAL_CATALOG" | "APIS_GURU_OPENAPI_DIRECTORY";
   sourceLabel: string;
@@ -186,6 +233,10 @@ function isExternalDiscovery(item: PublicService | ExternalDiscoveryItem): item 
   return "kind" in item && item.kind === "EXTERNAL_DISCOVERY";
 }
 
+function isExternalDiscoveryDetail(item: PublicService | ExternalDiscoveryDetail): item is ExternalDiscoveryDetail {
+  return "kind" in item && item.kind === "EXTERNAL_DISCOVERY_DETAIL";
+}
+
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
@@ -235,10 +286,8 @@ function ServiceCard({ service }: { service: PublicService }) {
 
 function ExternalServiceCard({ service }: { service: ExternalDiscoveryItem }) {
   return (
-    <a
-      href={service.links.specification}
-      target="_blank"
-      rel="noreferrer"
+    <Link
+      href={`/catalog/${encodeURIComponent(service.id)}`}
       className="group block rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 transition hover:border-amber-500/60 hover:bg-amber-500/10 hover:shadow-lg"
     >
       <div className="flex items-start justify-between gap-4">
@@ -273,10 +322,10 @@ function ExternalServiceCard({ service }: { service: ExternalDiscoveryItem }) {
         Nur Quelldaten aus dem öffentlichen APIs.guru-Verzeichnis. Bond402 hat diesen Eintrag nicht geprüft und vergibt
         keinen Trust-Status.
       </p>
-      <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-        OpenAPI-Quelle öffnen <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+       <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
+         Bond402-Details öffnen <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
       </span>
-    </a>
+    </Link>
   );
 }
 
@@ -319,26 +368,53 @@ export function PublicCatalogPage() {
 
 export function PublicServicePage() {
   const [, params] = useRoute<{ id: string }>("/catalog/:id");
-  const id = params?.id || "";
-  const [service, setService] = useState<PublicService | null>(null);
+  const rawId = params?.id || "";
+  const id = (() => {
+    try {
+      return decodeURIComponent(rawId);
+    } catch {
+      return rawId;
+    }
+  })();
+  const [service, setService] = useState<PublicService | ExternalDiscoveryDetail | null>(null);
   const [decision, setDecision] = useState<DecisionResponse | null>(null);
   const [context, setContext] = useState("GENERAL");
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      getJson<PublicService>(`/public/services/${encodeURIComponent(id)}`),
-      getJson<DecisionResponse>(`/public/services/${encodeURIComponent(id)}/pre-action-check`),
-    ]).then(([serviceResult, decisionResult]) => { setService(serviceResult); setDecision(decisionResult); }).catch((reason: Error) => setError(reason.message));
+    getJson<PublicService | ExternalDiscoveryDetail>(`/public/services/${encodeURIComponent(id)}`)
+      .then(async (serviceResult) => {
+        setService(serviceResult);
+        if (isExternalDiscoveryDetail(serviceResult)) {
+          setDecision(null);
+          return;
+        }
+        const decisionResult = await getJson<DecisionResponse>(
+          `/public/services/${encodeURIComponent(id)}/pre-action-check`,
+        );
+        setDecision(decisionResult);
+      })
+      .catch((reason: Error) => setError(reason.message));
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !service || isExternalDiscoveryDetail(service)) return;
     postJson<DecisionResponse>(`/public/services/${encodeURIComponent(id)}/pre-action-check`, { actionContext: context })
       .then(setDecision)
       .catch(() => undefined);
   }, [context, id]);
+
+  if (service && isExternalDiscoveryDetail(service)) {
+    return (
+      <PublicLayout>
+        <Link href="/catalog" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" />Zum Katalog
+        </Link>
+        <ExternalDiscoveryDetailView service={service} />
+      </PublicLayout>
+    );
+  }
 
   return (
     <PublicLayout>
@@ -382,5 +458,127 @@ export function PublicServicePage() {
         <p className="mt-8 text-xs leading-5 text-muted-foreground">Öffentliche Antworten enthalten keine Kontodaten, Besitzerinformationen, API-Schlüssel oder internen Prüfdetails. Die API ist auf 60 Anfragen pro Minute und IP begrenzt.</p>
       </div> : <div className="mt-8 h-64 animate-pulse rounded-2xl bg-muted/50" />}
     </PublicLayout>
+  );
+}
+
+function ExternalDiscoveryDetailView({ service }: { service: ExternalDiscoveryDetail }) {
+  const authLabel = service.specification.auth.status === "REQUIRED"
+    ? "Authentifizierung erforderlich"
+    : service.specification.auth.status === "NOT_REQUIRED"
+      ? "Explizit ohne Auth-Anforderung beschrieben"
+      : service.specification.auth.status === "NOT_DECLARED"
+        ? "Nicht in der Spezifikation erklärt"
+        : "Unbekannt";
+  const registerHref = service.safeEndpoint
+    ? `/dashboard?registerUrl=${encodeURIComponent(service.safeEndpoint.url)}&registerName=${encodeURIComponent(service.name)}#service-registration`
+    : null;
+
+  return (
+    <div className="mt-8 max-w-5xl">
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+        <div>
+          <Badge variant="secondary">Externe Discovery · unverifiziert</Badge>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight">{service.name}</h1>
+          <p className="mt-2 font-mono text-sm text-muted-foreground">{service.provider} · Version {service.version}</p>
+        </div>
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-5 sm:max-w-xs">
+          <p className="text-xs uppercase tracking-widest text-amber-700 dark:text-amber-300">Verifikationsstatus</p>
+          <p className="mt-2 font-semibold">UNVERIFIED_EXTERNAL</p>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">Bond402 hat diesen externen Treffer nicht live geprüft und vergibt keinen Trust Score.</p>
+        </div>
+      </div>
+
+      <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground">
+        {service.description || "Die externe Quelle liefert keine Beschreibung."}
+      </p>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-border/60 bg-card/50 p-5">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Quelle</p>
+          <p className="mt-2 font-semibold">{service.source.label}</p>
+          <a href={service.source.recordUrl} target="_blank" rel="noreferrer" className="mt-2 block break-all text-xs text-primary hover:underline">Katalogeintrag öffnen</a>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/50 p-5">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">OpenAPI</p>
+          <p className="mt-2 font-semibold">{service.specification.openapiVersion || "Nicht angegeben"}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{service.specification.status === "PARSED" ? "Spezifikation passiv gelesen" : "Spezifikation nicht vollständig lesbar"}</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/50 p-5">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Auth</p>
+          <p className="mt-2 font-semibold">{authLabel}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{service.specification.auth.schemes.length ? service.specification.auth.schemes.map((scheme) => scheme.name).join(", ") : "Keine benannten Schemes"}</p>
+        </div>
+      </div>
+
+      {service.safeEndpoint && (
+        <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <Badge variant="outline">Prüf-Kandidat</Badge>
+              <h2 className="mt-3 text-xl font-semibold">{service.safeEndpoint.method} {service.safeEndpoint.path}</h2>
+              <p className="mt-2 break-all font-mono text-xs text-muted-foreground">{service.safeEndpoint.url}</p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{service.safeEndpointNote}</p>
+            </div>
+            <Button asChild className="shrink-0">
+              <Link href={registerHref || "/dashboard#service-registration"}>Für Bond402-Prüfung übernehmen <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </section>
+      )}
+      {!service.safeEndpoint && (
+        <div className="mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 text-sm leading-6 text-muted-foreground">
+          {service.safeEndpointNote}
+        </div>
+      )}
+
+      <section className="mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">Bekannte Server</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Nur deklarierte Server aus der externen Spezifikation; keine Erreichbarkeitsgarantie.</p>
+          </div>
+          <Badge variant="outline">{service.specification.servers.length}</Badge>
+        </div>
+        {service.specification.servers.length ? (
+          <ul className="mt-5 space-y-3">
+            {service.specification.servers.map((server) => (
+              <li key={server.url} className="rounded-xl border border-border/60 bg-background/50 p-3">
+                <p className="break-all font-mono text-sm">{server.url}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{server.templated ? "Enthält Variablen; nicht als Prüfziel verwendet." : server.description || "Keine Serverbeschreibung angegeben."}</p>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="mt-5 text-sm text-muted-foreground">Keine sicher lesbaren Serverangaben gefunden.</p>}
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-border/60 bg-card/50 p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">Bekannte Endpoints</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Passiv aus der Spezifikation gelesen. Bond402 führt daraus keine Anfrage automatisch aus.</p>
+          </div>
+          <Badge variant="outline">{service.specification.endpoints.length}</Badge>
+        </div>
+        {service.specification.endpoints.length ? (
+          <div className="mt-5 space-y-3">
+            {service.specification.endpoints.map((endpoint) => (
+              <div key={`${endpoint.method}:${endpoint.path}`} className="rounded-xl border border-border/60 bg-background/50 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{endpoint.method}</Badge>
+                  <span className="break-all font-mono text-sm">{endpoint.path}</span>
+                  {endpoint.safeToProbe && <Badge variant="secondary">öffentlicher Kandidat</Badge>}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{endpoint.summary || "Keine Kurzbeschreibung"} · {endpoint.auth === "REQUIRED" ? "Auth erforderlich" : endpoint.auth === "NOT_REQUIRED" ? "ohne Auth-Anforderung" : "Auth nicht sicher geklärt"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{endpoint.reason}</p>
+              </div>
+            ))}
+          </div>
+        ) : <p className="mt-5 text-sm text-muted-foreground">Keine Endpoints sicher ausgelesen.</p>}
+      </section>
+
+      <p className="mt-8 text-xs leading-5 text-muted-foreground">
+        <a href={service.source.specificationUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">Originale Spezifikation öffnen</a>. Sie wird von Bond402 nur begrenzt gelesen und als Daten behandelt; fremder JavaScript-, Binär- oder Shell-Code wird nicht ausgeführt.
+      </p>
+    </div>
   );
 }

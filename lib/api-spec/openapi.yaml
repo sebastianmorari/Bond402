@@ -850,7 +850,7 @@ paths:
     get:
       operationId: getPublicService
       tags: [developer]
-      summary: Read public trust metadata for one listed service
+       summary: Read public trust metadata or external discovery detail
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       responses:
@@ -859,7 +859,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PublicService"
+                 oneOf:
+                   - $ref: "#/components/schemas/PublicService"
+                   - $ref: "#/components/schemas/PublicExternalDiscoveryDetail"
         "404":
           description: Service is private, unlisted, deleted, or unknown
           content:
@@ -2169,6 +2171,138 @@ components:
               type: string
           required: [sourceRecord, specification]
       required: [id, kind, name, description, url, verification, discovery, links]
+    PublicExternalDiscoveryDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [EXTERNAL_DISCOVERY_DETAIL]
+        name:
+          type: string
+        provider:
+          type: string
+        version:
+          type: string
+        description:
+          type: ["string", "null"]
+        source:
+          type: object
+          properties:
+            id:
+              type: string
+              enum: [APIS_GURU_OPENAPI_DIRECTORY]
+            label:
+              type: string
+            catalogUrl:
+              type: string
+              format: uri
+            recordUrl:
+              type: string
+              format: uri
+            specificationUrl:
+              type: string
+              format: uri
+          required: [id, label, catalogUrl, recordUrl, specificationUrl]
+        verification:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [UNVERIFIED_EXTERNAL]
+            reason:
+              type: string
+              enum: [SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK]
+          required: [status, reason]
+        specification:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [PARSED, UNAVAILABLE, UNSUPPORTED]
+            openapiVersion:
+              type: ["string", "null"]
+            title:
+              type: ["string", "null"]
+            description:
+              type: ["string", "null"]
+            servers:
+              type: array
+              items:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                  description:
+                    type: ["string", "null"]
+                  templated:
+                    type: boolean
+                required: [url, description, templated]
+            auth:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [REQUIRED, NOT_REQUIRED, NOT_DECLARED, UNKNOWN]
+                schemes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                      scheme:
+                        type: ["string", "null"]
+                      location:
+                        type: ["string", "null"]
+                    required: [name, type, scheme, location]
+              required: [status, schemes]
+            endpoints:
+              type: array
+              items:
+                type: object
+                properties:
+                  method:
+                    type: string
+                  path:
+                    type: string
+                  summary:
+                    type: ["string", "null"]
+                  operationId:
+                    type: ["string", "null"]
+                  auth:
+                    type: string
+                    enum: [REQUIRED, NOT_REQUIRED, NOT_DECLARED, UNKNOWN]
+                  safeToProbe:
+                    type: boolean
+                  reason:
+                    type: string
+                required: [method, path, summary, operationId, auth, safeToProbe, reason]
+          required: [status, openapiVersion, title, description, servers, auth, endpoints]
+        safeEndpoint:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                method:
+                  type: string
+                  enum: [GET, HEAD]
+                path:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                reason:
+                  type: string
+                  enum: [EXPLICITLY_PUBLIC_PARAMETER_FREE_READ]
+              required: [method, path, url, reason]
+        safeEndpointNote:
+          type: string
+      required: [id, kind, name, provider, version, description, source, verification, specification, safeEndpoint, safeEndpointNote]
     PublicDiscovery:
       type: object
       properties:
