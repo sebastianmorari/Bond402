@@ -193,3 +193,96 @@ test("Antwortinhalte und Secrets gelangen nicht in das Prüfergebnis", async () 
   assert.doesNotMatch(JSON.stringify(result), new RegExp(secret));
   assert.doesNotMatch(JSON.stringify(result.securityObservation), new RegExp(secret));
 });
+
+test("Ungültiges JSON, falscher Content-Type und Base64-Muster bleiben getrennte Warnsignale", async () => {
+  const invalidJson = await runLiveVerification(
+    "https://service.example/data",
+    "status",
+    1000,
+    {},
+    "JSON",
+    fakeFetcher("{broken", { "content-type": "application/json" }),
+  );
+  assert.equal(invalidJson.errorCode, "INVALID_JSON");
+  assert.equal(invalidJson.securitySignals.responseType.kind, "JSON");
+
+  const wrongContentType = await runLiveVerification(
+    "https://service.example/data",
+    "",
+    1000,
+    {},
+    "HTTP",
+    fakeFetcher('{"status":"ok"}', { "content-type": "application/octet-stream" }),
+  );
+  assert.equal(wrongContentType.securitySignals.responseType.kind, "BINARY");
+  assert.equal(wrongContentType.securitySignals.responseType.status, "WARNING");
+
+  const base64Like = await runLiveVerification(
+    "https://service.example/data",
+    "",
+    1000,
+    {},
+    "HTTP",
+    fakeFetcher(`{"preview":"${"A".repeat(128)}"}`, { "content-type": "application/json" }),
+  );
+  assert.equal(base64Like.securitySignals.suspiciousPayload.status, "PASS");
+});
+
+test("Auth- und Rate-Limit-Antworten werden nicht als Malware bewertet", async () => {
+  for (const status of [401, 403, 429, 500]) {
+    const result = await runLiveVerification(
+      "https://service.example/data",
+      "",
+      1000,
+      {},
+      "HTTP",
+      fakeFetcher("", {
+        "content-type": "application/json",
+        ...(status === 401 ? { "www-authenticate": "Bearer" } : {}),
+        ...(status === 429 ? { "retry-after": "30" } : {}),
+      }, { status }),
+    );
+
+    assert.equal(result.status, "FAIL");
+    assert.equal(result.httpStatus, status);
+    assert.equal(result.securitySignals.threatIndicators.status, "NONE_DETECTED");
+    assert.equal(result.securitySignals.suspiciousPayload.status, "PASS");
+    if (status === 401 || status === 403) {
+      assert.equal(result.securitySignals.authentication.required, true);
+    }
+    if (status === 429) {
+      assert.equal(result.securitySignals.rateLimit.detected, true);
+      assert.equal(result.securitySignals.rateLimit.retryAfterSeconds, 30);
+    }
+  }
+});
+
+test("Timeout und Redirect-Loop bleiben sichere Verbindungsfehler", async () => {
+  const timeout = await runLiveVerification(
+    "https://service.example/data",
+    "",
+    1000,
+    {},
+    "HTTP",
+    async () => {
+      throw Object.assign(new Error("timeout"), { code: "TIMEOUT" });
+    },
+  );
+  assert.equal(timeout.reachable, false);
+  assert.equal(timeout.errorCode, "TIMEOUT");
+  assert.equal(timeout.securitySignals.threatIndicators.status, "UNKNOWN");
+
+  const redirectLoop = await runLiveVerification(
+    "https://service.example/data",
+    "",
+    1000,
+    {},
+    "HTTP",
+    async () => {
+      throw Object.assign(new Error("redirect loop"), { code: "TOO_MANY_REDIRECTS" });
+    },
+  );
+  assert.equal(redirectLoop.reachable, false);
+  assert.equal(redirectLoop.errorCode, "TOO_MANY_REDIRECTS");
+  assert.equal(redirectLoop.securitySignals.network.status, "UNKNOWN");
+});
