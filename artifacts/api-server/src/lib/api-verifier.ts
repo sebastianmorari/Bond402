@@ -4,6 +4,8 @@ import http from "node:http";
 import https from "node:https";
 import net from "node:net";
 import tls from "node:tls";
+import { brotliDecompress, gunzip, inflate } from "node:zlib";
+import { promisify } from "node:util";
 import {
   decryptTargetSecret,
   validateTargetAuthHeaderName,
@@ -13,6 +15,9 @@ import {
 const MAX_RESPONSE_BYTES = 1_000_000;
 const MAX_REQUEST_BODY_BYTES = 64_000;
 const MAX_REDIRECTS = 3;
+const decompressBrotli = promisify(brotliDecompress);
+const decompressGzip = promisify(gunzip);
+const decompressDeflate = promisify(inflate);
 
 export type VerificationOutcome = {
   status: "PASS" | "FAIL" | "REVIEW";
@@ -903,6 +908,14 @@ async function requestOnce(
       reject(Object.assign(new Error("Die sichere Prüfzeit ist abgelaufen."), { code: "TIMEOUT" }));
       return;
     }
+    let settled = false;
+    let deadlineTimer: NodeJS.Timeout | undefined;
+    const rejectOnce = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (deadlineTimer) clearTimeout(deadlineTimer);
+      reject(error);
+    };
     const request = transport.request(
       {
         protocol: url.protocol,
@@ -921,18 +934,23 @@ async function requestOnce(
         const chunks: Buffer[] = [];
         let size = 0;
         response.on("data", (chunk: Buffer) => {
+          if (settled) return;
           size += chunk.length;
           if (size > MAX_RESPONSE_BYTES) {
-            request.destroy(
-              Object.assign(new Error("Die Antwort ist größer als 1 MB."), {
-                code: "RESPONSE_TOO_LARGE",
-              }),
-            );
+            const error = Object.assign(new Error("Die Antwort ist größer als 1 MB."), {
+              code: "RESPONSE_TOO_LARGE",
+            });
+            rejectOnce(error);
+            response.destroy();
+            request.destroy(error);
             return;
           }
           chunks.push(chunk);
         });
-        response.on("end", () => {
+        response.on("error", rejectOnce);
+        response.on("end", async () => {
+          if (settled) return;
+          try {
             const headers = Object.fromEntries(
               Object.entries(response.headers).flatMap(([key, value]) =>
                 value === undefined
@@ -940,28 +958,72 @@ async function requestOnce(
                   : [[key.toLowerCase(), Array.isArray(value) ? value.join(", ") : value]],
               ),
             );
-          resolve({
-            status: response.statusCode ?? 0,
-            body: Buffer.concat(chunks).toString("utf8"),
-            location: response.headers.location,
-            elapsedMs: Math.max(1, Math.round(performance.now() - started)),
+            const body = await decodeResponseBody(Buffer.concat(chunks), headers);
+            if (settled) return;
+            settled = true;
+            if (deadlineTimer) clearTimeout(deadlineTimer);
+            resolve({
+              status: response.statusCode ?? 0,
+              body,
+              location: response.headers.location,
+              elapsedMs: Math.max(1, Math.round(performance.now() - started)),
               headers,
               tls: inspectTls(url.protocol, response.socket),
-          });
+            });
+          } catch (error) {
+            rejectOnce(error);
+          }
         });
       },
     );
 
-    const deadlineTimer = setTimeout(() => {
-      request.destroy(Object.assign(new Error("Die Prüfung hat zu lange gedauert."), { code: "TIMEOUT" }));
+    deadlineTimer = setTimeout(() => {
+      const error = Object.assign(new Error("Die Prüfung hat zu lange gedauert."), { code: "TIMEOUT" });
+      rejectOnce(error);
+      request.destroy(error);
     }, remaining);
-    request.on("error", (error) => {
-      clearTimeout(deadlineTimer);
-      reject(error);
-    });
-    request.on("close", () => clearTimeout(deadlineTimer));
+    request.on("error", rejectOnce);
     request.end(requestOptions.body);
   });
+}
+
+export async function decodeResponseBody(body: Buffer, headers: Record<string, string>) {
+  const encodings = (headers["content-encoding"] ?? "")
+    .split(",")
+    .map((encoding) => encoding.trim().toLowerCase())
+    .filter(Boolean);
+  if (encodings.length === 0 || (encodings.length === 1 && encodings[0] === "identity")) {
+    return body.toString("utf8");
+  }
+  if (encodings.length !== 1 || !["br", "deflate", "gzip"].includes(encodings[0])) {
+    throw Object.assign(new Error("Die Antwort verwendet eine nicht unterstützte Kompression."), {
+      code: "UNSUPPORTED_COMPRESSION",
+    });
+  }
+
+  try {
+    const decoded =
+      encodings[0] === "br"
+        ? await decompressBrotli(body, { maxOutputLength: MAX_RESPONSE_BYTES })
+        : encodings[0] === "gzip"
+          ? await decompressGzip(body, { maxOutputLength: MAX_RESPONSE_BYTES })
+          : await decompressDeflate(body, { maxOutputLength: MAX_RESPONSE_BYTES });
+    return decoded.toString("utf8");
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      String(error.code) === "ERR_BUFFER_TOO_LARGE"
+    ) {
+      throw Object.assign(new Error("Die entpackte Antwort ist größer als 1 MB."), {
+        code: "RESPONSE_TOO_LARGE",
+      });
+    }
+    throw Object.assign(new Error("Die Antwort konnte nicht sicher entpackt werden."), {
+      code: "INVALID_COMPRESSION",
+    });
+  }
 }
 
 export function prepareTargetRequest(options: TargetRequestOptions) {

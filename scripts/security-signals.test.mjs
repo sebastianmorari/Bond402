@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   calculateSecurityConfidence,
+  decodeResponseBody,
   runLiveVerification,
   validatePublicUrl,
   validateRedirectTarget,
@@ -285,4 +286,30 @@ test("Timeout und Redirect-Loop bleiben sichere Verbindungsfehler", async () => 
   assert.equal(redirectLoop.reachable, false);
   assert.equal(redirectLoop.errorCode, "TOO_MANY_REDIRECTS");
   assert.equal(redirectLoop.securitySignals.network.status, "UNKNOWN");
+});
+
+test("Unterstützte Kompression wird vor der Inhaltsanalyse sicher entpackt", async () => {
+  const { gzipSync, brotliCompressSync, deflateSync } = await import("node:zlib");
+  const payload = Buffer.from('{"ok":true}', "utf8");
+  for (const [encoding, compressed] of [
+    ["gzip", gzipSync(payload)],
+    ["br", brotliCompressSync(payload)],
+    ["deflate", deflateSync(payload)],
+  ]) {
+    assert.equal(
+      await decodeResponseBody(compressed, { "content-encoding": encoding }),
+      '{"ok":true}',
+    );
+  }
+});
+
+test("Unbekannte oder mehrfach verkettete Kompression wird nicht analysiert", async () => {
+  await assert.rejects(
+    () => decodeResponseBody(Buffer.from("payload"), { "content-encoding": "compress" }),
+    (error) => error?.code === "UNSUPPORTED_COMPRESSION",
+  );
+  await assert.rejects(
+    () => decodeResponseBody(Buffer.from("payload"), { "content-encoding": "gzip, br" }),
+    (error) => error?.code === "UNSUPPORTED_COMPRESSION",
+  );
 });
