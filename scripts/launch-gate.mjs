@@ -6,6 +6,7 @@ const checks = [
   ["test:service-safety", "Service safety"],
   ["test:public-external-discovery", "External discovery"],
   ["test:public-external-detail", "External detail parsing"],
+  ["test:public-external-routes", "External route safety"],
   ["test:service-registration", "Service registration"],
   ["test:response-mode", "Response modes"],
   ["test:trust-metrics", "Trust metrics"],
