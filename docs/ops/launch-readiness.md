@@ -7,6 +7,8 @@
 - API-Build: `pnpm --filter @workspace/api-server run build`
 - Web-Build: `PORT=4173 BASE_PATH=/ pnpm --filter @workspace/bond402 run build`
 - Sicherheitsregressionen: `pnpm run test:security-signals`
+- Externe Detail- und OpenAPI-Kandidaten: `pnpm run test:public-external-detail`
+- Isolierter Backup-/Restore-Test: `pnpm run test:backup-restore`
 - Auth-/Datenbank-Resilienz und lokaler Secret-Leak-Test:
   `pnpm run test:auth-session`, `pnpm run test:database-resilience`,
   `pnpm run test:secret-leak`
@@ -14,10 +16,9 @@
   `test:*`-Scripts in `package.json`
 - Diff-Prüfung: `git diff --check`
 
-Der vollständige lokale Gate-Lauf wurde für den aktuellen Arbeitsstand erfolgreich
-ausgeführt. Die kostenlosen Dependency-, SAST- und HoundDog-Prüfungen meldeten für
-diesen Arbeitsstand keine Funde. Diese Ergebnisse ersetzen weder CI-Aufbewahrung
-noch einen Produktionsnachweis.
+Das reproduzierbare Gate enthält jetzt auch den isolierten Restore- und den
+externen Detail-Test. Ein erfolgreicher lokaler Gate-Lauf beweist weder einen
+GitHub-CI-Lauf noch einen Produktionsstand.
 
 ## Nicht behaupten
 
@@ -27,8 +28,8 @@ noch einen Produktionsnachweis.
   eine echte externe Verifikation nachgewiesen sind.
 - Keine Reputation oder Threat-Intel als „sicher“ darstellen, wenn nur
   `NONE_DETECTED` oder eine unbekannte Quelle vorliegt.
-- Kein Restore als verifiziert darstellen, solange er nicht in einer
-  isolierten Zielumgebung erfolgreich getestet wurde.
+- Der lokale isolierte Restore darf als lokaler Testnachweis bezeichnet werden;
+  ein Produktionsrestore bleibt ausdrücklich **NOT VERIFIED**.
 
 ## Offene Betreiber-/Umgebungsnachweise
 
@@ -38,6 +39,7 @@ noch einen Produktionsnachweis.
 - Secret- und Dependency-Scan in CI
 - Monitoring, Alerting und Log-Aufbewahrung
 - Rechtlich freigegebene Support-/Terms-Prozesse
+- Browser-E2E gegen eine reale veröffentlichte Umgebung
 
 Diese Punkte sind externe Betriebsnachweise; sie werden nicht durch einen
 lokalen Build ersetzt.
