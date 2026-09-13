@@ -53,11 +53,13 @@ test("external details classify explicit public read endpoints without guessing"
     detail.specification.endpoints.find((endpoint) => endpoint.path === "/status")?.safeToProbe,
     true,
   );
-  assert.deepEqual(parsed.candidate, {
-    method: "GET",
-    path: "/status",
-    url: "https://safe-detail.example.test/v1/status",
-  });
+  assert.deepEqual(parsed.candidates, [
+    {
+      method: "GET",
+      path: "/status",
+      url: "https://safe-detail.example.test/v1/status",
+    },
+  ]);
   assert.equal(detail.specification.endpoints.some((endpoint) => endpoint.path.includes("{id}")), true);
   assert.equal(
     detail.specification.endpoints.find((endpoint) => endpoint.path.includes("{id}"))?.safeToProbe,
@@ -95,5 +97,29 @@ paths:
     { name: "bearerAuth", type: "http", scheme: "bearer", location: null },
   ]);
   assert.equal(parsed.detail.safeEndpoint, null);
-  assert.equal(parsed.candidate, null);
+  assert.deepEqual(parsed.candidates, []);
+});
+
+test("external details expose multiple safe GET/HEAD candidates without enabling mutation", () => {
+  const parsed = parseExternalSpecification(
+    record("multiple-safe"),
+    JSON.stringify({
+      openapi: "3.0.3",
+      info: { title: "Multiple Safe API" },
+      servers: [{ url: "https://multiple-safe.example.test" }],
+      security: [],
+      paths: {
+        "/health": { get: { security: [] } },
+        "/headers": { head: { security: [] } },
+        "/write": { post: { security: [] } },
+      },
+    }),
+    "application/json",
+  );
+
+  assert.deepEqual(parsed.candidates, [
+    { method: "HEAD", path: "/headers", url: "https://multiple-safe.example.test/headers" },
+    { method: "GET", path: "/health", url: "https://multiple-safe.example.test/health" },
+  ]);
+  assert.equal(parsed.detail.specification.endpoints.some((endpoint) => endpoint.method === "POST" && endpoint.safeToProbe), false);
 });

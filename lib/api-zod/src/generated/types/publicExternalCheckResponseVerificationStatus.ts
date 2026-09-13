@@ -9,11 +9,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
+export type PublicExternalCheckResponseVerificationStatus = typeof PublicExternalCheckResponseVerificationStatus[keyof typeof PublicExternalCheckResponseVerificationStatus];
 
 
-export const ServiceRequestMethod = {
-  GET: 'GET',
-  HEAD: 'HEAD',
-  POST: 'POST',
+export const PublicExternalCheckResponseVerificationStatus = {
+  CHECKED_EXTERNAL: 'CHECKED_EXTERNAL',
 } as const;

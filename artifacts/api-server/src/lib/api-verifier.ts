@@ -43,7 +43,7 @@ export function normalizeResponseMode(value: string | null | undefined): Respons
 }
 
 export type TargetRequestOptions = {
-  requestMethod?: "GET" | "POST";
+  requestMethod?: "GET" | "HEAD" | "POST";
   targetAuthType?: TargetAuthType;
   targetAuthHeaderName?: string | null;
   targetAuthSecretCiphertext?: string | null;
@@ -735,7 +735,7 @@ async function requestOnce(
   url: URL,
   deadline: number,
   requestOptions: {
-    method: "GET" | "POST";
+    method: "GET" | "HEAD" | "POST";
     headers: Record<string, string>;
     body?: string;
   },

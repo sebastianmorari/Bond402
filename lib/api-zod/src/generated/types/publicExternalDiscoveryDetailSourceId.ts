@@ -9,11 +9,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
+export type PublicExternalDiscoveryDetailSourceId = typeof PublicExternalDiscoveryDetailSourceId[keyof typeof PublicExternalDiscoveryDetailSourceId];
 
 
-export const ServiceRequestMethod = {
-  GET: 'GET',
-  HEAD: 'HEAD',
-  POST: 'POST',
+export const PublicExternalDiscoveryDetailSourceId = {
+  APIS_GURU_OPENAPI_DIRECTORY: 'APIS_GURU_OPENAPI_DIRECTORY',
 } as const;

@@ -9,11 +9,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
+export type PublicExternalCheckBodyMethod = typeof PublicExternalCheckBodyMethod[keyof typeof PublicExternalCheckBodyMethod];
 
 
-export const ServiceRequestMethod = {
+export const PublicExternalCheckBodyMethod = {
   GET: 'GET',
   HEAD: 'HEAD',
-  POST: 'POST',
 } as const;

@@ -59,6 +59,12 @@ export type ExternalApiDetail = {
     url: string;
     reason: "EXPLICITLY_PUBLIC_PARAMETER_FREE_READ";
   } | null;
+  safeEndpoints: Array<{
+    method: "GET" | "HEAD";
+    path: string;
+    url: string;
+    reason: "EXPLICITLY_PUBLIC_PARAMETER_FREE_READ";
+  }>;
   safeEndpointNote: string;
 };
 
@@ -218,9 +224,9 @@ function joinEndpointUrl(serverUrl: string, path: string) {
 
 function getEndpoints(document: UnknownRecord, servers: Array<{ url: string; templated: boolean }>) {
   const paths = asRecord(document.paths);
-  if (!paths) return { endpoints: [], candidate: null as EndpointCandidate | null };
+  if (!paths) return { endpoints: [], candidates: [] as EndpointCandidate[] };
   const endpoints: ExternalApiDetail["specification"]["endpoints"] = [];
-  let candidate: EndpointCandidate | null = null;
+  const candidates: EndpointCandidate[] = [];
   const documentHasExplicitPublicSecurity = Array.isArray(document.security) && document.security.length === 0;
 
   for (const [path, rawPathItem] of Object.entries(paths).sort(([left], [right]) => left.localeCompare(right))) {
@@ -259,16 +265,18 @@ function getEndpoints(document: UnknownRecord, servers: Array<{ url: string; tem
         safeToProbe,
         reason,
       });
-      if (!candidate && safeToProbe) {
+      if (safeToProbe) {
         const server = servers.find((entry) => entry.templated === false && entry.url.startsWith("https://"));
         const url = server ? joinEndpointUrl(server.url, path) : null;
-        if (url) candidate = { method: method.toUpperCase() as "GET" | "HEAD", path, url };
+        if (url && candidates.length < 8) {
+          candidates.push({ method: method.toUpperCase() as "GET" | "HEAD", path, url });
+        }
       }
       if (endpoints.length >= MAX_ENDPOINTS) break;
     }
     if (endpoints.length >= MAX_ENDPOINTS) break;
   }
-  return { endpoints, candidate };
+  return { endpoints, candidates };
 }
 
 function baseDetail(record: ExternalApiRecord): ExternalApiDetail {
@@ -300,6 +308,7 @@ function baseDetail(record: ExternalApiRecord): ExternalApiDetail {
       endpoints: [],
     },
     safeEndpoint: null,
+    safeEndpoints: [],
     safeEndpointNote: "Ohne sicher öffentliche, parameterfreie GET/HEAD-Angabe wird kein Prüfziel vorgeschlagen.",
   };
 }
@@ -310,13 +319,13 @@ export function parseExternalSpecification(record: ExternalApiRecord, body: stri
   detail.specification.status = parsed.status;
   if (parsed.status !== "PARSED" || !parsed.document) {
     detail.safeEndpointNote = parsed.bodyDescription ?? detail.safeEndpointNote;
-    return { detail, candidate: null as EndpointCandidate | null };
+    return { detail, candidates: [] as EndpointCandidate[] };
   }
 
   const document = parsed.document;
   const info = getInfo(document);
   const servers = getServers(document);
-  const { endpoints, candidate } = getEndpoints(document, servers);
+  const { endpoints, candidates } = getEndpoints(document, servers);
   const schemes = getSecuritySchemes(document);
   const documentSecurity = document.security;
   const auth: AuthStatus = Array.isArray(documentSecurity)
@@ -338,10 +347,10 @@ export function parseExternalSpecification(record: ExternalApiRecord, body: stri
     auth: { status: auth, schemes },
     endpoints,
   };
-  detail.safeEndpointNote = candidate
+  detail.safeEndpointNote = candidates.length > 0
     ? "Dieser Kandidat ist nur aufgrund expliziter Spezifikationsangaben ausgewählt; Bond402 hat ihn noch nicht geprüft."
     : detail.safeEndpointNote;
-  return { detail, candidate };
+  return { detail, candidates };
 }
 
 async function loadExternalDetail(record: ExternalApiRecord): Promise<ExternalApiDetail> {
@@ -352,17 +361,23 @@ async function loadExternalDetail(record: ExternalApiRecord): Promise<ExternalAp
   try {
     const response = await safeGet(record.specificationUrl, 4_000);
     const parsed = parseExternalSpecification(record, response.body, response.headers["content-type"]);
-    if (parsed.candidate) {
+    const validatedCandidates: ExternalApiDetail["safeEndpoints"] = [];
+    for (const candidate of parsed.candidates) {
       try {
-        await validatePublicUrl(parsed.candidate.url, Date.now() + 2_000);
-        parsed.detail.safeEndpoint = {
-          ...parsed.candidate,
+        await validatePublicUrl(candidate.url, Date.now() + 2_000);
+        validatedCandidates.push({
+          ...candidate,
           reason: "EXPLICITLY_PUBLIC_PARAMETER_FREE_READ",
-        };
+        });
       } catch {
-        parsed.detail.safeEndpointNote =
-          "Die Spezifikation nennt einen Kandidaten, aber Bond402 konnte sein Netzwerkziel nicht sicher als öffentlich bestätigen.";
+        // Unsafe, private, or unstable targets stay unavailable for public actions.
       }
+    }
+    parsed.detail.safeEndpoints = validatedCandidates;
+    parsed.detail.safeEndpoint = validatedCandidates[0] ?? null;
+    if (parsed.candidates.length > 0 && validatedCandidates.length === 0) {
+      parsed.detail.safeEndpointNote =
+        "Die Spezifikation nennt Kandidaten, aber Bond402 konnte kein Netzwerkziel sicher als öffentlich bestätigen.";
     }
     detailCache.set(record.id, { expiresAt: Date.now() + DETAIL_CACHE_TTL_MS, detail: parsed.detail });
     return parsed.detail;

@@ -9,11 +9,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
+export type PublicExternalDiscoveryDetailSafeEndpointReason = typeof PublicExternalDiscoveryDetailSafeEndpointReason[keyof typeof PublicExternalDiscoveryDetailSafeEndpointReason];
 
 
-export const ServiceRequestMethod = {
-  GET: 'GET',
-  HEAD: 'HEAD',
-  POST: 'POST',
+export const PublicExternalDiscoveryDetailSafeEndpointReason = {
+  EXPLICITLY_PUBLIC_PARAMETER_FREE_READ: 'EXPLICITLY_PUBLIC_PARAMETER_FREE_READ',
 } as const;

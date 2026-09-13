@@ -850,7 +850,7 @@ paths:
     get:
       operationId: getPublicService
       tags: [developer]
-       summary: Read public trust metadata or external discovery detail
+      summary: Read public trust metadata or external discovery detail
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       responses:
@@ -944,6 +944,48 @@ paths:
                 $ref: "#/components/schemas/ApiError"
         "429":
           description: Public catalog rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /public/services/{id}/external-check:
+    post:
+      operationId: postPublicExternalCheck
+      tags: [developer]
+      summary: Run one safe, read-only check for an external discovery candidate
+      description: |
+        Runs a rate-limited Bond402 check only for the exact HTTPS GET/HEAD endpoint
+        that Bond402 derived from the external OpenAPI document. No credentials are
+        sent, the result is not persisted, and the endpoint remains unverified external.
+      parameters:
+        - $ref: "#/components/parameters/ServiceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicExternalCheckBody"
+      responses:
+        "200":
+          description: Non-persisted Bond402 observation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicExternalCheckResponse"
+        "400":
+          description: Endpoint is not an approved safe candidate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: External discovery record is unknown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: External check rate limit exceeded
           content:
             application/json:
               schema:
@@ -1194,7 +1236,7 @@ components:
       required: [id, name, url, expectedStructure, responseMode, maxResponseTime]
     ServiceRequestMethod:
       type: string
-      enum: [GET, POST]
+      enum: [GET, HEAD, POST]
     ServiceResponseMode:
       type: string
       enum: [JSON, HTTP]
@@ -2300,9 +2342,26 @@ components:
                   type: string
                   enum: [EXPLICITLY_PUBLIC_PARAMETER_FREE_READ]
               required: [method, path, url, reason]
+        safeEndpoints:
+          type: array
+          items:
+            type: object
+            properties:
+              method:
+                type: string
+                enum: [GET, HEAD]
+              path:
+                type: string
+              url:
+                type: string
+                format: uri
+              reason:
+                type: string
+                enum: [EXPLICITLY_PUBLIC_PARAMETER_FREE_READ]
+            required: [method, path, url, reason]
         safeEndpointNote:
           type: string
-      required: [id, kind, name, provider, version, description, source, verification, specification, safeEndpoint, safeEndpointNote]
+      required: [id, kind, name, provider, version, description, source, verification, specification, safeEndpoint, safeEndpoints, safeEndpointNote]
     PublicDiscovery:
       type: object
       properties:
@@ -2418,6 +2477,50 @@ components:
       properties:
         actionContext:
           $ref: "#/components/schemas/ActionContext"
+    PublicExternalCheckBody:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [GET, HEAD]
+        path:
+          type: string
+        url:
+          type: string
+          format: uri
+      required: [method, path, url]
+    PublicExternalCheckResponse:
+      type: object
+      properties:
+        serviceId:
+          type: string
+        endpoint:
+          $ref: "#/components/schemas/PublicExternalCheckBody"
+        verification:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [CHECKED_EXTERNAL]
+            trustStatus:
+              type: string
+              enum: [UNVERIFIED_EXTERNAL]
+            checkedAt:
+              type: string
+              format: date-time
+            persisted:
+              type: boolean
+          required: [status, trustStatus, checkedAt, persisted]
+        check:
+          type: object
+          additionalProperties: true
+        usage:
+          type: object
+          additionalProperties: true
+        safety:
+          type: object
+          additionalProperties: true
+      required: [serviceId, endpoint, verification, check, usage, safety]
           required: [actionContext, freshness, policy, access, usage]
     DemoService:
       type: object

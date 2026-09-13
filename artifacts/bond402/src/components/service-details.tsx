@@ -107,7 +107,7 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
     expectedStructure: "",
     responseMode: "JSON" as "JSON" | "HTTP",
     visibility: "PRIVATE" as "PRIVATE" | "LISTED",
-    requestMethod: "GET" as "GET" | "POST",
+    requestMethod: "GET" as "GET" | "HEAD" | "POST",
     targetAuthType: "NONE" as "NONE" | "BEARER" | "API_KEY_HEADER",
     targetAuthHeaderName: "",
     targetAuthSecret: "",
@@ -745,9 +745,10 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                           <select
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             value={editForm.requestMethod}
-                            onChange={(e) => setEditForm((f) => ({ ...f, requestMethod: e.target.value as "GET" | "POST" }))}
+                            onChange={(e) => setEditForm((f) => ({ ...f, requestMethod: e.target.value as "GET" | "HEAD" | "POST" }))}
                           >
                             <option value="GET">GET – liest Daten</option>
+                            <option value="HEAD">HEAD – liest nur Header</option>
                             <option value="POST">POST – kann Aktionen auslösen</option>
                           </select>
                         </div>

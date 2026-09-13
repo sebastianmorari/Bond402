@@ -8,12 +8,10 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { PublicExternalCheckBodyMethod } from './publicExternalCheckBodyMethod';
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
-
-
-export const ServiceRequestMethod = {
-  GET: 'GET',
-  HEAD: 'HEAD',
-  POST: 'POST',
-} as const;
+export interface PublicExternalCheckBody {
+  method: PublicExternalCheckBodyMethod;
+  path: string;
+  url: string;
+}

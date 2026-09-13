@@ -17,6 +17,7 @@ import {
   rankExternalDiscoveryResults,
 } from "../lib/public-external-discovery";
 import { getExternalApiDetail } from "../lib/public-external-detail";
+import { runLiveVerification } from "../lib/api-verifier";
 import { loadChecks, toPublicServiceResponse } from "../lib/service-data";
 import {
   evaluatePreAction,
@@ -28,6 +29,7 @@ import { publicBaseUrl } from "../lib/public-sitemap";
 
 const router: IRouter = Router();
 const PUBLIC_RATE_LIMIT = 60;
+const PUBLIC_EXTERNAL_CHECK_RATE_LIMIT = 12;
 const validActionContexts = ["GENERAL", "READ", "WRITE", "PAYMENT", "CREDENTIAL_USE"] as const;
 
 function parseCatalogQuery(query: Request["query"]) {
@@ -58,6 +60,18 @@ async function requirePublicRateLimit(req: Request, res: Response) {
   res.set("Retry-After", String(rate.retryAfter));
   res.status(429).json({
     error: "Zu viele öffentliche Kataloganfragen. Bitte warten Sie kurz.",
+    code: "RATE_LIMITED",
+    retryAfterSeconds: rate.retryAfter,
+  });
+  return false;
+}
+
+async function requireExternalCheckRateLimit(req: Request, res: Response) {
+  const rate = await consumePublicRateLimit(req.ip || "unknown", "external-check", PUBLIC_EXTERNAL_CHECK_RATE_LIMIT);
+  if (rate.allowed) return true;
+  res.set("Retry-After", String(rate.retryAfter));
+  res.status(429).json({
+    error: "Zu viele externe Prüfungen. Bitte warten Sie kurz.",
     code: "RATE_LIMITED",
     retryAfterSeconds: rate.retryAfter,
   });
@@ -275,6 +289,82 @@ router.get("/public/services/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(toPublicServiceResponse(service, await loadChecks(service.id)));
+});
+
+router.post("/public/services/:id/external-check", async (req, res): Promise<void> => {
+  if (!(await requireExternalCheckRateLimit(req, res))) return;
+  const serviceId = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
+  const detail = await getExternalApiDetail(serviceId);
+  if (!detail) {
+    res.status(404).json({ error: "Externer Discovery-Treffer nicht gefunden.", code: "NOT_FOUND" });
+    return;
+  }
+
+  const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
+  const method = body.method;
+  const path = body.path;
+  const url = body.url;
+  if (
+    (method !== "GET" && method !== "HEAD") ||
+    typeof path !== "string" ||
+    path.length > 2_000 ||
+    typeof url !== "string" ||
+    url.length > 4_000
+  ) {
+    res.status(400).json({
+      error: "Bitte wählen Sie ein gültiges, öffentliches GET/HEAD-Prüfziel.",
+      code: "INVALID_EXTERNAL_ENDPOINT",
+    });
+    return;
+  }
+
+  const candidate = detail.safeEndpoints.find(
+    (entry) => entry.method === method && entry.path === path && entry.url === url,
+  );
+  if (!candidate) {
+    res.status(400).json({
+      error: "Dieses Prüfziel wurde von Bond402 nicht als sicherer Kandidat bestätigt.",
+      code: "UNSAFE_EXTERNAL_ENDPOINT",
+    });
+    return;
+  }
+
+  const outcome = await runLiveVerification(
+    candidate.url,
+    "",
+    3_000,
+    { requestMethod: candidate.method },
+    "HTTP",
+  );
+  res.json({
+    serviceId: detail.id,
+    endpoint: candidate,
+    verification: {
+      status: "CHECKED_EXTERNAL",
+      trustStatus: "UNVERIFIED_EXTERNAL",
+      checkedAt: new Date().toISOString(),
+      persisted: false,
+    },
+    check: {
+      id: null,
+      serviceId: detail.id,
+      checkedAt: new Date().toISOString(),
+      checkType: "LIVE",
+      ...outcome,
+    },
+    usage: {
+      countsAgainstMonthlyPlan: false,
+      rateLimit: `${PUBLIC_EXTERNAL_CHECK_RATE_LIMIT}/minute/IP`,
+    },
+    safety: {
+      requestWasReadOnly: true,
+      executedMethod: candidate.method,
+      secretsSent: false,
+      foreignCodeExecuted: false,
+      responsePersisted: false,
+      note: "Der Test bewertet nur diese einzelne, explizit ausgewählte Antwort. Keine Auffälligkeit ist keine Sicherheitsgarantie.",
+    },
+  });
 });
 
 async function handlePublicPreActionCheck(req: Request, res: Response, bodyContext?: unknown) {

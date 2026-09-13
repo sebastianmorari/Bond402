@@ -9,11 +9,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ServiceRequestMethod = typeof ServiceRequestMethod[keyof typeof ServiceRequestMethod];
+export type PublicExternalDiscoveryDetailVerificationReason = typeof PublicExternalDiscoveryDetailVerificationReason[keyof typeof PublicExternalDiscoveryDetailVerificationReason];
 
 
-export const ServiceRequestMethod = {
-  GET: 'GET',
-  HEAD: 'HEAD',
-  POST: 'POST',
+export const PublicExternalDiscoveryDetailVerificationReason = {
+  SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK: 'SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK',
 } as const;

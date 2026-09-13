@@ -19,7 +19,7 @@ const formSchema = z.object({
   expectedStructure: z.string().max(4000, "Struktur ist zu lang"),
   responseMode: z.enum(["JSON", "HTTP"]),
   maxResponseTime: z.coerce.number().min(100, "Mindestens 100ms").max(15000, "Maximal 15000ms"),
-  requestMethod: z.enum(["GET", "POST"]),
+  requestMethod: z.enum(["GET", "HEAD", "POST"]),
   targetAuthType: z.enum(["NONE", "BEARER", "API_KEY_HEADER"]),
   targetAuthHeaderName: z.string().max(128).optional(),
   targetAuthSecret: z.string().max(4096).optional(),
@@ -44,7 +44,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
       expectedStructure: "",
       responseMode: "JSON",
       maxResponseTime: 1000,
-      requestMethod: "GET",
+      requestMethod: suggestedParams.get("registerMethod") === "HEAD" ? "HEAD" : "GET",
       targetAuthType: "NONE",
       targetAuthHeaderName: "X-API-Key",
       targetAuthSecret: "",
@@ -239,6 +239,7 @@ export function ServiceRegistration({ onSuccess }: { onSuccess?: () => void }) {
                     <FormControl>
                       <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" {...field}>
                         <option value="GET">GET – liest Daten</option>
+                        <option value="HEAD">HEAD – liest nur Header</option>
                         <option value="POST">POST – kann Aktionen auslösen</option>
                       </select>
                     </FormControl>
