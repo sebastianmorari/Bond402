@@ -52,6 +52,64 @@ test("interne Treffer verhindern den externen Fallback deterministisch", () => {
   assert.equal(shouldUseExternalDiscoveryFallback("", []), false);
 });
 
+test("ein beobachteter interner Teiltreffer bleibt vor externen Metadaten priorisiert", () => {
+  const internal = rankPublicServiceResults(
+    [
+      {
+        id: "internal-weather-status",
+        name: "Wetter Status",
+        url: "https://weather-status.internal.test",
+        latestCheckAt: "2026-08-01T11:00:00.000Z",
+        trustMetrics: { sampleCount: 5 },
+      },
+    ],
+    "Wetter API",
+    referenceNow,
+  );
+  const external = rankExternalDiscoveryResults(
+    [record({ id: "external-weather", name: "Wetter API" })],
+    "Wetter API",
+    referenceNow,
+  );
+
+  assert.ok(internal[0].discovery.matchScore < 50);
+  assert.equal(internal[0].discovery.rankingFactors.observationCoverage, 1);
+  assert.equal(shouldUseExternalDiscoveryFallback("Wetter API", internal), false);
+  assert.equal(external[0].verification.status, "UNVERIFIED_EXTERNAL");
+});
+
+test("externe Ergebnisse erscheinen nur als unverifizierter Fallback ohne interne Treffer", () => {
+  const internal = rankPublicServiceResults(
+    [
+      {
+        id: "internal-weather",
+        name: "Wetter API",
+        url: "https://weather.internal.test",
+        latestCheckAt: null,
+        trustMetrics: { sampleCount: 0 },
+      },
+    ],
+    "Unbekannte API",
+    referenceNow,
+  );
+  const external = rankExternalDiscoveryResults(
+    [record({ id: "external-unknown", name: "Unbekannte API" })],
+    "Unbekannte API",
+    referenceNow,
+  );
+
+  assert.equal(shouldUseExternalDiscoveryFallback("Unbekannte API", internal), true);
+  assert.equal(external.length, 1);
+  assert.equal(external[0].kind, "EXTERNAL_DISCOVERY");
+  assert.equal(external[0].verification.status, "UNVERIFIED_EXTERNAL");
+  assert.equal(external[0].verification.reason, "SOURCE_METADATA_ONLY_NO_BOND402_CHECK");
+  assert.equal("trustScore" in external[0], false);
+  assert.equal(external[0].discovery.source, PUBLIC_EXTERNAL_DISCOVERY_SOURCE);
+  assert.equal(external[0].discovery.evidence.sourceRecordUrl, external[0].links.sourceRecord);
+  assert.equal(external[0].discovery.evidence.specificationUrl, external[0].links.specification);
+  assert.doesNotMatch(JSON.stringify(external[0]), /apiKey|authorization|token|secret/i);
+});
+
 test("externe Treffer werden nachvollziehbar und unverifiziert gerankt", () => {
   const ranked = rankExternalDiscoveryResults(
     [

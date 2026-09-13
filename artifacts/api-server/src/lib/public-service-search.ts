@@ -157,10 +157,19 @@ export function rankPublicServiceResults<T extends PublicSearchService>(
 
 export function shouldUseExternalDiscoveryFallback(
   query: string,
-  rankedResults: readonly { discovery: { matchScore: number } }[],
+  rankedResults: readonly {
+    discovery: Pick<PublicDiscoveryMetadata, "matchScore" | "rankingFactors">;
+  }[],
 ) {
+  const hasRelevantObservedMatch = rankedResults.some(
+    ({ discovery }) =>
+      discovery.rankingFactors.textRelevance > 0 &&
+      discovery.rankingFactors.observationCoverage > 0,
+  );
+
   return (
     query.trim().length > 0 &&
-    !rankedResults.some(({ discovery }) => discovery.matchScore >= INTERNAL_RELEVANCE_THRESHOLD)
+    !rankedResults.some(({ discovery }) => discovery.matchScore >= INTERNAL_RELEVANCE_THRESHOLD) &&
+    !hasRelevantObservedMatch
   );
 }
