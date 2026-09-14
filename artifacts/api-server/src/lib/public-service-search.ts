@@ -23,6 +23,7 @@ export type PublicStoredDiscoveryRecord = {
   description: string | null;
   provider: string | null;
   version: string | null;
+  sources?: readonly { label: string; url: string }[] | null;
   discoveredAt: Date | string;
   verificationStatus: string;
   trustStatus: string;
@@ -78,6 +79,7 @@ export type PublicStoredDiscoveryItem = {
       version: string | null;
       discoveredAt: string;
     };
+    sources: readonly { label: string; url: string }[];
   };
 };
 
@@ -241,6 +243,9 @@ export function rankPublicDiscoveryResults(
               ? record.discoveredAt.toISOString()
               : record.discoveredAt,
         },
+        sources: record.sources ?? [
+          { label: storedDiscoverySourceLabel(record.source), url: record.sourceUrl },
+        ],
       },
     }));
 }

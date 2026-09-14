@@ -1,9 +1,28 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  buildDirectOpenApiCandidateUrls,
   parseExternalSpecification,
   type ExternalApiDetail,
 } from "../artifacts/api-server/src/lib/public-external-detail";
+
+test("direkte OpenAPI-Erkennung bleibt auf explizite HTTPS- und typische Pfade begrenzt", () => {
+  assert.deepEqual(
+    buildDirectOpenApiCandidateUrls("https://example.test/api"),
+    [
+      "https://example.test/api/openapi.json",
+      "https://example.test/api/openapi.yaml",
+      "https://example.test/api/openapi.yml",
+      "https://example.test/api/swagger.json",
+      "https://example.test/api/swagger.yaml",
+      "https://example.test/api/api/openapi.json",
+      "https://example.test/api/api/swagger.json",
+      "https://example.test/api/v1/openapi.json",
+    ],
+  );
+  assert.deepEqual(buildDirectOpenApiCandidateUrls("http://example.test/api"), []);
+  assert.deepEqual(buildDirectOpenApiCandidateUrls("https://example.test/openapi.json?token=secret"), []);
+});
 
 function record(id: string) {
   return {

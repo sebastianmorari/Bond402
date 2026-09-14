@@ -15,6 +15,7 @@ const sourceIp = "198.51.100.241";
 const provider = "route-fixture.example";
 const version = "1.0.0";
 const serviceId = externalRecordId(provider, version);
+const query = `qz${Date.now()}`;
 const previousFetch = globalThis.fetch;
 let server: ReturnType<(typeof import("node:http"))["createServer"]>;
 
@@ -60,7 +61,7 @@ before(async () => {
           preferred: version,
           versions: {
             [version]: {
-              info: { title: "Kontrollierter Routen-Fix", description: "Testkatalog" },
+               info: { title: query, description: "Testkatalog" },
               swaggerUrl: "https://127.0.0.1/openapi.json",
               link: "https://127.0.0.1/record.json",
               openapiVer: "3.0.3",
@@ -92,7 +93,7 @@ after(async () => {
 test("Kalter externer Discovery-Fallback wartet einmalig auf den kostenlosen Katalog", async () => {
   resetApisGuruCatalogCacheForTests();
   const catalog = await request(
-    `/api/public/services?q=${encodeURIComponent("Kontrollierter Routen-Fix")}`,
+    `/api/public/services?q=${encodeURIComponent(query)}`,
   );
 
   assert.equal(catalog.response.status, 200);

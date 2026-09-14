@@ -9,6 +9,8 @@ export const PUBLIC_API_DIRECTORY_SOURCE_URL =
 export const PUBLIC_API_DIRECTORY_SCOPE = "PUBLIC_UNVERIFIED_API_DIRECTORY" as const;
 export const PUBLIC_EXTERNAL_CATALOG_SOURCE = "PUBLIC_EXTERNAL_CATALOG" as const;
 export const PUBLIC_EXTERNAL_CATALOG_SOURCE_LABEL = "Öffentliche externe Verzeichnisse" as const;
+export const PUBLIC_DIRECT_OPENAPI_SOURCE = "DIRECT_OPENAPI_URL" as const;
+export const PUBLIC_DIRECT_OPENAPI_SOURCE_LABEL = "Explizit angegebene OpenAPI-URL" as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -19,7 +21,10 @@ const MAX_EXTERNAL_SOURCE_ATTRIBUTIONS = 4;
 type UnknownRecord = Record<string, unknown>;
 
 export type ExternalApiRecord = {
-  source: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE | typeof PUBLIC_API_DIRECTORY_SOURCE;
+  source:
+    | typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE
+    | typeof PUBLIC_API_DIRECTORY_SOURCE
+    | typeof PUBLIC_DIRECT_OPENAPI_SOURCE;
   sourceLabel: string;
   sourceUrl: string;
   id: string;
@@ -33,6 +38,9 @@ export type ExternalApiRecord = {
   specificationUrl: string;
   sourceRecordUrl: string;
   sources?: readonly ExternalSourceAttribution[];
+  apiUrl?: string | null;
+  baseUrl?: string | null;
+  declaredServerUrls?: readonly string[];
 };
 
 export type ExternalSourceAttribution = {
@@ -42,19 +50,24 @@ export type ExternalSourceAttribution = {
 
 export type ExternalDiscoverySource =
   | typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE
-  | typeof PUBLIC_API_DIRECTORY_SOURCE;
+  | typeof PUBLIC_API_DIRECTORY_SOURCE
+  | typeof PUBLIC_DIRECT_OPENAPI_SOURCE;
 
 export type ExternalDiscoveryScope =
   | typeof PUBLIC_EXTERNAL_DISCOVERY_SCOPE
-  | typeof PUBLIC_API_DIRECTORY_SCOPE;
+  | typeof PUBLIC_API_DIRECTORY_SCOPE
+  | "PUBLIC_UNVERIFIED_DIRECT_OPENAPI";
 
 function sourceKey(source: ExternalDiscoverySource) {
-  return source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE ? "apis-guru" : "public-apis";
+  if (source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE) return "apis-guru";
+  if (source === PUBLIC_API_DIRECTORY_SOURCE) return "public-apis";
+  return "direct-openapi";
 }
 
 function sourceFromKey(key: string): ExternalDiscoverySource | null {
   if (key === "apis-guru") return PUBLIC_EXTERNAL_DISCOVERY_SOURCE;
   if (key === "public-apis") return PUBLIC_API_DIRECTORY_SOURCE;
+  if (key === "direct-openapi") return PUBLIC_DIRECT_OPENAPI_SOURCE;
   return null;
 }
 
@@ -294,9 +307,12 @@ export function rankExternalDiscoveryResults(
           source: record.source,
           sourceLabel: record.sourceLabel,
           sources: sourceAttributions(record),
-          scope: record.source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE
-            ? PUBLIC_EXTERNAL_DISCOVERY_SCOPE
-            : PUBLIC_API_DIRECTORY_SCOPE,
+           scope:
+             record.source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE
+               ? PUBLIC_EXTERNAL_DISCOVERY_SCOPE
+               : record.source === PUBLIC_API_DIRECTORY_SOURCE
+                 ? PUBLIC_API_DIRECTORY_SCOPE
+                 : "PUBLIC_UNVERIFIED_DIRECT_OPENAPI",
           verification: "UNVERIFIED_EXTERNAL" as const,
           matchScore: 0,
           rankingFactors: {
@@ -595,49 +611,122 @@ export function warmPublicApisCatalog(
   void loadPublicApisCatalog(fetcher, now);
 }
 
-function canonicalPublicUrl(value: string) {
+export function normalizeDiscoveryDomain(value: string) {
   try {
     const url = new URL(value);
-    url.search = "";
-    url.hash = "";
-    return `${url.origin}${url.pathname}`.replace(/\/+$/, "").toLowerCase();
+    return url.hostname.toLowerCase().replace(/\.$/, "");
   } catch {
     return null;
   }
+}
+
+export function normalizeDiscoveryBaseUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    url.search = "";
+    url.hash = "";
+    const path = url.pathname.replace(/\/+$/, "");
+    const basePath = /\/(?:openapi|swagger)(?:\.(?:json|ya?ml))?$/i.test(path)
+      ? path.slice(0, path.lastIndexOf("/")) || "/"
+      : path || "/";
+    return `${url.origin.toLowerCase()}${basePath === "/" ? "" : basePath}`;
+  } catch {
+    return null;
+  }
+}
+
+export function canonicalPublicUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    url.search = "";
+    url.hash = "";
+    return `${url.origin.toLowerCase()}${url.pathname.replace(/\/+$/, "") || "/"}`;
+  } catch {
+    return null;
+  }
+}
+
+export type ExternalDiscoveryIdentity = {
+  specificationUrl: string | null;
+  domain: string | null;
+  baseUrl: string | null;
+  serverUrls: string[];
+};
+
+export function externalDiscoveryIdentity(record: Pick<
+  ExternalApiRecord,
+  "specificationUrl" | "apiUrl" | "baseUrl" | "declaredServerUrls"
+>): ExternalDiscoveryIdentity {
+  const specificationUrl = canonicalPublicUrl(record.specificationUrl);
+  const baseUrl = normalizeDiscoveryBaseUrl(record.baseUrl ?? record.apiUrl ?? record.specificationUrl);
+  const serverUrls = (record.declaredServerUrls ?? [])
+    .map(normalizeDiscoveryBaseUrl)
+    .filter((url): url is string => Boolean(url));
+  return {
+    specificationUrl,
+    domain: normalizeDiscoveryDomain(record.apiUrl ?? record.baseUrl ?? record.specificationUrl),
+    baseUrl,
+    serverUrls: [...new Set(serverUrls)],
+  };
+}
+
+function identityKeys(identity: ExternalDiscoveryIdentity) {
+  return [
+    identity.specificationUrl && `spec:${identity.specificationUrl}`,
+    identity.baseUrl && `base:${identity.baseUrl}`,
+    identity.domain && `domain:${identity.domain}`,
+    ...identity.serverUrls.map((url) => `server:${url}`),
+  ].filter((key): key is string => Boolean(key));
 }
 
 export function dedupeExternalDiscoveryRecords(
   records: readonly ExternalApiRecord[],
   internalUrls: readonly string[] = [],
 ) {
-  const internalKeys = new Set(
-    internalUrls.map(canonicalPublicUrl).filter((url): url is string => Boolean(url)),
-  );
-  const deduped = new Map<string, ExternalApiRecord>();
+  const internalKeys = new Set<string>();
+  for (const url of internalUrls) {
+    const identity = externalDiscoveryIdentity({ specificationUrl: url });
+    for (const key of identityKeys(identity)) internalKeys.add(key);
+  }
+  const groups: Array<{ record: ExternalApiRecord; keys: Set<string> }> = [];
 
   for (const record of records) {
-    const urlKey = canonicalPublicUrl(record.specificationUrl);
-    if (!urlKey || internalKeys.has(urlKey)) continue;
-
-    const existing = deduped.get(urlKey);
-    if (!existing) {
-      deduped.set(urlKey, {
-        ...record,
-        sources: sourceAttributions(record),
+    const identity = externalDiscoveryIdentity(record);
+    const keys = identityKeys(identity);
+    if (keys.length === 0 || keys.some((key) => internalKeys.has(key))) continue;
+    const matchingGroups = groups.filter((group) => keys.some((key) => group.keys.has(key)));
+    const group = matchingGroups[0];
+    if (!group) {
+      groups.push({
+        record: { ...record, sources: sourceAttributions(record) },
+        keys: new Set(keys),
       });
       continue;
     }
-
-    deduped.set(urlKey, {
-      ...existing,
+    for (const extraGroup of matchingGroups.slice(1)) {
+      group.record = {
+        ...group.record,
+        sources: sourceAttributions({
+          ...group.record,
+          sources: [...(group.record.sources ?? []), ...(extraGroup.record.sources ?? [])],
+        }),
+      };
+      for (const key of extraGroup.keys) group.keys.add(key);
+      groups.splice(groups.indexOf(extraGroup), 1);
+    }
+    group.record = {
+      ...group.record,
       sources: sourceAttributions({
-        ...existing,
-        sources: [...(existing.sources ?? []), ...sourceAttributions(record)],
+        ...group.record,
+        sources: [...(group.record.sources ?? []), ...sourceAttributions(record)],
       }),
-    });
+    };
+    for (const key of keys) group.keys.add(key);
   }
 
-  return [...deduped.values()];
+  return groups.map(({ record }) => record);
 }
 
 export function resetApisGuruCatalogCacheForTests() {

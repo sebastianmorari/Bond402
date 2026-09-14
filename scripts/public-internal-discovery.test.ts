@@ -100,6 +100,7 @@ test("Persistenz übernimmt ausschließlich die erlaubten öffentlichen Metadate
     "provider",
     "source",
     "sourceUrl",
+    "sources",
     "trustStatus",
     "verificationStatus",
     "version",

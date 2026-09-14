@@ -7,6 +7,7 @@ import {
   PUBLIC_API_DIRECTORY_SOURCE,
   PUBLIC_API_DIRECTORY_SOURCE_URL,
   dedupeExternalDiscoveryRecords,
+  externalDiscoveryIdentity,
   getCachedApisGuruCatalog,
   loadPublicApisCatalog,
   loadApisGuruCatalog,
@@ -241,6 +242,34 @@ test("quellenübergreifende Duplikate bleiben ein Treffer und behalten alle öff
       { label: "APIs.guru OpenAPI-Verzeichnis", url: "https://api.apis.guru/v2/list.json" },
       { label: "Public APIs Community-Verzeichnis", url: PUBLIC_API_DIRECTORY_SOURCE_URL },
     ],
+  );
+});
+
+test("Deduplizierung erkennt dieselbe API auch über Domain, Base-URL und deklarierte Server", () => {
+  const primary = {
+    ...record({ id: "multi-key-primary", name: "Multi Key API" }),
+    apiUrl: "https://multi-key.example.test",
+    baseUrl: "https://multi-key.example.test/v1",
+    declaredServerUrls: ["https://multi-key.example.test/v1"],
+  };
+  const secondary = {
+    ...publicApisRecord({ name: "Multi Key API", url: "https://multi-key.example.test/v1/status" }),
+    apiUrl: "https://multi-key.example.test",
+    baseUrl: "https://multi-key.example.test/v1",
+    declaredServerUrls: ["https://multi-key.example.test/v1"],
+  };
+  const [deduped] = dedupeExternalDiscoveryRecords([primary, secondary]);
+
+  assert.equal(deduped.name, "Multi Key API");
+  assert.equal(deduped.sources.length, 2);
+  assert.deepEqual(
+    externalDiscoveryIdentity(primary),
+    {
+      specificationUrl: "https://api.apis.guru/v2/specs/multi-key-primary/1.0.0/openapi.json",
+      domain: "multi-key.example.test",
+      baseUrl: "https://multi-key.example.test/v1",
+      serverUrls: ["https://multi-key.example.test/v1"],
+    },
   );
 });
 

@@ -6,6 +6,8 @@ import {
   loadApisGuruCatalog,
   loadPublicApisCatalog,
   PUBLIC_API_DIRECTORY_SOURCE,
+  PUBLIC_DIRECT_OPENAPI_SOURCE,
+  PUBLIC_DIRECT_OPENAPI_SOURCE_LABEL,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
   type ExternalApiRecord,
   parseExternalRecordId,
@@ -28,7 +30,10 @@ export type ExternalApiDetail = {
   version: string | null;
   description: string | null;
   source: {
-    id: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE | typeof PUBLIC_API_DIRECTORY_SOURCE;
+    id:
+      | typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE
+      | typeof PUBLIC_API_DIRECTORY_SOURCE
+      | typeof PUBLIC_DIRECT_OPENAPI_SOURCE;
     label: string;
     catalogUrl: string;
     recordUrl: string;
@@ -84,6 +89,19 @@ type EndpointCandidate = {
   path: string;
   url: string;
 };
+
+const DIRECT_OPENAPI_TIMEOUT_MS = 2_500;
+const DIRECT_OPENAPI_MAX_PATHS = 8;
+const DIRECT_OPENAPI_PATHS = [
+  "/openapi.json",
+  "/openapi.yaml",
+  "/openapi.yml",
+  "/swagger.json",
+  "/swagger.yaml",
+  "/api/openapi.json",
+  "/api/swagger.json",
+  "/v1/openapi.json",
+] as const;
 
 const detailCache = new Map<string, { expiresAt: number; detail: ExternalApiDetail }>();
 
@@ -374,6 +392,101 @@ export function parseExternalSpecification(record: ExternalApiRecord, body: stri
     ? "Dieser Kandidat ist nur aufgrund expliziter Spezifikationsangaben ausgewählt; Bond402 hat ihn noch nicht geprüft."
     : detail.safeEndpointNote;
   return { detail, candidates };
+}
+
+export function buildDirectOpenApiCandidateUrls(rawUrl: string) {
+  try {
+    const input = new URL(rawUrl);
+    if (
+      input.protocol !== "https:" ||
+      input.username ||
+      input.password ||
+      input.search ||
+      input.hash
+    ) {
+      return [];
+    }
+    const explicitSpecification = /\.(?:json|ya?ml)$/i.test(input.pathname);
+    if (explicitSpecification) return [input.toString()];
+    const basePath = input.pathname.replace(/\/+$/, "");
+    const candidates = [
+      ...(basePath ? DIRECT_OPENAPI_PATHS.map((path) => `${input.origin}${basePath}${path}`) : []),
+      ...DIRECT_OPENAPI_PATHS.map((path) => `${input.origin}${path}`),
+    ];
+    return [...new Set(candidates)].slice(0, DIRECT_OPENAPI_MAX_PATHS);
+  } catch {
+    return [];
+  }
+}
+
+export async function discoverDirectOpenApi(rawUrl: string) {
+  const candidateUrls = buildDirectOpenApiCandidateUrls(rawUrl);
+  if (candidateUrls.length === 0) {
+    return {
+      status: "INVALID_INPUT" as const,
+      detail: null,
+      attemptedUrls: [],
+    };
+  }
+
+  for (const specificationUrl of candidateUrls) {
+    try {
+      await validatePublicUrl(specificationUrl, Date.now() + DIRECT_OPENAPI_TIMEOUT_MS);
+      const response = await safeGet(specificationUrl, DIRECT_OPENAPI_TIMEOUT_MS);
+      if (response.status < 200 || response.status >= 300) continue;
+      const parsedUrl = new URL(specificationUrl);
+      const record: ExternalApiRecord = {
+        id: externalRecordId(parsedUrl.hostname, specificationUrl, PUBLIC_DIRECT_OPENAPI_SOURCE),
+        source: PUBLIC_DIRECT_OPENAPI_SOURCE,
+        sourceLabel: PUBLIC_DIRECT_OPENAPI_SOURCE_LABEL,
+        sourceUrl: specificationUrl,
+        provider: parsedUrl.hostname,
+        version: null,
+        name: parsedUrl.hostname,
+        description: null,
+        categories: [],
+        openapiVersion: null,
+        updatedAt: null,
+        specificationUrl,
+        sourceRecordUrl: specificationUrl,
+        apiUrl: rawUrl,
+        baseUrl: rawUrl,
+      };
+      const parsed = parseExternalSpecification(
+        record,
+        response.body,
+        response.headers["content-type"],
+      );
+      if (parsed.detail.specification.status !== "PARSED") continue;
+      const safeEndpoints: ExternalApiDetail["safeEndpoints"] = [];
+      for (const candidate of parsed.candidates) {
+        try {
+          await validatePublicUrl(candidate.url, Date.now() + 2_000);
+          safeEndpoints.push({
+            ...candidate,
+            reason: "EXPLICITLY_PUBLIC_PARAMETER_FREE_READ",
+          });
+        } catch {
+          // A declared candidate that is not publicly reachable is not offered.
+        }
+      }
+      parsed.detail.safeEndpoints = safeEndpoints;
+      parsed.detail.safeEndpoint = safeEndpoints[0] ?? null;
+      return {
+        status: "FOUND" as const,
+        detail: parsed.detail,
+        attemptedUrls: candidateUrls,
+      };
+    } catch {
+      // Each candidate is isolated. A failed path must not prevent the bounded next path.
+    }
+  }
+
+  return {
+    status: "NOT_FOUND" as const,
+    detail: null,
+    attemptedUrls: candidateUrls,
+  };
 }
 
 async function loadExternalDetail(record: ExternalApiRecord): Promise<ExternalApiDetail> {

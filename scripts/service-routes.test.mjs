@@ -432,7 +432,7 @@ test("OWNED und THIRD_PARTY werden gespeichert, korrekt ausgegeben und sicher ge
 
   runSql(`
     UPDATE bond402_api_services
-    SET domain_verified_at = NOW(), visibility = 'LISTED'
+    SET domain_verified_at = NOW(), visibility = 'LISTED', security_status = 'VERIFIED_LOW_RISK'
     WHERE id = ${sqlLiteral(owned.data.id)} AND owner_id = ${sqlLiteral(userId)};
   `);
 

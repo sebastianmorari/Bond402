@@ -2,10 +2,29 @@ import { createHash } from "node:crypto";
 import type { Request, Response } from "express";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { apiKeysTable, apiRateLimitsTable, db } from "@workspace/db";
+import { createAgentFeedback } from "./agent-feedback";
 
 type RateBucket = { count: number; resetAt: number };
 const invalidKeyBuckets = new Map<string, RateBucket>();
 const lookupBuckets = new Map<string, RateBucket>();
+
+function authFeedback(status: "AUTH_REQUIRED" | "RATE_LIMITED", code: string, retryAfterSeconds: number | null = null) {
+  return createAgentFeedback({
+    status,
+    code,
+    summary:
+      status === "AUTH_REQUIRED"
+        ? "Für diesen Developer-Flow ist ein gültiger owner-gebundener API-Schlüssel erforderlich."
+        : "Das Developer-API-Limit wurde erreicht.",
+    nextAction:
+      status === "AUTH_REQUIRED"
+        ? "Einen gültigen API-Schlüssel im Authorization-Header verwenden; keine Secrets in Feedback oder Logs senden."
+        : "Retry-After beachten und später erneut versuchen.",
+    httpStatus: status === "AUTH_REQUIRED" ? 401 : 429,
+    retryAfterSeconds,
+    requiredAuth: true,
+  });
+}
 
 export function hashApiKey(secret: string): string {
   return createHash("sha256").update(secret, "utf8").digest("hex");
@@ -108,6 +127,7 @@ export async function authenticateApiKey(
     res.status(429).json({
       error: "Zu viele API-Anfragen. Bitte warten Sie kurz.",
       code: "RATE_LIMITED",
+      feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", 60),
     });
     return null;
   }
@@ -118,12 +138,14 @@ export async function authenticateApiKey(
       res.status(429).json({
         error: "Zu viele ungültige Anmeldeversuche. Bitte warten Sie kurz.",
         code: "RATE_LIMITED",
+        feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", 60),
       });
       return null;
     }
     res.status(401).json({
       error: "API-Schlüssel fehlt oder ist ungültig.",
       code: "INVALID_API_KEY",
+      feedback: authFeedback("AUTH_REQUIRED", "INVALID_API_KEY"),
     });
     return null;
   }
@@ -143,12 +165,14 @@ export async function authenticateApiKey(
       res.status(429).json({
         error: "Zu viele ungültige Anmeldeversuche. Bitte warten Sie kurz.",
         code: "RATE_LIMITED",
+        feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", 60),
       });
       return null;
     }
     res.status(401).json({
       error: "API-Schlüssel fehlt oder ist ungültig.",
       code: "INVALID_API_KEY",
+      feedback: authFeedback("AUTH_REQUIRED", "INVALID_API_KEY"),
     });
     return null;
   }
@@ -164,6 +188,7 @@ export async function authenticateApiKey(
     res.status(429).json({
       error: "Zu viele Anfragen. Bitte warten Sie kurz und versuchen Sie es erneut.",
       code: "RATE_LIMITED",
+      feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", Math.max(keyRate.retryAfter, ownerRate.retryAfter)),
     });
     return null;
   }

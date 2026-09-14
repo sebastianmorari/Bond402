@@ -13,6 +13,7 @@ const expectedColumns = [
   ["bond402_public_discovery_records", "description"],
   ["bond402_public_discovery_records", "provider"],
   ["bond402_public_discovery_records", "version"],
+  ["bond402_public_discovery_records", "sources"],
   ["bond402_public_discovery_records", "discovered_at"],
   ["bond402_public_discovery_records", "last_seen_at"],
   ["bond402_public_discovery_records", "verification_status"],

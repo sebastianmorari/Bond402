@@ -20,6 +20,34 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           },
         },
       },
+      "/public/discovery/openapi": {
+        post: {
+          operationId: "discoverOpenApiFromExplicitUrl",
+          description:
+            "Bounded direct OpenAPI detection for one explicit public HTTPS API/base URL. Only a small set of typical paths is tried; no credentials or guessed parameters are used.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["url"],
+                  properties: { url: { type: "string", format: "uri", maxLength: 2048 } },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Unverified directly detected OpenAPI detail",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/PublicExternalDiscoveryDetail" } } },
+            },
+            "400": { description: "Only public HTTPS URLs without credentials are accepted" },
+            "404": { description: "No OpenAPI document found on the bounded candidate paths" },
+            "429": { description: "Rate limited; inspect Retry-After" },
+          },
+        },
+      },
       "/public/services": {
         get: {
           operationId: "searchPublicServices",
@@ -157,7 +185,10 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           security: [{ Bond402ApiKey: [] }],
           parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
           responses: {
-            "200": { description: "Owner-only quota-counted pre-action decision" },
+            "200": {
+              description: "Owner-only quota-counted pre-action decision",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/PublicPreActionCheck" } } },
+            },
             "401": { description: "Developer key required" },
             "404": { description: "Owned service not found" },
             "429": { description: "Key, owner, or monthly quota limit" },
@@ -530,7 +561,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         },
         PublicDiscoverySource: {
           type: "object",
-          required: ["source", "sourceLabel", "scope", "externalSources", "mode", "fallback"],
+          required: ["source", "sourceLabel", "scope", "externalSources", "mode", "fallback", "refresh"],
           properties: {
             source: {
               type: "string",
@@ -545,6 +576,32 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             mode: { type: "string", enum: ["INTERNAL_PRIMARY", "EXTERNAL_FALLBACK"] },
             fallback: { type: "string", enum: ["NOT_USED", "USED", "UNAVAILABLE"] },
             sourceUrl: { type: "string" },
+            refresh: { $ref: "#/components/schemas/DiscoveryRefresh" },
+          },
+        },
+        DiscoveryRefresh: {
+          type: "object",
+          required: ["policy", "maxAgeSeconds", "staleRecordsExcluded", "lastAttemptAt", "status"],
+          properties: {
+            policy: { type: "string", enum: ["ON_CATALOG_READ_IF_STALE"] },
+            maxAgeSeconds: { type: "integer", minimum: 1 },
+            staleRecordsExcluded: { type: "boolean" },
+            lastAttemptAt: { type: "string", format: "date-time" },
+            status: {
+              type: "string",
+              enum: ["AVAILABLE", "STALE_RECORDS_HIDDEN", "UNAVAILABLE", "NOT_ATTEMPTED"],
+            },
+            sources: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["source", "status"],
+                properties: {
+                  source: { type: "string" },
+                  status: { type: "string", enum: ["AVAILABLE", "UNAVAILABLE"] },
+                },
+              },
+            },
           },
         },
         PublicServiceDiscovery: {
@@ -606,7 +663,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           type: "object",
            required: ["source", "sourceLabel", "sources", "scope", "verification", "matchScore", "rankingFactors", "evidence"],
           properties: {
-            source: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_APIS_DIRECTORY"] },
+             source: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_APIS_DIRECTORY", "DIRECT_OPENAPI_URL"] },
             sourceLabel: { type: "string" },
              sources: {
                type: "array",
@@ -673,8 +730,20 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               type: "object",
               required: ["source", "sourceLabel", "scope", "verification", "trustStatus", "matchScore", "rankingFactors", "evidence"],
               properties: {
-                source: { type: "string" },
+                 source: { type: "string" },
                 sourceLabel: { type: "string" },
+                 sources: {
+                   type: "array",
+                   maxItems: 4,
+                   items: {
+                     type: "object",
+                     required: ["label", "url"],
+                     properties: {
+                       label: { type: "string" },
+                       url: { type: "string", format: "uri" },
+                     },
+                   },
+                 },
                 scope: { type: "string", enum: ["PUBLIC_INTERNAL_DISCOVERY"] },
                 verification: { type: "string" },
                 trustStatus: { type: "string" },
@@ -733,7 +802,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         },
         PublicExternalDiscoveryDetail: {
           type: "object",
-          required: ["id", "kind", "name", "provider", "version", "description", "source", "verification", "specification", "safeEndpoint", "safeEndpoints", "safeEndpointNote"],
+           required: ["id", "kind", "name", "provider", "version", "description", "source", "verification", "specification", "safeEndpoint", "safeEndpoints", "safeEndpointNote", "feedback"],
           properties: {
             id: { type: "string" },
             kind: { type: "string", enum: ["EXTERNAL_DISCOVERY_DETAIL"] },
@@ -745,7 +814,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               type: "object",
               required: ["id", "label", "catalogUrl", "recordUrl", "specificationUrl"],
               properties: {
-                id: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_APIS_DIRECTORY"] },
+                 id: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_APIS_DIRECTORY", "DIRECT_OPENAPI_URL"] },
                 label: { type: "string" },
                 catalogUrl: { type: "string", format: "uri" },
                 recordUrl: { type: "string", format: "uri" },
@@ -847,11 +916,12 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               },
             },
             safeEndpointNote: { type: "string" },
+            feedback: { $ref: "#/components/schemas/AgentFeedback" },
           },
         },
         PublicServiceCatalog: {
           type: "object",
-          required: ["items", "query", "page", "pageSize", "total", "hasNextPage", "sort", "source"],
+           required: ["items", "query", "page", "pageSize", "total", "hasNextPage", "sort", "source", "feedback"],
           properties: {
             items: {
               type: "array",
@@ -870,16 +940,17 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             hasNextPage: { type: "boolean" },
             sort: { type: "string" },
             source: { $ref: "#/components/schemas/PublicDiscoverySource" },
+            feedback: { $ref: "#/components/schemas/AgentFeedback" },
           },
         },
         PublicDiscovery: {
           type: "object",
-          required: ["version", "dataSource"],
+           required: ["version", "dataSource", "feedback"],
           properties: {
             version: { type: "string" },
             dataSource: {
               type: "object",
-              required: ["source", "sourceLabel", "scope", "externalSources", "fallbackPolicy", "fallbacks", "ranking"],
+               required: ["source", "sourceLabel", "scope", "externalSources", "fallbackPolicy", "fallbacks", "ranking", "refresh"],
               properties: {
                 source: { type: "string", enum: ["BOND402_INTERNAL_CATALOG"] },
                 sourceLabel: { type: "string" },
@@ -891,13 +962,15 @@ export function getPublicOpenApiDocument(baseUrl: string) {
                   items: { $ref: "#/components/schemas/PublicDiscoverySource" },
                 },
                 ranking: { type: "array", items: { type: "string" } },
+                refresh: { $ref: "#/components/schemas/DiscoveryRefresh" },
               },
             },
+            feedback: { $ref: "#/components/schemas/AgentFeedback" },
           },
         },
         PublicPreActionCheck: {
           type: "object",
-          required: ["serviceId", "serviceName", "decision", "reasons", "actionContext", "freshness", "policy", "access", "usage"],
+           required: ["serviceId", "serviceName", "decision", "reasons", "actionContext", "freshness", "policy", "access", "usage", "feedback"],
           properties: {
             serviceId: { type: "string" },
             serviceName: { type: "string" },
@@ -933,6 +1006,57 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               properties: {
                 countsAgainstMonthlyPlan: { type: "boolean" },
                 rateLimit: { type: "string" },
+              },
+            },
+            feedback: { $ref: "#/components/schemas/AgentFeedback" },
+          },
+        },
+        AgentFeedback: {
+          type: "object",
+          required: ["contractVersion", "status", "code", "summary", "nextAction", "context", "details"],
+          properties: {
+            contractVersion: { type: "string" },
+            status: {
+              type: "string",
+              enum: [
+                "READY",
+                "CAUTION",
+                "AUTH_REQUIRED",
+                "PARAMETER_REQUIRED",
+                "PAYMENT_REQUIRED",
+                "RATE_LIMITED",
+                "PROVIDER_ERROR",
+                "UNVERIFIED_EXTERNAL",
+                "BLOCKED",
+                "NOT_FOUND",
+                "NO_MATCH",
+                "INVALID_REQUEST",
+                "INTERNAL_ERROR",
+              ],
+            },
+            code: { type: "string" },
+            summary: { type: "string" },
+            nextAction: { type: "string" },
+            context: {
+              type: "object",
+              required: ["serviceId", "serviceName", "provider", "source", "verification"],
+              properties: {
+                serviceId: { type: ["string", "null"] },
+                serviceName: { type: ["string", "null"] },
+                provider: { type: ["string", "null"] },
+                source: { type: ["string", "null"] },
+                verification: { type: ["string", "null"] },
+              },
+            },
+            details: {
+              type: "object",
+              required: ["httpStatus", "retryAfterSeconds", "requiredAuth", "requiredParameters", "actionContext"],
+              properties: {
+                httpStatus: { type: ["integer", "null"] },
+                retryAfterSeconds: { type: ["integer", "null"] },
+                requiredAuth: { type: ["boolean", "null"] },
+                requiredParameters: { type: "array", items: { type: "string" } },
+                actionContext: { type: ["string", "null"] },
               },
             },
           },

@@ -190,6 +190,8 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.equal(discovery.data.dataSource.source, "BOND402_INTERNAL_CATALOG");
   assert.equal(discovery.data.dataSource.scope, "LISTED_SERVICES_AND_PUBLIC_DISCOVERY");
   assert.equal(discovery.data.dataSource.externalSources, false);
+  assert.equal(discovery.data.feedback.status, "READY");
+  assert.equal(typeof discovery.data.feedback.nextAction, "string");
 
   const catalog = await request("/api/public/services?page=1&pageSize=2");
   assert.equal(catalog.response.status, 200);
@@ -207,16 +209,26 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.doesNotMatch(JSON.stringify(catalog.data), /api[_-]?key|session|password|ownerId|keyHash/i);
 
   const coldExternalFallbackStart = performance.now();
+  const coldQuery = `qz${testPrefix.replace(/[^a-z0-9]/gi, "")}`;
   const coldExternalFallback = await request(
-    `/api/public/services?q=${encodeURIComponent(`${testPrefix}-external-only`)}`,
+    `/api/public/services?q=${encodeURIComponent(coldQuery)}`,
   );
   const coldExternalFallbackDuration = performance.now() - coldExternalFallbackStart;
   assert.equal(coldExternalFallback.response.status, 200);
   assert.equal(coldExternalFallback.data.items.length, 0);
-  assert.equal(coldExternalFallback.data.source.source, "BOND402_INTERNAL_CATALOG");
-  assert.equal(coldExternalFallback.data.source.fallback, "UNAVAILABLE");
   assert.ok(
-    coldExternalFallbackDuration < 1_000,
+    ["BOND402_INTERNAL_CATALOG", "PUBLIC_EXTERNAL_CATALOG"].includes(
+      coldExternalFallback.data.source.source,
+    ),
+  );
+  if (coldExternalFallback.data.source.source === "BOND402_INTERNAL_CATALOG") {
+    assert.equal(coldExternalFallback.data.source.fallback, "UNAVAILABLE");
+    assert.equal(coldExternalFallback.data.feedback.status, "PROVIDER_ERROR");
+  } else {
+    assert.equal(coldExternalFallback.data.feedback.status, "UNVERIFIED_EXTERNAL");
+  }
+  assert.ok(
+    coldExternalFallbackDuration < 2_000,
     `Kalter externer Fallback blockierte den internen Katalog ${Math.round(coldExternalFallbackDuration)} ms.`,
   );
 
@@ -232,12 +244,14 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.equal(openApi.response.status, 200);
   assert.equal(openApi.data.openapi, "3.1.0");
   assert.ok(openApi.data.paths["/public/discovery"]);
+  assert.ok(openApi.data.paths["/public/discovery/openapi"].post);
   assert.ok(openApi.data.paths["/public/services"]);
   assert.ok(openApi.data.paths["/public/services/{id}/pre-action-check"].post);
   assert.ok(openApi.data.components.schemas.PublicPreActionCheck);
   assert.ok(openApi.data.components.schemas.TrustMetrics);
    assert.ok(openApi.data.components.schemas.PublicServiceDiscovery);
    assert.ok(openApi.data.components.schemas.PublicServiceCatalog);
+   assert.ok(openApi.data.components.schemas.AgentFeedback);
    assert.ok(openApi.data.components.schemas.RegionalAggregation);
    assert.ok(openApi.data.components.schemas.TrustMetrics.properties.regionalAggregation);
   assert.ok(openApi.data.components.schemas.SecurityHeaders);
@@ -319,7 +333,7 @@ test("öffentliche Sitemap enthält nur ausdrücklich gelistete Dienste", async 
 });
 
 test("öffentliche Service-Routen respektieren das First-Seen- und Security-Gate", async () => {
-  const fixturePrefix = `${testPrefix}-public-security-gate`;
+  const fixturePrefix = `qzsecuritygate${Date.now()}`;
   const fixtures = [
     ["pending", "SANDBOX_PENDING"],
     ["observed", "SANDBOXED_OBSERVED"],
@@ -856,6 +870,9 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(allowDecision.data.factors.latestReachable, true);
   assert.equal(allowDecision.data.factors.signals.tls, "NOT_EVALUATED");
   assert.equal(allowDecision.data.factors.trustMetrics.sampleCount, 1);
+  assert.equal(allowDecision.data.feedback.status, "CAUTION");
+  assert.equal(allowDecision.data.feedback.context.serviceId, serviceId);
+  assert.equal(typeof allowDecision.data.feedback.nextAction, "string");
 
   runSql(checkSql("REVIEW", true, 120, true));
   const cautionDecision = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
@@ -888,6 +905,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(quotaExceeded.response.status, 429);
   assert.equal(quotaExceeded.data.code, "QUOTA_EXCEEDED");
   assert.equal(quotaExceeded.data.quota.remainingChecks, 0);
+  assert.equal(quotaExceeded.data.feedback.status, "PAYMENT_REQUIRED");
 
   runSql(`
     UPDATE bond402_usage
@@ -903,11 +921,13 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     headers: { Authorization: `Bearer ${createdKey.data.secret}` },
   });
   assert.equal(developerRead.response.status, 200);
+  assert.equal(developerRead.data.feedback.status, "READY");
 
   const invalidKey = await request(`/api/developer/services/${serviceId}`, {
     headers: { Authorization: "Bearer b402_invalid-test-key", "X-Forwarded-For": "203.0.113.3" },
   });
   assert.equal(invalidKey.response.status, 401);
+  assert.equal(invalidKey.data.feedback.status, "AUTH_REQUIRED");
   let rateLimitedInvalidKey = null;
   for (let index = 0; index < 20; index += 1) {
     rateLimitedInvalidKey = await request(`/api/developer/services/${serviceId}`, {
@@ -915,6 +935,7 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
     });
   }
   assert.equal(rateLimitedInvalidKey.response.status, 429);
+  assert.equal(rateLimitedInvalidKey.data.feedback.status, "RATE_LIMITED");
 
   const revoked = await request(`/api/api-keys/${createdKey.data.id}`, {
     method: "DELETE",

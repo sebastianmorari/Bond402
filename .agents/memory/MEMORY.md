@@ -16,3 +16,4 @@
 - [Workspace server-test runner](workspace-server-test-runner.md) — server-side tests with extensionless TypeScript imports must run through the scripts workspace tsx runner.
 - [CI secret scan fixtures](ci-secret-scan-fixtures.md) — test-only CI env names containing PASSWORD can trigger the tracked-secret scanner; prefer isolated trust auth.
 - [Local browser E2E contract](browser-e2e-contract.md) — dashboard fixtures need every list endpoint, and CI must provide Chromium explicitly.
+- [Public discovery test isolation](public-discovery-test-isolation.md) — persisted external metadata requires unique, low-collision query tokens and exact fixture cleanup.

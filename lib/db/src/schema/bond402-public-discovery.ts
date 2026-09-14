@@ -1,4 +1,4 @@
-import { text, timestamp, pgTable, uniqueIndex } from "drizzle-orm/pg-core";
+import { jsonb, text, timestamp, pgTable, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,10 @@ export const publicDiscoveryRecordsTable = pgTable(
     description: text("description"),
     provider: text("provider"),
     version: text("version"),
+    sources: jsonb("sources")
+      .$type<Array<{ label: string; url: string }>>()
+      .notNull()
+      .default([]),
     discoveredAt: timestamp("discovered_at", { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     verificationStatus: text("verification_status").notNull().default("UNVERIFIED_EXTERNAL"),
