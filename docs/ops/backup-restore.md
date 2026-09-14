@@ -10,6 +10,10 @@ Produktionsänderung aus.
 
 - Die Anwendung nutzt PostgreSQL über `DATABASE_URL`.
 - Das lokale Schema wird mit Drizzle verwaltet.
+- Der reproduzierbare lokale Test ist
+  `pnpm run test:backup-restore`. Er erstellt temporäre Quelldatenbanken,
+  führt einen Dump und Restore in eine frische Zieldatenbank aus, prüft die
+  Integrität und startet die API gegen die restaurierte Datenbank.
 - Ein echter Produktions-Restore ist in dieser Umgebung **nicht verifiziert**.
 - `pnpm --filter @workspace/db run push` ist ausschließlich für die
   Entwicklung vorgesehen und ersetzt keine versionierte Produktionsmigration.
@@ -61,4 +65,16 @@ Produktionsänderung aus.
 
 RPO, RTO, Aufbewahrung, Verschlüsselung und Restore-Frequenz müssen vor einem
 Produktionslaunch durch den Betreiber festgelegt und nach jedem Restore-Test
-aktualisiert werden. Sie sind in dieser lokalen Umgebung nicht messbar.
+aktualisiert werden.
+
+Der letzte lokale Fixture-Lauf am 13.09.2026 maß:
+
+- Backup: 97 ms
+- Restore: 256 ms
+- Restore bis API-Readiness: 552 ms
+- Gesamtlauf: 2.718 ms
+- Lokales Fixture-RPO: 0 Sekunden zwischen Fixture-Schreibvorgang und Backup
+
+Diese Werte gelten nur für die temporäre lokale Testdatenbank und sind keine
+Produktions-RPO/RTO-Garantie. Ein Produktionsbackup, ein Produktionsrestore,
+Aufbewahrung und Wiederanlauf unter realer Last bleiben **nicht verifiziert**.

@@ -14,4 +14,5 @@ export type PublicExternalDiscoveryScope = typeof PublicExternalDiscoveryScope[k
 
 export const PublicExternalDiscoveryScope = {
   PUBLIC_UNVERIFIED_OPENAPI: 'PUBLIC_UNVERIFIED_OPENAPI',
+  PUBLIC_UNVERIFIED_API_DIRECTORY: 'PUBLIC_UNVERIFIED_API_DIRECTORY',
 } as const;

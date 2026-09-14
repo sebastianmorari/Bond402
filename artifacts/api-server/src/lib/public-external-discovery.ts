@@ -2,6 +2,13 @@ export const PUBLIC_EXTERNAL_DISCOVERY_SOURCE = "APIS_GURU_OPENAPI_DIRECTORY" as
 export const PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL = "APIs.guru OpenAPI-Verzeichnis" as const;
 export const PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL = "https://api.apis.guru/v2/list.json" as const;
 export const PUBLIC_EXTERNAL_DISCOVERY_SCOPE = "PUBLIC_UNVERIFIED_OPENAPI" as const;
+export const PUBLIC_API_DIRECTORY_SOURCE = "PUBLIC_APIS_DIRECTORY" as const;
+export const PUBLIC_API_DIRECTORY_SOURCE_LABEL = "Public APIs Community-Verzeichnis" as const;
+export const PUBLIC_API_DIRECTORY_SOURCE_URL =
+  "https://raw.githubusercontent.com/public-apis/public-apis/master/README.md" as const;
+export const PUBLIC_API_DIRECTORY_SCOPE = "PUBLIC_UNVERIFIED_API_DIRECTORY" as const;
+export const PUBLIC_EXTERNAL_CATALOG_SOURCE = "PUBLIC_EXTERNAL_CATALOG" as const;
+export const PUBLIC_EXTERNAL_CATALOG_SOURCE_LABEL = "Öffentliche externe Verzeichnisse" as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -11,9 +18,12 @@ const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
 type UnknownRecord = Record<string, unknown>;
 
 export type ExternalApiRecord = {
+  source: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE | typeof PUBLIC_API_DIRECTORY_SOURCE;
+  sourceLabel: string;
+  sourceUrl: string;
   id: string;
   provider: string;
-  version: string;
+  version: string | null;
   name: string;
   description: string | null;
   categories: string[];
@@ -23,29 +33,59 @@ export type ExternalApiRecord = {
   sourceRecordUrl: string;
 };
 
-export function externalRecordId(provider: string, version: string) {
-  return `external:apis-guru:${encodeURIComponent(provider)}:${encodeURIComponent(version)}`;
+export type ExternalDiscoverySource =
+  | typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE
+  | typeof PUBLIC_API_DIRECTORY_SOURCE;
+
+export type ExternalDiscoveryScope =
+  | typeof PUBLIC_EXTERNAL_DISCOVERY_SCOPE
+  | typeof PUBLIC_API_DIRECTORY_SCOPE;
+
+function sourceKey(source: ExternalDiscoverySource) {
+  return source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE ? "apis-guru" : "public-apis";
+}
+
+function sourceFromKey(key: string): ExternalDiscoverySource | null {
+  if (key === "apis-guru") return PUBLIC_EXTERNAL_DISCOVERY_SOURCE;
+  if (key === "public-apis") return PUBLIC_API_DIRECTORY_SOURCE;
+  return null;
+}
+
+export function externalRecordId(
+  provider: string,
+  version: string | null,
+  source: ExternalDiscoverySource = PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+) {
+  return `external:${sourceKey(source)}:${encodeURIComponent(provider)}:${encodeURIComponent(version ?? "directory")}`;
 }
 
 export function parseExternalRecordId(id: string) {
-  const prefix = "external:apis-guru:";
+  const prefix = "external:";
   if (!id.startsWith(prefix)) return null;
   const encoded = id.slice(prefix.length);
-  const separator = encoded.lastIndexOf(":");
-  if (separator <= 0 || separator === encoded.length - 1) return null;
+  const sourceSeparator = encoded.indexOf(":");
+  if (sourceSeparator <= 0) return null;
+  const source = sourceFromKey(encoded.slice(0, sourceSeparator));
+  if (!source) return null;
+  const providerAndVersion = encoded.slice(sourceSeparator + 1);
+  const separator = providerAndVersion.lastIndexOf(":");
+  if (separator <= 0 || separator === providerAndVersion.length - 1) return null;
   try {
-    const provider = decodeURIComponent(encoded.slice(0, separator));
-    const version = decodeURIComponent(encoded.slice(separator + 1));
-    return provider && version ? { provider, version } : null;
+    const provider = decodeURIComponent(providerAndVersion.slice(0, separator));
+    const encodedVersion = providerAndVersion.slice(separator + 1);
+    const version = decodeURIComponent(encodedVersion);
+    return provider && version
+      ? { source, provider, version: version === "directory" ? null : version }
+      : null;
   } catch {
     return null;
   }
 }
 
 export type ExternalDiscoveryMetadata = {
-  source: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE;
-  sourceLabel: typeof PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL;
-  scope: typeof PUBLIC_EXTERNAL_DISCOVERY_SCOPE;
+  source: ExternalDiscoverySource;
+  sourceLabel: string;
+  scope: ExternalDiscoveryScope;
   verification: "UNVERIFIED_EXTERNAL";
   matchScore: number;
   rankingFactors: {
@@ -108,7 +148,13 @@ function safeHttpsUrl(value: unknown) {
   if (!candidate) return null;
   try {
     const url = new URL(candidate);
-    return url.protocol === "https:" ? url.toString() : null;
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    if ([...url.searchParams.keys()].some((key) => /(?:api[-_]?key|auth|credential|password|secret|signature|sig|token)/i.test(key))) {
+      return null;
+    }
+    url.search = "";
+    url.hash = "";
+    return url.toString();
   } catch {
     return null;
   }
@@ -167,6 +213,7 @@ function sourceFreshness(record: ExternalApiRecord, now: number) {
 }
 
 function openApiMetadata(record: ExternalApiRecord) {
+  if (record.source !== PUBLIC_EXTERNAL_DISCOVERY_SOURCE) return 0;
   const present = [
     record.name,
     record.description,
@@ -203,9 +250,11 @@ export function rankExternalDiscoveryResults(
             100,
         ),
         discovery: {
-          source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
-          sourceLabel: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
-          scope: PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
+          source: record.source,
+          sourceLabel: record.sourceLabel,
+          scope: record.source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE
+            ? PUBLIC_EXTERNAL_DISCOVERY_SCOPE
+            : PUBLIC_API_DIRECTORY_SCOPE,
           verification: "UNVERIFIED_EXTERNAL" as const,
           matchScore: 0,
           rankingFactors: {
@@ -287,6 +336,9 @@ function parseRecord(providerKey: string, rawEntry: unknown): ExternalApiRecord 
     .slice(0, 8);
 
   return {
+    source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
+    sourceLabel: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_LABEL,
+    sourceUrl: PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL,
     id: externalRecordId(provider, preferred),
     provider,
     version: preferred,
@@ -308,6 +360,68 @@ export function parseApisGuruCatalog(payload: unknown) {
     .map(([provider, entry]) => parseRecord(provider, entry))
     .filter((record): record is ExternalApiRecord => Boolean(record))
     .sort((left, right) => compareStrings(left.id, right.id));
+}
+
+function splitMarkdownRow(line: string) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|")) return [];
+  return trimmed
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+export function parsePublicApisCatalog(payload: unknown) {
+  if (typeof payload !== "string") return [];
+  const indexStart = payload.indexOf("## Index");
+  if (indexStart < 0) return [];
+
+  let category: string | null = null;
+  const records: ExternalApiRecord[] = [];
+  for (const line of payload.slice(indexStart).split(/\r?\n/)) {
+    const heading = line.match(/^###\s+(.+?)\s*$/);
+    if (heading) {
+      category = safeString(heading[1], 120);
+      continue;
+    }
+    if (!category || !line.trim().startsWith("|")) continue;
+
+    const cells = splitMarkdownRow(line);
+    if (cells.length < 2 || /^:?-{3,}:?$/.test(cells[0])) continue;
+    const apiLink = cells[0].match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (!apiLink) continue;
+
+    const name = safeString(apiLink[1], 200);
+    const specificationUrl = safeHttpsUrl(apiLink[2]);
+    const description = safeString(cells[1], 600);
+    if (!name || !specificationUrl) continue;
+
+    let provider: string;
+    try {
+      provider = new URL(specificationUrl).hostname;
+    } catch {
+      continue;
+    }
+
+    records.push({
+      source: PUBLIC_API_DIRECTORY_SOURCE,
+      sourceLabel: PUBLIC_API_DIRECTORY_SOURCE_LABEL,
+      sourceUrl: PUBLIC_API_DIRECTORY_SOURCE_URL,
+      id: externalRecordId(specificationUrl, null, PUBLIC_API_DIRECTORY_SOURCE),
+      provider,
+      version: null,
+      name,
+      description,
+      categories: [category],
+      openapiVersion: null,
+      updatedAt: null,
+      specificationUrl,
+      sourceRecordUrl: PUBLIC_API_DIRECTORY_SOURCE_URL,
+    });
+  }
+
+  return records.sort((left, right) => compareStrings(left.id, right.id));
 }
 
 export async function loadApisGuruCatalog(
@@ -365,6 +479,64 @@ export function getCachedApisGuruCatalog(now = Date.now()): ExternalDiscoveryLoa
     : { status: "UNAVAILABLE", records: [] };
 }
 
+let cachedPublicApiRecords: { expiresAt: number; records: ExternalApiRecord[] } | null = null;
+let publicApiCatalogLoadPromise: Promise<ExternalDiscoveryLoadResult> | null = null;
+
+export async function loadPublicApisCatalog(
+  fetcher: ExternalFetch = fetch,
+  now = Date.now(),
+): Promise<ExternalDiscoveryLoadResult> {
+  if (cachedPublicApiRecords && cachedPublicApiRecords.expiresAt > now) {
+    return { status: "AVAILABLE", records: cachedPublicApiRecords.records };
+  }
+
+  if (fetcher === fetch && publicApiCatalogLoadPromise) {
+    return publicApiCatalogLoadPromise;
+  }
+
+  const load = (async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const response = await fetcher(PUBLIC_API_DIRECTORY_SOURCE_URL, {
+        method: "GET",
+        headers: { Accept: "text/plain" },
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`Public APIs returned ${response.status}.`);
+
+      const text = await response.text();
+      if (new TextEncoder().encode(text).byteLength > MAX_RESPONSE_BYTES) {
+        throw new Error("Public APIs response exceeded the safety limit.");
+      }
+      const records = parsePublicApisCatalog(text);
+      if (records.length === 0) throw new Error("Public APIs returned no usable records.");
+
+      cachedPublicApiRecords = { expiresAt: now + CACHE_TTL_MS, records };
+      return { status: "AVAILABLE" as const, records };
+    } catch {
+      return { status: "UNAVAILABLE" as const, records: [] };
+    } finally {
+      clearTimeout(timeout);
+    }
+  })();
+
+  if (fetcher !== fetch) return load;
+
+  publicApiCatalogLoadPromise = load;
+  try {
+    return await load;
+  } finally {
+    if (publicApiCatalogLoadPromise === load) publicApiCatalogLoadPromise = null;
+  }
+}
+
+export function getCachedPublicApisCatalog(now = Date.now()): ExternalDiscoveryLoadResult {
+  return cachedPublicApiRecords && cachedPublicApiRecords.expiresAt > now
+    ? { status: "AVAILABLE", records: cachedPublicApiRecords.records }
+    : { status: "UNAVAILABLE", records: [] };
+}
+
 export function warmApisGuruCatalog(
   fetcher: ExternalFetch = fetch,
   now = Date.now(),
@@ -373,7 +545,45 @@ export function warmApisGuruCatalog(
   void loadApisGuruCatalog(fetcher, now);
 }
 
+export function warmPublicApisCatalog(
+  fetcher: ExternalFetch = fetch,
+  now = Date.now(),
+): void {
+  if (fetcher === fetch && getCachedPublicApisCatalog(now).status === "AVAILABLE") return;
+  void loadPublicApisCatalog(fetcher, now);
+}
+
+function canonicalPublicUrl(value: string) {
+  try {
+    const url = new URL(value);
+    url.search = "";
+    url.hash = "";
+    return `${url.origin}${url.pathname}`.replace(/\/+$/, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+export function dedupeExternalDiscoveryRecords(
+  records: readonly ExternalApiRecord[],
+  internalUrls: readonly string[] = [],
+) {
+  const internalKeys = new Set(
+    internalUrls.map(canonicalPublicUrl).filter((url): url is string => Boolean(url)),
+  );
+  const seen = new Set<string>();
+
+  return records.filter((record) => {
+    const urlKey = canonicalPublicUrl(record.specificationUrl);
+    if (!urlKey || internalKeys.has(urlKey) || seen.has(urlKey)) return false;
+    seen.add(urlKey);
+    return true;
+  });
+}
+
 export function resetApisGuruCatalogCacheForTests() {
   cachedRecords = null;
   catalogLoadPromise = null;
+  cachedPublicApiRecords = null;
+  publicApiCatalogLoadPromise = null;
 }

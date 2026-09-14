@@ -850,17 +850,18 @@ paths:
     get:
       operationId: getPublicService
       tags: [developer]
-      summary: Read public trust metadata or external discovery detail
+      summary: Read public trust metadata or public discovery detail
       parameters:
         - $ref: "#/components/parameters/ServiceId"
       responses:
         "200":
-          description: Public service metadata
+          description: Public service or persisted discovery metadata
           content:
             application/json:
               schema:
                  oneOf:
                    - $ref: "#/components/schemas/PublicService"
+                   - $ref: "#/components/schemas/PublicInternalDiscovery"
                    - $ref: "#/components/schemas/PublicExternalDiscoveryDetail"
         "404":
           description: Service is private, unlisted, deleted, or unknown
@@ -2173,6 +2174,7 @@ components:
           items:
             oneOf:
               - $ref: "#/components/schemas/PublicServiceSearchResult"
+              - $ref: "#/components/schemas/PublicInternalDiscovery"
               - $ref: "#/components/schemas/PublicExternalService"
         query:
           type: string
@@ -2194,12 +2196,12 @@ components:
       properties:
         source:
           type: string
-          enum: [BOND402_INTERNAL_CATALOG, APIS_GURU_OPENAPI_DIRECTORY]
+          enum: [BOND402_INTERNAL_CATALOG, APIS_GURU_OPENAPI_DIRECTORY, PUBLIC_EXTERNAL_CATALOG]
         sourceLabel:
           type: string
         scope:
           type: string
-          enum: [LISTED_SERVICES_ONLY, PUBLIC_UNVERIFIED_OPENAPI]
+          enum: [LISTED_SERVICES_ONLY, LISTED_SERVICES_AND_PUBLIC_DISCOVERY, PUBLIC_UNVERIFIED_OPENAPI, PUBLIC_UNVERIFIED_API_DIRECTORY, PUBLIC_UNVERIFIED_EXTERNAL_CATALOG]
         externalSources:
           type: boolean
         mode:
@@ -2221,7 +2223,7 @@ components:
           type: string
         scope:
           type: string
-          enum: [LISTED_SERVICES_ONLY]
+          enum: [LISTED_SERVICES_ONLY, LISTED_SERVICES_AND_PUBLIC_DISCOVERY]
         matchScore:
           type: number
           minimum: 0
@@ -2267,17 +2269,100 @@ components:
             discovery:
               $ref: "#/components/schemas/PublicServiceDiscovery"
           required: [discovery]
+    PublicInternalDiscovery:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [INTERNAL_DISCOVERY]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        url:
+          type: string
+          format: uri
+        verification:
+          type: object
+          properties:
+            status:
+              type: string
+            reason:
+              type: string
+              enum: [PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK]
+          required: [status, reason]
+        trust:
+          type: object
+          properties:
+            status:
+              type: string
+          required: [status]
+        discovery:
+          type: object
+          properties:
+            source:
+              type: string
+            sourceLabel:
+              type: string
+            scope:
+              type: string
+              enum: [PUBLIC_INTERNAL_DISCOVERY]
+            verification:
+              type: string
+            trustStatus:
+              type: string
+            matchScore:
+              type: number
+              minimum: 0
+              maximum: 100
+            rankingFactors:
+              type: object
+              properties:
+                textRelevance:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                discoveryFreshness:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                publicSource:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+              required: [textRelevance, discoveryFreshness, publicSource]
+            evidence:
+              type: object
+              properties:
+                canonicalUrl:
+                  type: string
+                  format: uri
+                sourceUrl:
+                  type: string
+                  format: uri
+                provider:
+                  type: ["string", "null"]
+                version:
+                  type: ["string", "null"]
+                discoveredAt:
+                  type: string
+                  format: date-time
+              required: [canonicalUrl, sourceUrl, provider, version, discoveredAt]
+          required: [source, sourceLabel, scope, verification, trustStatus, matchScore, rankingFactors, evidence]
+      required: [id, kind, name, description, url, verification, trust, discovery]
     PublicExternalDiscovery:
       type: object
       properties:
         source:
           type: string
-          enum: [APIS_GURU_OPENAPI_DIRECTORY]
+          enum: [APIS_GURU_OPENAPI_DIRECTORY, PUBLIC_APIS_DIRECTORY]
         sourceLabel:
           type: string
         scope:
           type: string
-          enum: [PUBLIC_UNVERIFIED_OPENAPI]
+          enum: [PUBLIC_UNVERIFIED_OPENAPI, PUBLIC_UNVERIFIED_API_DIRECTORY]
         verification:
           type: string
           enum: [UNVERIFIED_EXTERNAL]
@@ -2365,7 +2450,7 @@ components:
         provider:
           type: string
         version:
-          type: string
+          type: ["string", "null"]
         description:
           type: ["string", "null"]
         source:
@@ -2373,7 +2458,7 @@ components:
           properties:
             id:
               type: string
-              enum: [APIS_GURU_OPENAPI_DIRECTORY]
+              enum: [APIS_GURU_OPENAPI_DIRECTORY, PUBLIC_APIS_DIRECTORY]
             label:
               type: string
             catalogUrl:
@@ -2566,7 +2651,7 @@ components:
               type: string
             scope:
               type: string
-              enum: [LISTED_SERVICES_ONLY]
+              enum: [LISTED_SERVICES_ONLY, LISTED_SERVICES_AND_PUBLIC_DISCOVERY]
             externalSources:
               type: boolean
               enum: [false]

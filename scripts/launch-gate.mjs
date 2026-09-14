@@ -5,6 +5,8 @@ const checks = [
   ["test:security-signals", "Security signals"],
   ["test:service-safety", "Service safety"],
   ["test:public-external-discovery", "External discovery"],
+  ["test:public-external-detail", "External detail parsing"],
+  ["test:public-external-routes", "External route safety"],
   ["test:service-registration", "Service registration"],
   ["test:response-mode", "Response modes"],
   ["test:trust-metrics", "Trust metrics"],
@@ -16,11 +18,13 @@ const checks = [
   ["test:protected-api", "Protected API"],
   ["test:auth-session", "Auth session"],
   ["test:database-resilience", "Database resilience"],
+  ["test:backup-restore", "Backup and restore"],
   ["test:secret-leak", "Secret leak scan"],
   ["test:service-routes", "Service routes"],
   ["test:public-mvp", "Public MVP"],
   ["build", "Workspace build"],
   ["test:frontend-smoke", "Frontend smoke"],
+  ["test:frontend-e2e", "Browser E2E"],
   ["test:frontend-seo", "Frontend SEO"],
 ];
 

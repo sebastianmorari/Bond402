@@ -5,6 +5,18 @@ import { test } from "node:test";
 const databaseUrl = process.env.DATABASE_URL;
 
 const expectedColumns = [
+  ["bond402_public_discovery_records", "id"],
+  ["bond402_public_discovery_records", "canonical_url"],
+  ["bond402_public_discovery_records", "source"],
+  ["bond402_public_discovery_records", "source_url"],
+  ["bond402_public_discovery_records", "name"],
+  ["bond402_public_discovery_records", "description"],
+  ["bond402_public_discovery_records", "provider"],
+  ["bond402_public_discovery_records", "version"],
+  ["bond402_public_discovery_records", "discovered_at"],
+  ["bond402_public_discovery_records", "last_seen_at"],
+  ["bond402_public_discovery_records", "verification_status"],
+  ["bond402_public_discovery_records", "trust_status"],
   ["bond402_api_services", "source_type"],
   ["bond402_api_services", "source_provider"],
   ["bond402_api_services", "source_url"],
@@ -136,4 +148,25 @@ test("Security-Schema enthält die erforderlichen Primärschlüssel und Foreign 
   ).trim();
 
   assert.equal(missingKeys, "", `Fehlende Security-Schlüssel: ${missingKeys}`);
+});
+
+test("Public-Discovery-Deduplizierung ist über eine eindeutige kanonische URL abgesichert", () => {
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL ist für den Public-Katalog-Schema-Test erforderlich.");
+  }
+
+  const sql = `
+    SELECT indexname
+    FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'bond402_public_discovery_records'
+      AND indexname = 'bond402_public_discovery_records_canonical_url_idx';
+  `;
+  const indexName = execFileSync(
+    "psql",
+    [databaseUrl, "-v", "ON_ERROR_STOP=1", "-At", "-c", sql],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  ).trim();
+
+  assert.equal(indexName, "bond402_public_discovery_records_canonical_url_idx");
 });

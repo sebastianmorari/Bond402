@@ -2304,9 +2304,9 @@ export const GetPublicDiscoveryResponse = zod.object({
   "externalSources": zod.literal(false),
   "fallbackPolicy": zod.string(),
   "fallbacks": zod.array(zod.object({
-  "source": zod.enum(['BOND402_INTERNAL_CATALOG', 'APIS_GURU_OPENAPI_DIRECTORY']),
+  "source": zod.enum(['BOND402_INTERNAL_CATALOG', 'APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_EXTERNAL_CATALOG']),
   "sourceLabel": zod.string(),
-  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI']),
+  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
   "externalSources": zod.boolean(),
   "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
   "fallback": zod.enum(['NOT_USED', 'USED', 'UNAVAILABLE']),
@@ -2570,9 +2570,9 @@ export const SearchPublicServicesResponse = zod.object({
   "reason": zod.enum(['SOURCE_METADATA_ONLY_NO_BOND402_CHECK'])
 }),
   "discovery": zod.object({
-  "source": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY']),
+  "source": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
   "sourceLabel": zod.string(),
-  "scope": zod.enum(['PUBLIC_UNVERIFIED_OPENAPI']),
+  "scope": zod.enum(['PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY']),
   "verification": zod.enum(['UNVERIFIED_EXTERNAL']),
   "matchScore": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMax),
   "rankingFactors": zod.object({
@@ -2600,9 +2600,9 @@ export const SearchPublicServicesResponse = zod.object({
   "hasNextPage": zod.boolean(),
   "sort": zod.string(),
   "source": zod.object({
-  "source": zod.enum(['BOND402_INTERNAL_CATALOG', 'APIS_GURU_OPENAPI_DIRECTORY']),
+  "source": zod.enum(['BOND402_INTERNAL_CATALOG', 'APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_EXTERNAL_CATALOG']),
   "sourceLabel": zod.string(),
-  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI']),
+  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
   "externalSources": zod.boolean(),
   "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
   "fallback": zod.enum(['NOT_USED', 'USED', 'UNAVAILABLE']),
@@ -2795,14 +2795,14 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "kind": zod.enum(['EXTERNAL_DISCOVERY_DETAIL']),
   "name": zod.string(),
   "provider": zod.string(),
-  "version": zod.string(),
+  "version": zod.string().nullable(),
   "description": zod.string().nullable(),
   "source": zod.object({
-  "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY']),
+  "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
   "label": zod.string(),
-   "catalogUrl": zod.string().url(),
-   "recordUrl": zod.string().url(),
-   "specificationUrl": zod.string().url()
+  "catalogUrl": zod.string().url(),
+  "recordUrl": zod.string().url(),
+  "specificationUrl": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -2814,7 +2814,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "title": zod.string().nullable(),
   "description": zod.string().nullable(),
   "servers": zod.array(zod.object({
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "description": zod.string().nullable(),
   "templated": zod.boolean()
 })),
@@ -2840,13 +2840,13 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "safeEndpoint": zod.union([zod.null(),zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })]),
   "safeEndpoints": zod.array(zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })),
   "safeEndpointNote": zod.string()
@@ -3083,7 +3083,7 @@ export const PostPublicExternalCheckParams = zod.object({
 export const PostPublicExternalCheckBody = zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url()
+  "url": zod.string().url()
 })
 
 export const PostPublicExternalCheckResponse = zod.object({
@@ -3091,7 +3091,7 @@ export const PostPublicExternalCheckResponse = zod.object({
   "endpoint": zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url()
+  "url": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['CHECKED_EXTERNAL']),
@@ -3119,7 +3119,7 @@ export const PostPublicExternalPreflightParams = zod.object({
 })
 
 export const PostPublicExternalPreflightBody = zod.object({
-   "serverUrl": zod.string().url().optional()
+  "serverUrl": zod.string().url().optional()
 })
 
 export const PostPublicExternalPreflightResponse = zod.object({

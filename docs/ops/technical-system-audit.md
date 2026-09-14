@@ -40,12 +40,16 @@ wurde kein Deployment ausgeführt.
   wurde. Nicht-JSON-Gatewayfehler werden als kontrollierte Fehlermeldung
   dargestellt. Die Statusseite bricht hängende Health-/Readiness-Anfragen nach
   fünf Sekunden ab.
-- **Teilweise:** Es gibt keinen echten Browser-E2E-Lauf für Login → Dashboard →
-  Suche → Import → Prüfung und keinen automatisierten Mobile-Viewport-Test.
-  Historie und Detail-Sheets sind weiterhin ungepaginiert.
-- **Tests:** Frontend-Smoke, Frontend-SEO, Service-UI, Registrierungs-Payload
-  sowie API-Integrationssuiten. Der lokale Gate-Lauf ersetzt keinen Browser-
-  und keinen externen Produktionslauf.
+- **Teilweise:** Ein lokaler Browser-E2E-Lauf mit synthetischen API-Fixtures
+  deckt Registrierung → Login → Dashboard → interne Suche → externe,
+  unverifizierte Discovery → Import → Logout sowie Desktop/Mobile ab. Ein
+  Browserlauf gegen Produktion und ein CI-Runner mit verwalteter
+  Browserinstallation sind nicht verifiziert. Historie und Detail-Sheets sind
+  weiterhin ungepaginiert.
+- **Tests:** Frontend-Smoke, lokales Browser-E2E, Frontend-SEO, Service-UI,
+  Registrierungs-Payload sowie API-Integrationssuiten. Fixtures beweisen nur
+  UI-Verträge; sie beweisen keine Mailzustellung, Datenbank-Ownership oder
+  Produktionsantworten.
 
 ## Backend, Authentifizierung und Sessions
 
@@ -80,8 +84,8 @@ wurde kein Deployment ausgeführt.
   Observations und Threat-Indikatoren haben weiterhin keine dokumentierte
   Aufbewahrungsbereinigung.
 - **Tests:** Public-catalog-schema, Service-Safety, DB-Resilienz,
-  Service-Routen und Public-MVP. Ein echter isolierter Dump/Restore-Test
-  ist offen.
+  Service-Routen, Public-MVP und der isolierte Dump/Restore-Test mit
+  temporärer Quell- und Zieldatenbank. Ein Produktionsrestore ist offen.
 
 ## Ownership und Authorization
 
@@ -112,8 +116,10 @@ wurde kein Deployment ausgeführt.
   können ausfallen oder widersprüchlich sein. Discovery ist kein
   Reputations- oder Threat-Intelligence-Dienst.
 - **Tests:** Public-external-discovery, Public-external-detail,
-  Public-service-search, Public-MVP und Katalog-Schema. Direkte
-  Routen-Integrationstests für beide externen Prüfpfade fehlen weiterhin.
+  Public-external-routes, Public-service-search, Public-MVP, Katalog-Schema
+  und lokales Browser-E2E mit externen Fixtures. Library-, Katalog- und
+  kontrollierte Routenverträge sind im lokalen Gate enthalten; ein Browser-E2E
+  gegen eine reale Umgebung fehlt.
 
 ## Sandbox, First-Seen und Quarantäne
 
@@ -154,11 +160,11 @@ wurde kein Deployment ausgeführt.
 - **Datenherkunft:** Threat-Indikatoren stammen aus Bond402-Heuristiken.
   Eine externe Reputation- oder Threat-Intel-Quelle ist nicht konfiguriert;
   Reputation bleibt `UNKNOWN`.
-- **Tests:** SSRF, Redirect-SSRF, JSON, HTTP, HTML, Binary, verdächtige
-  Payloads, False-Positive/Auth-/Rate-Limit-Fälle, TLS-/Header-Warnungen,
-  Timeout, Redirect-Loop, Secret-Nichtleck und Kompression. IPv6-
-  Spezialfälle, echte Rebinding-DNS-Antworten und Oversize-Streaming sind
-  weiterhin nicht vollständig durch Integrationstests belegt.
+- **Tests:** SSRF, IPv6- und IPv4-mapped-SSRF, Redirect-SSRF, JSON, HTTP,
+  HTML, Binary, verdächtige Payloads, False-Positive/Auth-/Rate-Limit-Fälle,
+  TLS-/Header-Warnungen, Timeout, Redirect-Loop, Secret-Nichtleck,
+  Kompression und komprimierte Oversize-Antworten. Echte
+  Rebinding-DNS-Antworten und produktionsnahe Routing-Rennen bleiben offen.
 
 ## Security Confidence, Trust und Pre-Action
 
@@ -188,6 +194,19 @@ wurde kein Deployment ausgeführt.
 - **Tests:** Security-Signals, Public-MVP, Protected API, Service-Routen und
   `test:secret-leak`. Keine Secret-Werte wurden in diesem Audit ausgegeben.
 
+## Rechtliche und Trust-Kommunikation
+
+- **Implementiert:** Impressum-, Datenschutz-, Security-, Trust- und
+  Disclaimer-Routen sind technisch auffindbar; öffentliche Discovery- und
+  Pre-Action-Antworten kennzeichnen externe Quellen als unverifiziert.
+  `ALLOW` und Trust Score werden als Risikoeinschätzung, nicht als
+  Sicherheitsgarantie beschrieben.
+- **Teilweise:** Die technische Konsistenz ist lokal geprüft, ersetzt aber
+  keine rechtliche Freigabe. Rechtlich bindende Texte, Betreiberangaben,
+  Aufbewahrung und internationale Datenverarbeitung bleiben
+  **NEEDS LEGAL REVIEW**.
+- **Tests:** Frontend-SEO, Frontend-Smoke, Public-MVP und Secret-Leak-Prüfung.
+
 ## Rate Limits, Abuse-Schutz und Limits
 
 - **Implementiert:** DB-basierte öffentliche und ownerbezogene Minuten-
@@ -216,14 +235,16 @@ wurde kein Deployment ausgeführt.
 
 - **Implementiert:** Reproduzierbares `test:launch-gate` mit Workspace-
   Typecheck, Security-, Service-, Discovery-, Auth-, DB-, Ownership-,
-  Schema-, UI-, Smoke-, SEO- und Build-Schritten. `git diff --check` ist
-  als Readiness-Schritt dokumentiert. Kostenlose Dependency-, SAST- und
-  HoundDog-Prüfungen wurden für den aktuellen lokalen Stand ohne Funde
-  ausgeführt.
-- **Teilweise:** Es gibt keine im Repository nachgewiesene CI-Pipeline mit
-  Artefaktaufbewahrung und keinen echten Browser-E2E-Runner. Dependency-
-  Audit-Ergebnisse sind eine Momentaufnahme und kein kontinuierlicher
-  Überwachungsnachweis.
+  Schema-, UI-, Smoke-, SEO-, Restore- und Build-Schritten. Eine
+  secrets-freie GitHub-Workflow-Vorlage führt das Gate und `pnpm audit`
+  gegen eine isolierte Test-PostgreSQL aus.
+- **Teilweise:** Der Workflow wurde lokal statisch geprüft, aber nicht in
+  GitHub ausgeführt. Der lokale Gate-Lauf enthält Browser-E2E mit einer
+  vorhandenen Chromium-Binary; die CI-Browserinstallation ist nicht
+  verifiziert. Es gibt keine Artefaktaufbewahrung. Der aktuelle lokale
+  Dependency-, SAST- und
+  HoundDog-Lauf ist ohne Findings; das ist eine Momentaufnahme und kein
+  kontinuierlicher Überwachungsnachweis.
 - **Bekannte Hinweise:** Der Frontend-Build meldet bestehende Sourcemap-
   Hinweise und Chunk-Größenwarnungen, beendet sich aber erfolgreich.
 
@@ -237,17 +258,21 @@ wurde kein Deployment ausgeführt.
   und hat einen lokalen Fetch-Timeout. Health-/Readiness-Requests gegen
   eine tatsächlich veröffentlichte URL wurden nicht durchgeführt.
 - **Fehlt/Risiko:** Kein nachgewiesenes externes Monitoring, Alerting,
-  SLO-/SLA-Reporting oder Log-Retention. Produktionsdeployment,
+  SLO-/SLA-Reporting oder Log-Retention; dafür liegt nur eine technische
+  Vorbereitung vor. Produktionsdeployment,
   Rollback und externe DNS-/Proxy-/Mail-Verifikation sind offen.
 
 ## Backups und Restore
 
-- **Implementiert:** Ein secrets-freies Backup-/Restore-Runbook beschreibt
-  `pg_dump`, isolierten `pg_restore`, Health-/Readiness-Prüfung und
-  anschließende Bereinigung.
-- **Fehlt:** Kein Dump wurde erstellt, kein Restore in einer isolierten
-  Testdatenbank durchgeführt, keine RPO/RTO-/Retention-Werte wurden
-  nachgewiesen. Ein Produktionsrestore wurde nicht angefasst.
+- **Implementiert:** Ein secrets-freies Backup-/Restore-Runbook und ein
+  reproduzierbarer lokaler Test führen `pg_dump`, isolierten `pg_restore`,
+  Integritätsprüfung, API-Start gegen die restaurierte Datenbank sowie
+  Bereinigung aus.
+- **Gemessen:** Letzter lokaler Fixture-Lauf: 106 ms Backup, 268 ms Restore,
+  562 ms Restore bis Readiness, 4.651 ms Gesamtlauf. Lokales Fixture-RPO:
+  0 Sekunden. Diese Werte sind keine Produktionsgarantie.
+- **Offen:** Produktionsbackup, Produktionsrestore, Aufbewahrung und
+  Betreiber-RPO/RTO wurden nicht verifiziert.
 
 ## Datenschutzrelevante Datenflüsse
 
@@ -272,10 +297,10 @@ wurde kein Deployment ausgeführt.
 - **Abhängigkeiten:** Node 24, PNPM, React/Vite, Express, Drizzle/
   PostgreSQL, Zod/Orval, Pino, Vercel-/Render-/Neon-/Resend-
   Betriebsannahmen und die externe APIs.guru-Quelle.
-- **Technische Schulden:** Keine Browser-E2E-Suite, keine echte isolierte
-  Restore-Automation, keine globale Rate-Limit-Instanz, keine Observation-
-  Retention, nicht-transaktionale Check-/Observation-Speicherung, große
-  Frontend-Bundles und fehlende Mehrregionenüberwachung.
+- **Technische Schulden:** Kein Produktions-/CI-Browser-E2E-Nachweis, keine
+  globale Rate-Limit-Instanz, keine Observation-Retention, nicht-transaktionale
+  Check-/Observation-Speicherung, große Frontend-Bundles und fehlende
+  Mehrregionenüberwachung.
 - **Single Points of Failure:** PostgreSQL, API-Prozess, Frontend-Proxy,
   externe Discovery-Quelle und der einzelne öffentliche Zielpfad eines
   Dienstes. Die App degradiert bei DB-/Discovery-/Scannerfehlern teilweise,
@@ -284,10 +309,13 @@ wurde kein Deployment ausgeführt.
 ## Gesamturteil
 
 Der lokale Code- und Teststand ist für die fünf Launch-Blöcke technisch
-deutlich belastbarer: First-Seen-Promotion, Kompressionsanalyse, explizite
-externe Zielableitung, Status-Timeouts und ein reproduzierbares lokales
-Launch-Gate sind abgesichert. Nicht abgeschlossen bzw. nicht verifiziert
-bleiben Browser-E2E, isolierter Backup/Restore, CI-/Produktions-Scans,
-Monitoring/Alerting, externe Mail-/Health-/DNS-Checks, Deployment/Rollback
-und rechtliche Freigaben. Diese Punkte werden nicht als live, produktiv oder
-rechtlich freigegeben dargestellt.
+deutlich belastbarer: First-Seen-Promotion, Kompressionsanalyse, IPv6-SSRF-
+  Regressionen, explizite externe Zielableitung, Status-Timeouts, lokaler
+  Restore-Nachweis, kontrollierte externe Routen, lokales Fixture-Browser-E2E
+  und ein vollständig bestandenes lokales Launch-Gate sind abgesichert. Nicht
+  abgeschlossen bzw. nicht verifiziert bleiben ein Produktions-/CI-Browser-
+  E2E-Lauf, echte Rebinding-Integration,
+GitHub-CI-Ausführung, Produktions-Scans, Monitoring/Alerting, externe
+Mail-/Health-/DNS-Checks, Deployment/Rollback und rechtliche Freigaben.
+Diese Punkte werden nicht als live, produktiv oder rechtlich freigegeben
+dargestellt.
