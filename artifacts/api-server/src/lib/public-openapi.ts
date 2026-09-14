@@ -604,10 +604,22 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         },
         PublicExternalDiscovery: {
           type: "object",
-          required: ["source", "sourceLabel", "scope", "verification", "matchScore", "rankingFactors", "evidence"],
+           required: ["source", "sourceLabel", "sources", "scope", "verification", "matchScore", "rankingFactors", "evidence"],
           properties: {
             source: { type: "string", enum: ["APIS_GURU_OPENAPI_DIRECTORY", "PUBLIC_APIS_DIRECTORY"] },
             sourceLabel: { type: "string" },
+             sources: {
+               type: "array",
+               maxItems: 4,
+               items: {
+                 type: "object",
+                 required: ["label", "url"],
+                 properties: {
+                   label: { type: "string" },
+                   url: { type: "string", format: "uri" },
+                 },
+               },
+             },
             scope: { type: "string", enum: ["PUBLIC_UNVERIFIED_OPENAPI", "PUBLIC_UNVERIFIED_API_DIRECTORY"] },
             verification: { type: "string", enum: ["UNVERIFIED_EXTERNAL"] },
             matchScore: { type: "number", minimum: 0, maximum: 100 },

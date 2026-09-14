@@ -1160,6 +1160,11 @@ export const PublicExternalDiscoveryVerification = {
   UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
 } as const;
 
+export type PublicExternalDiscoverySourcesItem = {
+  label: string;
+  url: string;
+};
+
 export type PublicExternalDiscoveryRankingFactors = {
   /**
      * @minimum 0
@@ -1191,6 +1196,8 @@ export type PublicExternalDiscoveryEvidence = {
 export interface PublicExternalDiscovery {
   source: PublicExternalDiscoverySource;
   sourceLabel: string;
+  /** @maxItems 4 */
+  sources: PublicExternalDiscoverySourcesItem[];
   scope: PublicExternalDiscoveryScope;
   verification: PublicExternalDiscoveryVerification;
   /**

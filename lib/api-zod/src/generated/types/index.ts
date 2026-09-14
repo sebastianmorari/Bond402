@@ -111,6 +111,7 @@ export * from './publicExternalDiscoveryEvidence';
 export * from './publicExternalDiscoveryRankingFactors';
 export * from './publicExternalDiscoveryScope';
 export * from './publicExternalDiscoverySource';
+export * from './publicExternalDiscoverySourcesItem';
 export * from './publicExternalDiscoveryVerification';
 export * from './publicExternalPreflightBody';
 export * from './publicExternalPreflightResponse';

@@ -12,11 +12,14 @@ import type { PublicExternalDiscoveryEvidence } from './publicExternalDiscoveryE
 import type { PublicExternalDiscoveryRankingFactors } from './publicExternalDiscoveryRankingFactors';
 import type { PublicExternalDiscoveryScope } from './publicExternalDiscoveryScope';
 import type { PublicExternalDiscoverySource } from './publicExternalDiscoverySource';
+import type { PublicExternalDiscoverySourcesItem } from './publicExternalDiscoverySourcesItem';
 import type { PublicExternalDiscoveryVerification } from './publicExternalDiscoveryVerification';
 
 export interface PublicExternalDiscovery {
   source: PublicExternalDiscoverySource;
   sourceLabel: string;
+  /** @maxItems 4 */
+  sources: PublicExternalDiscoverySourcesItem[];
   scope: PublicExternalDiscoveryScope;
   verification: PublicExternalDiscoveryVerification;
   /**

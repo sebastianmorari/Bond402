@@ -218,6 +218,67 @@ test("externe Treffer werden gegen interne und andere externe URLs dedupliziert"
   assert.deepEqual(deduped.map((entry) => entry.name), ["Duplicate", "Unique API"]);
 });
 
+test("quellenübergreifende Duplikate bleiben ein Treffer und behalten alle öffentlichen Quellen", () => {
+  const primary = publicApisRecord({
+    name: "Duplicate",
+    url: "https://same.example.test/api?utm_source=directory",
+  });
+  const secondary = {
+    ...record({ id: "same", name: "Duplicate from APIs.guru" }),
+    specificationUrl: "https://same.example.test/api/",
+    sourceRecordUrl: "https://api.apis.guru/v2/specs/same/1.0.0.json",
+  };
+
+  const [deduped] = dedupeExternalDiscoveryRecords([primary, secondary]);
+
+  assert.ok(deduped);
+  assert.equal(deduped.source, primary.source);
+  assert.equal(deduped.sourceLabel, primary.sourceLabel);
+  assert.equal(deduped.sourceUrl, primary.sourceUrl);
+  assert.deepEqual(
+    deduped.sources,
+    [
+      { label: "APIs.guru OpenAPI-Verzeichnis", url: "https://api.apis.guru/v2/list.json" },
+      { label: "Public APIs Community-Verzeichnis", url: PUBLIC_API_DIRECTORY_SOURCE_URL },
+    ],
+  );
+});
+
+test("Quellenliste ist begrenzt und deterministisch nach Label und URL sortiert", () => {
+  const records = Array.from({ length: 5 }, (_, index) => ({
+    ...publicApisRecord({
+      name: "Bounded Sources",
+      url: `https://same.example.test/api?source=${index}`,
+    }),
+    sourceLabel: ["Zulu", "Alpha", "Echo", "Bravo", "Charlie"][index],
+    sourceUrl: `https://directory-${index}.example.test/catalog`,
+    specificationUrl: "https://same.example.test/api/",
+  }));
+
+  const [deduped] = dedupeExternalDiscoveryRecords(records);
+
+  assert.equal(deduped.sources.length, 4);
+  assert.deepEqual(
+    deduped.sources.map((source) => source.label),
+    ["Alpha", "Bravo", "Charlie", "Echo"],
+  );
+});
+
+test("Quellenliste enthält nur öffentliche Label/URLs und keine Eingabefelder", () => {
+  const [deduped] = dedupeExternalDiscoveryRecords([
+    {
+      ...record({ id: "safe", name: "Safe API" }),
+      ownerId: "private-owner",
+      apiKey: "private-key",
+      targetAuthSecretCiphertext: "private-secret",
+    },
+  ]);
+  const [result] = rankExternalDiscoveryResults([deduped], "Safe API", referenceNow);
+
+  assert.deepEqual(Object.keys(deduped.sources[0]).sort(), ["label", "url"]);
+  assert.doesNotMatch(JSON.stringify(result), /private-owner|private-key|private-secret|authorization|token/i);
+});
+
 test("APIs.guru-Normalisierung übernimmt nur ableitbare OpenAPI-Felder", () => {
   const parsed = parseApisGuruCatalog({
     "weather.example": {

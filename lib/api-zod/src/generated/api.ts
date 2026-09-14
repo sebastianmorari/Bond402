@@ -2363,6 +2363,14 @@ export const searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMax = 10
 export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsTextRelevanceMin = 0;
 export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsTextRelevanceMax = 1;
 
+export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsDiscoveryFreshnessMin = 0;
+export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsDiscoveryFreshnessMax = 1;
+
+export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMin = 0;
+export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMax = 1;
+
+export const searchPublicServicesResponseItemsItemTwoDiscoverySourcesMax = 4;
+
 export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsSourceFreshnessMin = 0;
 export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsSourceFreshnessMax = 1;
 
@@ -2561,6 +2569,39 @@ export const SearchPublicServicesResponse = zod.object({
 })
 })),zod.object({
   "id": zod.string(),
+  "kind": zod.enum(['INTERNAL_DISCOVERY']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "url": zod.string().url(),
+  "verification": zod.object({
+  "status": zod.string(),
+  "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
+}),
+  "trust": zod.object({
+  "status": zod.string()
+}),
+  "discovery": zod.object({
+  "source": zod.string(),
+  "sourceLabel": zod.string(),
+  "scope": zod.enum(['PUBLIC_INTERNAL_DISCOVERY']),
+  "verification": zod.string(),
+  "trustStatus": zod.string(),
+  "matchScore": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMax),
+  "rankingFactors": zod.object({
+  "textRelevance": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsTextRelevanceMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsTextRelevanceMax),
+  "discoveryFreshness": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsDiscoveryFreshnessMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsDiscoveryFreshnessMax),
+  "publicSource": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMax)
+}),
+  "evidence": zod.object({
+  "canonicalUrl": zod.string().url(),
+  "sourceUrl": zod.string().url(),
+  "provider": zod.string().nullable(),
+  "version": zod.string().nullable(),
+  "discoveredAt": zod.coerce.date()
+})
+})
+}),zod.object({
+  "id": zod.string(),
   "kind": zod.enum(['EXTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
@@ -2572,6 +2613,10 @@ export const SearchPublicServicesResponse = zod.object({
   "discovery": zod.object({
   "source": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
   "sourceLabel": zod.string(),
+  "sources": zod.array(zod.object({
+  "label": zod.string(),
+  "url": zod.string().url()
+})).max(searchPublicServicesResponseItemsItemTwoDiscoverySourcesMax),
   "scope": zod.enum(['PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY']),
   "verification": zod.enum(['UNVERIFIED_EXTERNAL']),
   "matchScore": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMax),
@@ -2602,7 +2647,7 @@ export const SearchPublicServicesResponse = zod.object({
   "source": zod.object({
   "source": zod.enum(['BOND402_INTERNAL_CATALOG', 'APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_EXTERNAL_CATALOG']),
   "sourceLabel": zod.string(),
-  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
+   "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
   "externalSources": zod.boolean(),
   "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
   "fallback": zod.enum(['NOT_USED', 'USED', 'UNAVAILABLE']),
@@ -2620,6 +2665,20 @@ export const SearchPublicServicesResponse = zod.object({
 export const GetPublicServiceParams = zod.object({
   "id": zod.coerce.string().min(1)
 })
+
+export const getPublicServiceResponseTwoDiscoveryMatchScoreMin = 0;
+export const getPublicServiceResponseTwoDiscoveryMatchScoreMax = 100;
+
+export const getPublicServiceResponseTwoDiscoveryRankingFactorsTextRelevanceMin = 0;
+export const getPublicServiceResponseTwoDiscoveryRankingFactorsTextRelevanceMax = 1;
+
+export const getPublicServiceResponseTwoDiscoveryRankingFactorsDiscoveryFreshnessMin = 0;
+export const getPublicServiceResponseTwoDiscoveryRankingFactorsDiscoveryFreshnessMax = 1;
+
+export const getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMin = 0;
+export const getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMax = 1;
+
+
 
 export const GetPublicServiceResponse = zod.union([zod.object({
   "id": zod.string(),
@@ -2789,6 +2848,39 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "detail": zod.string(),
   "preActionCheck": zod.string(),
   "privilegedPreActionCheck": zod.string()
+})
+}),zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['INTERNAL_DISCOVERY']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+  "url": zod.string().url(),
+  "verification": zod.object({
+  "status": zod.string(),
+  "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
+}),
+  "trust": zod.object({
+  "status": zod.string()
+}),
+  "discovery": zod.object({
+  "source": zod.string(),
+  "sourceLabel": zod.string(),
+  "scope": zod.enum(['PUBLIC_INTERNAL_DISCOVERY']),
+  "verification": zod.string(),
+  "trustStatus": zod.string(),
+  "matchScore": zod.number().min(getPublicServiceResponseTwoDiscoveryMatchScoreMin).max(getPublicServiceResponseTwoDiscoveryMatchScoreMax),
+  "rankingFactors": zod.object({
+  "textRelevance": zod.number().min(getPublicServiceResponseTwoDiscoveryRankingFactorsTextRelevanceMin).max(getPublicServiceResponseTwoDiscoveryRankingFactorsTextRelevanceMax),
+  "discoveryFreshness": zod.number().min(getPublicServiceResponseTwoDiscoveryRankingFactorsDiscoveryFreshnessMin).max(getPublicServiceResponseTwoDiscoveryRankingFactorsDiscoveryFreshnessMax),
+  "publicSource": zod.number().min(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMin).max(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMax)
+}),
+  "evidence": zod.object({
+  "canonicalUrl": zod.string().url(),
+  "sourceUrl": zod.string().url(),
+  "provider": zod.string().nullable(),
+  "version": zod.string().nullable(),
+  "discoveredAt": zod.coerce.date()
+})
 })
 }),zod.object({
   "id": zod.string(),

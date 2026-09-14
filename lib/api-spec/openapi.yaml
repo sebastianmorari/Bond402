@@ -2360,6 +2360,18 @@ components:
           enum: [APIS_GURU_OPENAPI_DIRECTORY, PUBLIC_APIS_DIRECTORY]
         sourceLabel:
           type: string
+        sources:
+          type: array
+          maxItems: 4
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              url:
+                type: string
+                format: uri
+            required: [label, url]
         scope:
           type: string
           enum: [PUBLIC_UNVERIFIED_OPENAPI, PUBLIC_UNVERIFIED_API_DIRECTORY]
@@ -2401,7 +2413,7 @@ components:
               type: ["string", "null"]
               format: date-time
           required: [provider, sourceRecordUrl, specificationUrl, openapiVersion, updatedAt]
-      required: [source, sourceLabel, scope, verification, matchScore, rankingFactors, evidence]
+      required: [source, sourceLabel, sources, scope, verification, matchScore, rankingFactors, evidence]
     PublicExternalService:
       type: object
       properties:

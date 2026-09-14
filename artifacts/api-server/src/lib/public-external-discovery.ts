@@ -14,6 +14,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 2500;
 const MAX_RESPONSE_BYTES = 12 * 1024 * 1024;
+const MAX_EXTERNAL_SOURCE_ATTRIBUTIONS = 4;
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -31,6 +32,12 @@ export type ExternalApiRecord = {
   updatedAt: string | null;
   specificationUrl: string;
   sourceRecordUrl: string;
+  sources?: readonly ExternalSourceAttribution[];
+};
+
+export type ExternalSourceAttribution = {
+  label: string;
+  url: string;
 };
 
 export type ExternalDiscoverySource =
@@ -85,6 +92,7 @@ export function parseExternalRecordId(id: string) {
 export type ExternalDiscoveryMetadata = {
   source: ExternalDiscoverySource;
   sourceLabel: string;
+  sources: ExternalSourceAttribution[];
   scope: ExternalDiscoveryScope;
   verification: "UNVERIFIED_EXTERNAL";
   matchScore: number;
@@ -228,6 +236,39 @@ function rounded(value: number) {
   return Math.round(value * 1000) / 1000;
 }
 
+function sourceAttribution(record: ExternalApiRecord): ExternalSourceAttribution | null {
+  const label = safeString(record.sourceLabel, 200);
+  const url = safeHttpsUrl(record.sourceUrl);
+  return label && url ? { label, url } : null;
+}
+
+function compareSourceAttributions(
+  left: ExternalSourceAttribution,
+  right: ExternalSourceAttribution,
+) {
+  const labelDifference = compareStrings(normalize(left.label), normalize(right.label));
+  return labelDifference !== 0 ? labelDifference : compareStrings(left.url, right.url);
+}
+
+function sourceAttributions(record: ExternalApiRecord): ExternalSourceAttribution[] {
+  const candidates = [
+    ...(record.sources ?? []),
+    sourceAttribution(record),
+  ].filter((source): source is ExternalSourceAttribution => {
+    if (!source || typeof source.label !== "string" || typeof source.url !== "string") return false;
+    const label = safeString(source.label, 200);
+    const url = safeHttpsUrl(source.url);
+    return Boolean(label && url);
+  }).map((source) => ({
+    label: safeString(source.label, 200)!,
+    url: safeHttpsUrl(source.url)!,
+  }));
+
+  return [...new Map(candidates.map((source) => [source.url, source])).values()]
+    .sort(compareSourceAttributions)
+    .slice(0, MAX_EXTERNAL_SOURCE_ATTRIBUTIONS);
+}
+
 export function rankExternalDiscoveryResults(
   records: readonly ExternalApiRecord[],
   query: string,
@@ -252,6 +293,7 @@ export function rankExternalDiscoveryResults(
         discovery: {
           source: record.source,
           sourceLabel: record.sourceLabel,
+          sources: sourceAttributions(record),
           scope: record.source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE
             ? PUBLIC_EXTERNAL_DISCOVERY_SCOPE
             : PUBLIC_API_DIRECTORY_SCOPE,
@@ -571,14 +613,31 @@ export function dedupeExternalDiscoveryRecords(
   const internalKeys = new Set(
     internalUrls.map(canonicalPublicUrl).filter((url): url is string => Boolean(url)),
   );
-  const seen = new Set<string>();
+  const deduped = new Map<string, ExternalApiRecord>();
 
-  return records.filter((record) => {
+  for (const record of records) {
     const urlKey = canonicalPublicUrl(record.specificationUrl);
-    if (!urlKey || internalKeys.has(urlKey) || seen.has(urlKey)) return false;
-    seen.add(urlKey);
-    return true;
-  });
+    if (!urlKey || internalKeys.has(urlKey)) continue;
+
+    const existing = deduped.get(urlKey);
+    if (!existing) {
+      deduped.set(urlKey, {
+        ...record,
+        sources: sourceAttributions(record),
+      });
+      continue;
+    }
+
+    deduped.set(urlKey, {
+      ...existing,
+      sources: sourceAttributions({
+        ...existing,
+        sources: [...(existing.sources ?? []), ...sourceAttributions(record)],
+      }),
+    });
+  }
+
+  return [...deduped.values()];
 }
 
 export function resetApisGuruCatalogCacheForTests() {
