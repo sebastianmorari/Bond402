@@ -188,7 +188,7 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.equal(discovery.data.limits.publicCatalogRequestsPerMinutePerIp, 60);
   assert.match(discovery.data.endpoints.catalog, /\/api\/public\/services$/);
   assert.equal(discovery.data.dataSource.source, "BOND402_INTERNAL_CATALOG");
-  assert.equal(discovery.data.dataSource.scope, "LISTED_SERVICES_ONLY");
+  assert.equal(discovery.data.dataSource.scope, "LISTED_SERVICES_AND_PUBLIC_DISCOVERY");
   assert.equal(discovery.data.dataSource.externalSources, false);
 
   const catalog = await request("/api/public/services?page=1&pageSize=2");
@@ -197,10 +197,10 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.equal(catalog.data.pageSize, 2);
   assert.equal(
     catalog.data.sort,
-    "matchScore.desc,textRelevance.desc,observationFreshness.desc,name.asc,id.asc",
+    "matchScore.desc,textRelevance.desc,sourceFreshness.desc,name.asc,id.asc",
   );
   assert.equal(catalog.data.source.source, "BOND402_INTERNAL_CATALOG");
-  assert.equal(catalog.data.source.scope, "LISTED_SERVICES_ONLY");
+  assert.equal(catalog.data.source.scope, "LISTED_SERVICES_AND_PUBLIC_DISCOVERY");
   assert.equal(catalog.data.source.externalSources, false);
   assert.equal("ownerId" in catalog.data, false);
   assert.equal("keyHash" in catalog.data, false);

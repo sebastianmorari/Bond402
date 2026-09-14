@@ -5,7 +5,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
       title: "Bond402 Public Agent API",
       version: "0.3.0-public-beta",
       description:
-        "Öffentliche, nur lesende Discovery- und Trust-Metadaten für gelistete API-Dienste. Bond402 ist kein universelles Verzeichnis und ALLOW ist keine Sicherheitsgarantie.",
+        "Öffentliche, nur lesende Discovery- und Trust-Metadaten für gelistete API-Dienste und persistierte öffentliche Discovery-Treffer. Bond402 ist kein universelles Verzeichnis und ALLOW ist keine Sicherheitsgarantie.",
     },
     servers: [{ url: `${baseUrl}/api`, description: "Bond402 production API" }],
     paths: {
@@ -44,12 +44,13 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
           responses: {
             "200": {
-              description: "Public trust metadata or an unverified external discovery detail",
+              description: "Public trust metadata, persisted public discovery metadata, or an unverified external discovery detail",
               content: {
                 "application/json": {
                   schema: {
                     oneOf: [
                       { $ref: "#/components/schemas/PublicService" },
+                      { $ref: "#/components/schemas/PublicInternalDiscovery" },
                       { $ref: "#/components/schemas/PublicExternalDiscoveryDetail" },
                     ],
                   },
@@ -538,7 +539,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             sourceLabel: { type: "string" },
             scope: {
               type: "string",
-              enum: ["LISTED_SERVICES_ONLY", "PUBLIC_UNVERIFIED_OPENAPI", "PUBLIC_UNVERIFIED_API_DIRECTORY", "PUBLIC_UNVERIFIED_EXTERNAL_CATALOG"],
+              enum: ["LISTED_SERVICES_ONLY", "LISTED_SERVICES_AND_PUBLIC_DISCOVERY", "PUBLIC_UNVERIFIED_OPENAPI", "PUBLIC_UNVERIFIED_API_DIRECTORY", "PUBLIC_UNVERIFIED_EXTERNAL_CATALOG"],
             },
             externalSources: { type: "boolean" },
             mode: { type: "string", enum: ["INTERNAL_PRIMARY", "EXTERNAL_FALLBACK"] },
@@ -552,7 +553,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           properties: {
             source: { type: "string", enum: ["BOND402_INTERNAL_CATALOG"] },
             sourceLabel: { type: "string" },
-            scope: { type: "string", enum: ["LISTED_SERVICES_ONLY"] },
+            scope: { type: "string", enum: ["LISTED_SERVICES_ONLY", "LISTED_SERVICES_AND_PUBLIC_DISCOVERY"] },
             matchScore: { type: "number", minimum: 0, maximum: 100 },
             rankingFactors: {
               type: "object",
@@ -628,6 +629,64 @@ export function getPublicOpenApiDocument(baseUrl: string) {
                 specificationUrl: { type: "string" },
                 openapiVersion: { type: ["string", "null"] },
                 updatedAt: { type: ["string", "null"], format: "date-time" },
+              },
+            },
+          },
+        },
+        PublicInternalDiscovery: {
+          type: "object",
+          required: ["id", "kind", "name", "description", "url", "verification", "trust", "discovery"],
+          properties: {
+            id: { type: "string" },
+            kind: { type: "string", enum: ["INTERNAL_DISCOVERY"] },
+            name: { type: "string" },
+            description: { type: ["string", "null"] },
+            url: { type: "string", format: "uri" },
+            verification: {
+              type: "object",
+              required: ["status", "reason"],
+              properties: {
+                status: { type: "string" },
+                reason: { type: "string", enum: ["PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK"] },
+              },
+            },
+            trust: {
+              type: "object",
+              required: ["status"],
+              properties: {
+                status: { type: "string" },
+              },
+            },
+            discovery: {
+              type: "object",
+              required: ["source", "sourceLabel", "scope", "verification", "trustStatus", "matchScore", "rankingFactors", "evidence"],
+              properties: {
+                source: { type: "string" },
+                sourceLabel: { type: "string" },
+                scope: { type: "string", enum: ["PUBLIC_INTERNAL_DISCOVERY"] },
+                verification: { type: "string" },
+                trustStatus: { type: "string" },
+                matchScore: { type: "number", minimum: 0, maximum: 100 },
+                rankingFactors: {
+                  type: "object",
+                  required: ["textRelevance", "discoveryFreshness", "publicSource"],
+                  properties: {
+                    textRelevance: { type: "number", minimum: 0, maximum: 1 },
+                    discoveryFreshness: { type: "number", minimum: 0, maximum: 1 },
+                    publicSource: { type: "number", minimum: 0, maximum: 1 },
+                  },
+                },
+                evidence: {
+                  type: "object",
+                  required: ["canonicalUrl", "sourceUrl", "provider", "version", "discoveredAt"],
+                  properties: {
+                    canonicalUrl: { type: "string", format: "uri" },
+                    sourceUrl: { type: "string", format: "uri" },
+                    provider: { type: ["string", "null"] },
+                    version: { type: ["string", "null"] },
+                    discoveredAt: { type: "string", format: "date-time" },
+                  },
+                },
               },
             },
           },
@@ -787,6 +846,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               items: {
                 oneOf: [
                   { $ref: "#/components/schemas/PublicService" },
+                  { $ref: "#/components/schemas/PublicInternalDiscovery" },
                   { $ref: "#/components/schemas/PublicExternalService" },
                 ],
               },
@@ -811,7 +871,7 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               properties: {
                 source: { type: "string", enum: ["BOND402_INTERNAL_CATALOG"] },
                 sourceLabel: { type: "string" },
-                scope: { type: "string", enum: ["LISTED_SERVICES_ONLY"] },
+                scope: { type: "string", enum: ["LISTED_SERVICES_ONLY", "LISTED_SERVICES_AND_PUBLIC_DISCOVERY"] },
                 externalSources: { type: "boolean", enum: [false] },
                 fallbackPolicy: { type: "string" },
                 fallbacks: {

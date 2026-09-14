@@ -14,6 +14,20 @@ export type PublicSearchService = {
   };
 };
 
+export type PublicStoredDiscoveryRecord = {
+  id: string;
+  canonicalUrl: string;
+  source: string;
+  sourceUrl: string;
+  name: string;
+  description: string | null;
+  provider: string | null;
+  version: string | null;
+  discoveredAt: Date | string;
+  verificationStatus: string;
+  trustStatus: string;
+};
+
 export type PublicDiscoveryMetadata = {
   source: typeof PUBLIC_DISCOVERY_SOURCE;
   sourceLabel: typeof PUBLIC_DISCOVERY_SOURCE_LABEL;
@@ -29,6 +43,41 @@ export type PublicDiscoveryMetadata = {
     liveObservationCount: number;
     latestObservationAt: string | null;
     publicSourceUrl: string;
+  };
+};
+
+export type PublicStoredDiscoveryItem = {
+  id: string;
+  kind: "INTERNAL_DISCOVERY";
+  name: string;
+  description: string | null;
+  url: string;
+  verification: {
+    status: string;
+    reason: "PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK";
+  };
+  trust: {
+    status: string;
+  };
+  discovery: {
+    source: string;
+    sourceLabel: string;
+    scope: "PUBLIC_INTERNAL_DISCOVERY";
+    verification: string;
+    trustStatus: string;
+    matchScore: number;
+    rankingFactors: {
+      textRelevance: number;
+      discoveryFreshness: number;
+      publicSource: number;
+    };
+    evidence: {
+      canonicalUrl: string;
+      sourceUrl: string;
+      provider: string | null;
+      version: string | null;
+      discoveredAt: string;
+    };
   };
 };
 
@@ -87,6 +136,113 @@ function observationFreshness(service: PublicSearchService, now: number) {
 
 function rounded(value: number) {
   return Math.round(value * 1000) / 1000;
+}
+
+function storedDiscoveryTextRelevance(record: PublicStoredDiscoveryRecord, query: string) {
+  const normalizedQuery = normalize(query.trim());
+  if (!normalizedQuery) return 0;
+  const normalizedName = normalize(record.name);
+  const queryTokens = tokens(normalizedQuery);
+  const searchableText = normalize(
+    [record.name, record.provider, record.description].filter(Boolean).join(" "),
+  );
+  const matchingTokens = queryTokens.filter((token) => searchableText.includes(token));
+
+  if (normalizedName === normalizedQuery) return 1;
+  if (normalizedName.startsWith(normalizedQuery)) return 0.92;
+  if (queryTokens.length > 0 && queryTokens.every((token) => normalizedName.includes(token))) return 0.82;
+  if (queryTokens.length > 0 && matchingTokens.length === queryTokens.length) return 0.68;
+  if (matchingTokens.length > 0) return 0.35 * (matchingTokens.length / queryTokens.length);
+  return 0;
+}
+
+function storedDiscoveryFreshness(record: PublicStoredDiscoveryRecord, now: number) {
+  const timestamp = Date.parse(
+    record.discoveredAt instanceof Date ? record.discoveredAt.toISOString() : record.discoveredAt,
+  );
+  if (!Number.isFinite(timestamp)) return 0;
+  const age = Math.max(0, now - timestamp);
+  if (age <= DAY_MS) return 1;
+  if (age <= 7 * DAY_MS) return 0.75;
+  if (age <= 30 * DAY_MS) return 0.5;
+  if (age <= 365 * DAY_MS) return 0.25;
+  return 0.1;
+}
+
+function storedDiscoverySourceLabel(source: string) {
+  if (source === "APIS_GURU_OPENAPI_DIRECTORY") return "APIs.guru OpenAPI-Verzeichnis";
+  if (source === "PUBLIC_APIS_DIRECTORY") return "Public APIs Community-Verzeichnis";
+  return source;
+}
+
+export function rankPublicDiscoveryResults(
+  records: readonly PublicStoredDiscoveryRecord[],
+  query: string,
+  now = Date.now(),
+): PublicStoredDiscoveryItem[] {
+  return records
+    .map((record) => {
+      const textRelevanceValue = storedDiscoveryTextRelevance(record, query);
+      const discoveryFreshness = storedDiscoveryFreshness(record, now);
+      const matchScore = Math.round(
+        (textRelevanceValue * 0.75 + discoveryFreshness * 0.15 + 0.1) * 100,
+      );
+      return {
+        record,
+        textRelevanceValue,
+        discoveryFreshness,
+        matchScore,
+      };
+    })
+    .filter((result) => result.textRelevanceValue > 0 || query.trim().length === 0)
+    .sort((left, right) => {
+      const scoreDifference = right.matchScore - left.matchScore;
+      if (scoreDifference !== 0) return scoreDifference;
+      const textDifference = right.textRelevanceValue - left.textRelevanceValue;
+      if (textDifference !== 0) return textDifference;
+      const freshnessDifference = right.discoveryFreshness - left.discoveryFreshness;
+      if (freshnessDifference !== 0) return freshnessDifference;
+      const nameDifference = compareStrings(normalize(left.record.name), normalize(right.record.name));
+      if (nameDifference !== 0) return nameDifference;
+      return compareStrings(left.record.id, right.record.id);
+    })
+    .map(({ record, textRelevanceValue, discoveryFreshness, matchScore }) => ({
+      id: record.id,
+      kind: "INTERNAL_DISCOVERY" as const,
+      name: record.name,
+      description: record.description,
+      url: record.canonicalUrl,
+      verification: {
+        status: record.verificationStatus,
+        reason: "PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK" as const,
+      },
+      trust: {
+        status: record.trustStatus,
+      },
+      discovery: {
+        source: record.source,
+        sourceLabel: storedDiscoverySourceLabel(record.source),
+        scope: "PUBLIC_INTERNAL_DISCOVERY" as const,
+        verification: record.verificationStatus,
+        trustStatus: record.trustStatus,
+        matchScore,
+        rankingFactors: {
+          textRelevance: rounded(textRelevanceValue),
+          discoveryFreshness: rounded(discoveryFreshness),
+          publicSource: 1,
+        },
+        evidence: {
+          canonicalUrl: record.canonicalUrl,
+          sourceUrl: record.sourceUrl,
+          provider: record.provider,
+          version: record.version,
+          discoveredAt:
+            record.discoveredAt instanceof Date
+              ? record.discoveredAt.toISOString()
+              : record.discoveredAt,
+        },
+      },
+    }));
 }
 
 export function rankPublicServiceResults<T extends PublicSearchService>(
@@ -160,16 +316,23 @@ export function shouldUseExternalDiscoveryFallback(
   rankedResults: readonly {
     discovery: Pick<PublicDiscoveryMetadata, "matchScore" | "rankingFactors">;
   }[],
+  persistedDiscoveryResults: readonly {
+    discovery: { rankingFactors: { textRelevance: number } };
+  }[] = [],
 ) {
   const hasRelevantObservedMatch = rankedResults.some(
     ({ discovery }) =>
       discovery.rankingFactors.textRelevance > 0 &&
       discovery.rankingFactors.observationCoverage > 0,
   );
+  const hasRelevantPersistedMatch = persistedDiscoveryResults.some(
+    ({ discovery }) => discovery.rankingFactors.textRelevance > 0,
+  );
 
   return (
     query.trim().length > 0 &&
     !rankedResults.some(({ discovery }) => discovery.matchScore >= INTERNAL_RELEVANCE_THRESHOLD) &&
-    !hasRelevantObservedMatch
+    !hasRelevantObservedMatch &&
+    !hasRelevantPersistedMatch
   );
 }

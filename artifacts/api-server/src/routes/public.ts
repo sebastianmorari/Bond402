@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { and, count, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import { apiServicesTable, db } from "@workspace/db";
 import { consumePublicRateLimit } from "../lib/api-key-auth";
 import {
@@ -7,7 +7,14 @@ import {
   PUBLIC_DISCOVERY_SOURCE_LABEL,
   shouldUseExternalDiscoveryFallback,
   rankPublicServiceResults,
+  rankPublicDiscoveryResults,
 } from "../lib/public-service-search";
+import {
+  loadPublicDiscoveryRecord,
+  loadPublicDiscoveryRecords,
+  publicDiscoveryCandidateFromExternalRecord,
+  upsertPublicDiscoveryRecords,
+} from "../lib/public-internal-discovery";
 import {
   PUBLIC_EXTERNAL_DISCOVERY_SCOPE,
   PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
@@ -102,7 +109,7 @@ function internalCatalogSource(
   return {
     source: PUBLIC_DISCOVERY_SOURCE,
     sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
-    scope: "LISTED_SERVICES_ONLY" as const,
+    scope: "LISTED_SERVICES_AND_PUBLIC_DISCOVERY" as const,
     externalSources: false as const,
     mode: "INTERNAL_PRIMARY" as const,
     fallback,
@@ -156,10 +163,10 @@ router.get("/public/discovery", async (req, res): Promise<void> => {
     dataSource: {
       source: PUBLIC_DISCOVERY_SOURCE,
       sourceLabel: PUBLIC_DISCOVERY_SOURCE_LABEL,
-      scope: "LISTED_SERVICES_ONLY",
+       scope: "LISTED_SERVICES_AND_PUBLIC_DISCOVERY",
       externalSources: false,
       fallbackPolicy:
-        "Interne gelistete Bond402-Treffer zuerst; öffentliche API-/OpenAPI-Quellen nur bei fehlender ausreichender interner Relevanz.",
+        "Interne gelistete und persistierte öffentliche Discovery-Treffer zuerst; öffentliche API-/OpenAPI-Quellen nur bei fehlender ausreichender interner Relevanz.",
       fallbacks: [
         {
           source: PUBLIC_EXTERNAL_DISCOVERY_SOURCE,
@@ -229,30 +236,57 @@ router.get("/public/services", async (req, res): Promise<void> => {
     ...(q ? [or(ilike(apiServicesTable.name, `%${q}%`), ilike(apiServicesTable.url, `%${q}%`))] : []),
   ];
   const where = and(...conditions);
-  const [{ total }] = await db
-    .select({ total: count() })
-    .from(apiServicesTable)
-    .where(where);
   const services = await db
     .select()
     .from(apiServicesTable)
     .where(where);
+  const persistedDiscoveryRecords = await loadPublicDiscoveryRecords();
   const publicServices = await Promise.all(
     services.map(async (service) => toPublicServiceResponse(service, await loadChecks(service.id))),
   );
   const rankedServices = rankPublicServiceResults(publicServices, q);
+  const rankedDiscovery = rankPublicDiscoveryResults(persistedDiscoveryRecords, q);
   const publicServicesById = new Map(publicServices.map((service) => [service.id, service]));
-  const hasAdequateInternalMatch = !shouldUseExternalDiscoveryFallback(q, rankedServices);
+  const rankedInternalItems = [
+    ...rankedServices.map(({ id, discovery }) => {
+      const service = publicServicesById.get(id);
+      if (!service) throw new Error("Public search result lost its listed service.");
+      return {
+        id,
+        item: { ...service, discovery },
+        matchScore: discovery.matchScore,
+        textRelevance: discovery.rankingFactors.textRelevance,
+        freshness: discovery.rankingFactors.observationFreshness,
+      };
+    }),
+    ...rankedDiscovery.map((item) => ({
+      id: item.id,
+      item,
+      matchScore: item.discovery.matchScore,
+      textRelevance: item.discovery.rankingFactors.textRelevance,
+      freshness: item.discovery.rankingFactors.discoveryFreshness,
+    })),
+  ]
+    .sort((left, right) => {
+      const scoreDifference = right.matchScore - left.matchScore;
+      if (scoreDifference !== 0) return scoreDifference;
+      const textDifference = right.textRelevance - left.textRelevance;
+      if (textDifference !== 0) return textDifference;
+      const freshnessDifference = right.freshness - left.freshness;
+      if (freshnessDifference !== 0) return freshnessDifference;
+      return left.id.localeCompare(right.id);
+    });
+  const hasAdequateInternalMatch = !shouldUseExternalDiscoveryFallback(
+    q,
+    rankedServices,
+    rankedDiscovery,
+  );
 
   if (hasAdequateInternalMatch) {
-    const items = rankedServices
+    const items = rankedInternalItems
       .slice((page - 1) * pageSize, page * pageSize)
-      .map(({ id, discovery }) => {
-        const service = publicServicesById.get(id);
-        if (!service) throw new Error("Public search result lost its listed service.");
-        return { ...service, discovery };
-      });
-    const totalCount = Number(total);
+      .map(({ item }) => item);
+    const totalCount = rankedInternalItems.length;
     res.json({
       items,
       query: q,
@@ -260,7 +294,7 @@ router.get("/public/services", async (req, res): Promise<void> => {
       pageSize,
       total: totalCount,
       hasNextPage: page * pageSize < totalCount,
-      sort: "matchScore.desc,textRelevance.desc,observationFreshness.desc,name.asc,id.asc",
+      sort: "matchScore.desc,textRelevance.desc,sourceFreshness.desc,name.asc,id.asc",
       source: internalCatalogSource(),
     });
     return;
@@ -276,7 +310,16 @@ router.get("/public/services", async (req, res): Promise<void> => {
   }
   const externalRecords = dedupeExternalDiscoveryRecords(
     [...apisGuruCatalog.records, ...publicApisCatalog.records],
-    publicServices.map((service) => service.url),
+    [
+      ...publicServices.map((service) => service.url),
+      ...persistedDiscoveryRecords.map((record) => record.canonicalUrl),
+    ],
+  );
+  await upsertPublicDiscoveryRecords(
+    externalRecords.map(publicDiscoveryCandidateFromExternalRecord).filter(
+      (candidate): candidate is NonNullable<ReturnType<typeof publicDiscoveryCandidateFromExternalRecord>> =>
+        Boolean(candidate),
+    ),
   );
   const externalResults = rankExternalDiscoveryResults(externalRecords, q);
   if (apisGuruCatalog.status === "AVAILABLE" || publicApisCatalog.status === "AVAILABLE") {
@@ -310,6 +353,12 @@ router.get("/public/services", async (req, res): Promise<void> => {
 router.get("/public/services/:id", async (req, res): Promise<void> => {
   if (!(await requirePublicRateLimit(req, res))) return;
   const serviceId = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
+  const persistedDiscovery = await loadPublicDiscoveryRecord(serviceId);
+  if (persistedDiscovery) {
+    const [item] = rankPublicDiscoveryResults([persistedDiscovery], "");
+    res.json(item);
+    return;
+  }
   const externalDetail = await getExternalApiDetail(serviceId);
   if (externalDetail) {
     res.json(externalDetail);

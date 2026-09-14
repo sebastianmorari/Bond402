@@ -30,6 +30,15 @@ internal evidence.
 **How to apply:** Keep the fallback decision aware of both text relevance and observation
 coverage. Do not turn external match scores into trust, security, or availability claims.
 
+Persisted public discovery rows are keyed by canonical HTTPS URL and contain only public metadata;
+they remain `UNVERIFIED_EXTERNAL` with unknown trust and never enter owner, auth, or live-check paths.
+
+**Why:** Discovery improves recall without changing the operator-owned service registry or making
+third-party catalog data look like Bond402 verification.
+
+**How to apply:** Deduplicate by canonical URL, derive stable IDs from that URL, preserve source
+provenance, and keep discovery results separate from observed-service trust signals.
+
 Public customer messaging should lead with discovery, trust metadata, live checks, and
 pre-action signals. Public-Beta plans are manually activated for pilots; there is no fixed
 beta end date, and x402/Bond/TEST-CREDITS/TEST-BONDS/reputation remain clearly labeled
