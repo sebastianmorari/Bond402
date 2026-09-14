@@ -29,9 +29,9 @@ import {
   dedupeExternalDiscoveryRecords,
   getCachedPublicApisCatalog,
   getCachedApisGuruCatalog,
-  warmPublicApisCatalog,
+  loadPublicApisCatalog,
+  loadApisGuruCatalog,
   rankExternalDiscoveryResults,
-  warmApisGuruCatalog,
 } from "../lib/public-external-discovery";
 import { getExternalApiDetail } from "../lib/public-external-detail";
 import { runLiveVerification } from "../lib/api-verifier";
@@ -300,14 +300,16 @@ router.get("/public/services", async (req, res): Promise<void> => {
     return;
   }
 
-  const apisGuruCatalog = getCachedApisGuruCatalog();
-  const publicApisCatalog = getCachedPublicApisCatalog();
-  if (apisGuruCatalog.status === "UNAVAILABLE") {
-    warmApisGuruCatalog();
-  }
-  if (publicApisCatalog.status === "UNAVAILABLE") {
-    warmPublicApisCatalog();
-  }
+  const cachedApisGuruCatalog = getCachedApisGuruCatalog();
+  const cachedPublicApisCatalog = getCachedPublicApisCatalog();
+  const [apisGuruCatalog, publicApisCatalog] = await Promise.all([
+    cachedApisGuruCatalog.status === "AVAILABLE"
+      ? cachedApisGuruCatalog
+      : loadApisGuruCatalog(),
+    cachedPublicApisCatalog.status === "AVAILABLE"
+      ? cachedPublicApisCatalog
+      : loadPublicApisCatalog(),
+  ]);
   const externalRecords = dedupeExternalDiscoveryRecords(
     [...apisGuruCatalog.records, ...publicApisCatalog.records],
     [

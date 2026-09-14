@@ -48,6 +48,7 @@ before(async () => {
   }
 
   runSql(`DELETE FROM bond402_api_rate_limits WHERE identity = ${sqlLiteral(`public:${sourceIp}`)};`);
+  runSql(`DELETE FROM bond402_public_discovery_records WHERE canonical_url = ${sqlLiteral("https://127.0.0.1/openapi.json")};`);
   resetApisGuruCatalogCacheForTests();
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     if (String(input) !== PUBLIC_EXTERNAL_DISCOVERY_SOURCE_URL) {
@@ -84,7 +85,23 @@ after(async () => {
     server.close();
     await once(server, "close").catch(() => {});
   }
+  runSql(`DELETE FROM bond402_public_discovery_records WHERE canonical_url = ${sqlLiteral("https://127.0.0.1/openapi.json")};`);
   runSql(`DELETE FROM bond402_api_rate_limits WHERE identity = ${sqlLiteral(`public:${sourceIp}`)};`);
+});
+
+test("Kalter externer Discovery-Fallback wartet einmalig auf den kostenlosen Katalog", async () => {
+  resetApisGuruCatalogCacheForTests();
+  const catalog = await request(
+    `/api/public/services?q=${encodeURIComponent("Kontrollierter Routen-Fix")}`,
+  );
+
+  assert.equal(catalog.response.status, 200);
+  assert.equal(catalog.data.source.mode, "EXTERNAL_FALLBACK");
+  assert.equal(catalog.data.source.fallback, "USED");
+  assert.equal(catalog.data.items.length, 1);
+  assert.equal(catalog.data.items[0].kind, "EXTERNAL_DISCOVERY");
+  assert.equal(catalog.data.items[0].verification.status, "UNVERIFIED_EXTERNAL");
+  assert.equal(catalog.data.items[0].verification.reason, "SOURCE_METADATA_ONLY_NO_BOND402_CHECK");
 });
 
 test("Externaler Preflight bleibt bei blockiertem Loopback-Spezifikationsziel passiv", async () => {

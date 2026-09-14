@@ -9,8 +9,8 @@ External OpenAPI discovery is passive metadata collection. Declared servers and 
 
 **How to apply:** Only offer an external endpoint for the existing Bond402 check when the specification explicitly permits no security, the method is GET or HEAD, the URL is HTTPS and public, and no path or required parameter needs a guessed value. Keep the result `UNVERIFIED_EXTERNAL` until Bond402 performs its own owner-controlled check.
 
-The public catalog must never synchronously wait for a cold external discovery cache. Return the bounded internal result first, then warm external metadata in the background under the existing timeout and response-size limits; only use cached external records on a later request.
+When the external discovery fallback is selected and its cache is cold, await one bounded load of the free public catalogs before responding. Keep the internal catalog as the primary path, and return external results only as `UNVERIFIED_EXTERNAL`.
 
-**Why:** The APIs.guru directory is large and a cold fetch can make an otherwise fast internal catalog request approach or exceed upstream request timeouts.
+**Why:** A cold-cache external query previously returned an empty result even when the bounded free catalog load could provide a relevant discovery hit. The fallback is already rate-limited and each catalog loader has its own timeout, response-size limit, and single-flight cache.
 
-**How to apply:** Keep the internal database query as the primary response path. Treat an empty external cache as `UNAVAILABLE` for the current request, deduplicate background refreshes, and preserve explicit external source/verification metadata when cached results are eventually served.
+**How to apply:** Do not wait for external catalogs when internal results are adequate. On the fallback path, await the existing loaders once, preserve source provenance, and never turn external metadata into trust or security claims.
