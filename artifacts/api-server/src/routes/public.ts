@@ -95,11 +95,19 @@ async function requireExternalCheckRateLimit(req: Request, res: Response) {
   return false;
 }
 
-async function loadListedService(id: string) {
+const PUBLIC_SERVICE_SECURITY_STATUS = "VERIFIED_LOW_RISK";
+
+async function loadPublicService(id: string) {
   const [service] = await db
     .select()
     .from(apiServicesTable)
-    .where(and(eq(apiServicesTable.id, id), eq(apiServicesTable.visibility, "LISTED")));
+    .where(
+      and(
+        eq(apiServicesTable.id, id),
+        eq(apiServicesTable.visibility, "LISTED"),
+        eq(apiServicesTable.securityStatus, PUBLIC_SERVICE_SECURITY_STATUS),
+      ),
+    );
   return service;
 }
 
@@ -233,6 +241,7 @@ router.get("/public/services", async (req, res): Promise<void> => {
   const { q, page, pageSize } = parsed;
   const conditions = [
     eq(apiServicesTable.visibility, "LISTED"),
+    eq(apiServicesTable.securityStatus, PUBLIC_SERVICE_SECURITY_STATUS),
     ...(q ? [or(ilike(apiServicesTable.name, `%${q}%`), ilike(apiServicesTable.url, `%${q}%`))] : []),
   ];
   const where = and(...conditions);
@@ -366,7 +375,7 @@ router.get("/public/services/:id", async (req, res): Promise<void> => {
     res.json(externalDetail);
     return;
   }
-  const service = await loadListedService(serviceId);
+  const service = await loadPublicService(serviceId);
   if (!service) {
     res.status(404).json({ error: "Gelisteter Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;
@@ -567,7 +576,7 @@ router.post("/public/services/:id/external-preflight", async (req, res): Promise
 async function handlePublicPreActionCheck(req: Request, res: Response, bodyContext?: unknown) {
   if (!(await requirePublicRateLimit(req, res))) return;
   const serviceId = typeof req.params.id === "string" ? req.params.id : req.params.id[0];
-  const service = await loadListedService(serviceId);
+  const service = await loadPublicService(serviceId);
   if (!service) {
     res.status(404).json({ error: "Gelisteter Dienst nicht gefunden.", code: "NOT_FOUND" });
     return;

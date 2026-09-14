@@ -318,6 +318,70 @@ test("öffentliche Sitemap enthält nur ausdrücklich gelistete Dienste", async 
   }
 });
 
+test("öffentliche Service-Routen respektieren das First-Seen- und Security-Gate", async () => {
+  const fixturePrefix = `${testPrefix}-public-security-gate`;
+  const fixtures = [
+    ["pending", "SANDBOX_PENDING"],
+    ["observed", "SANDBOXED_OBSERVED"],
+    ["verified", "VERIFIED_LOW_RISK"],
+    ["suspicious", "SUSPICIOUS"],
+    ["flagged", "FLAGGED"],
+  ].map(([suffix, securityStatus]) => ({
+    id: `${fixturePrefix}-${suffix}`,
+    name: `${fixturePrefix} ${suffix}`,
+    securityStatus,
+  }));
+
+  runSql(`
+    INSERT INTO bond402_api_services
+      (id, owner_id, name, url, expected_structure, max_response_time, visibility, security_status)
+    VALUES
+      ${fixtures
+        .map(
+          ({ id, name, securityStatus }) =>
+            `(${sqlLiteral(id)}, ${sqlLiteral("public-security-gate-owner")}, ${sqlLiteral(
+              name,
+            )}, ${sqlLiteral(`https://${id}.example.test`)}, ${sqlLiteral("{}")}, 1000, 'LISTED', ${sqlLiteral(
+              securityStatus,
+            )})`,
+        )
+        .join(",\n      ")};
+  `);
+
+  try {
+    const catalog = await request(
+      `/api/public/services?q=${encodeURIComponent(fixturePrefix)}&page=1&pageSize=20`,
+      { headers: { "X-Forwarded-For": "203.0.113.101" } },
+    );
+    assert.equal(catalog.response.status, 200);
+    assert.deepEqual(
+      catalog.data.items.map((item) => item.id),
+      [`${fixturePrefix}-verified`],
+    );
+
+    for (const [index, fixture] of fixtures.entries()) {
+      const detail = await request(`/api/public/services/${fixture.id}`, {
+        headers: { "X-Forwarded-For": `203.0.113.${110 + index}` },
+      });
+      const preAction = await request(`/api/public/services/${fixture.id}/pre-action-check`, {
+        headers: { "X-Forwarded-For": `203.0.113.${120 + index}` },
+      });
+      const expectedStatus = fixture.securityStatus === "VERIFIED_LOW_RISK" ? 200 : 404;
+      assert.equal(detail.response.status, expectedStatus, `${fixture.securityStatus} detail`);
+      assert.equal(preAction.response.status, expectedStatus, `${fixture.securityStatus} pre-action`);
+      if (expectedStatus === 404) {
+        assert.equal(detail.data.code, "NOT_FOUND");
+        assert.equal(preAction.data.code, "NOT_FOUND");
+      }
+    }
+  } finally {
+    runSql(`
+      DELETE FROM bond402_api_services
+      WHERE id IN (${fixtures.map(({ id }) => sqlLiteral(id)).join(", ")});
+    `);
+  }
+});
+
 test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   const emailA = `${testPrefix}-a@example.test`;
   const emailB = `${testPrefix}-b@example.test`;
@@ -638,21 +702,10 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
    assert.equal(listedService.response.status, 200);
    assert.equal(listedService.data.visibility, "LISTED");
 
-   const publicDetail = await request(`/api/public/services/${serviceId}`);
-   assert.equal(publicDetail.response.status, 200);
-   assert.equal(publicDetail.data.visibility, "LISTED");
-   assert.equal(
-     publicDetail.data.trustMetrics.regionalAggregation.state,
-     "INSUFFICIENT_REGIONAL_DATA",
-   );
-   assert.equal(publicDetail.data.trustMetrics.regionalAggregation.continuousMonitoring, false);
-
-   const publicPreAction = await request(`/api/public/services/${serviceId}/pre-action-check`);
-   assert.equal(publicPreAction.response.status, 200);
-   assert.equal(
-     publicPreAction.data.factors.trustMetrics.regionalAggregation.state,
-     "INSUFFICIENT_REGIONAL_DATA",
-   );
+    const quarantinedPublicDetail = await request(`/api/public/services/${serviceId}`);
+    assert.equal(quarantinedPublicDetail.response.status, 404);
+    const quarantinedPublicPreAction = await request(`/api/public/services/${serviceId}/pre-action-check`);
+    assert.equal(quarantinedPublicPreAction.response.status, 404);
 
   const domainIssue = await request(`/api/services/${serviceId}/domain-verification`, {
     method: "POST",
@@ -670,7 +723,15 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
   assert.equal(liveCheck.response.status, 201);
   assert.ok(["PASS", "FAIL", "REVIEW"].includes(liveCheck.data.status));
 
+    runSql(`
+      UPDATE bond402_api_services
+      SET security_status = 'VERIFIED_LOW_RISK'
+      WHERE id = ${sqlLiteral(serviceId)};
+    `);
+
    const observedPublicDetail = await request(`/api/public/services/${serviceId}`);
+    assert.equal(observedPublicDetail.response.status, 200);
+    assert.equal(observedPublicDetail.data.visibility, "LISTED");
    assert.equal(observedPublicDetail.response.status, 200);
    assert.equal(
      observedPublicDetail.data.trustMetrics.regionalAggregation.state,
