@@ -800,6 +800,75 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+  /public/agent-onboarding:
+    get:
+      operationId: getHeadlessAgentOnboarding
+      tags: [developer]
+      summary: Get the dashboard-free Bond402 agent onboarding contract
+      description: |
+        Returns the exact public, owner-bootstrap, and owner-bound steps for a
+        headless agent. This document contains no secrets. A verified local
+        account session is required before a service can be registered or a
+        Developer API key can be created.
+      responses:
+        "200":
+          description: Headless onboarding contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentOnboarding"
+        "429":
+          description: Public discovery rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /public/discovery/openapi:
+    post:
+      operationId: discoverOpenApiFromExplicitUrl
+      tags: [developer]
+      summary: Detect an OpenAPI document from one explicit public URL
+      description: |
+        Tries only a small bounded set of typical OpenAPI/Swagger paths. No
+        credentials or guessed parameters are used. Results remain
+        UNVERIFIED_EXTERNAL until an owner-bound workflow is completed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+              required: [url]
+      responses:
+        "200":
+          description: Directly detected, unverified OpenAPI detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicExternalDiscoveryDetail"
+        "400":
+          description: Only public HTTPS URLs without credentials are accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: No OpenAPI document found on the bounded candidate paths
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Public discovery rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /public/services:
     get:
       operationId: searchPublicServices
@@ -1215,11 +1284,58 @@ components:
           type: string
         code:
           type: string
+        feedback:
+          $ref: "#/components/schemas/AgentFeedback"
         quota:
           anyOf:
             - $ref: "#/components/schemas/UsageSummary"
             - type: "null"
       required: [error, code]
+    AgentFeedback:
+      type: object
+      properties:
+        contractVersion:
+          type: string
+        status:
+          type: string
+          enum: [READY, CAUTION, AUTH_REQUIRED, PARAMETER_REQUIRED, PAYMENT_REQUIRED, RATE_LIMITED, PROVIDER_ERROR, UNVERIFIED_EXTERNAL, BLOCKED, NOT_FOUND, NO_MATCH, INVALID_REQUEST, INTERNAL_ERROR]
+        code:
+          type: string
+        summary:
+          type: string
+        nextAction:
+          type: string
+        context:
+          type: object
+          properties:
+            serviceId:
+              type: ["string", "null"]
+            serviceName:
+              type: ["string", "null"]
+            provider:
+              type: ["string", "null"]
+            source:
+              type: ["string", "null"]
+            verification:
+              type: ["string", "null"]
+          required: [serviceId, serviceName, provider, source, verification]
+        details:
+          type: object
+          properties:
+            httpStatus:
+              type: ["integer", "null"]
+            retryAfterSeconds:
+              type: ["integer", "null"]
+            requiredAuth:
+              type: ["boolean", "null"]
+            requiredParameters:
+              type: array
+              items:
+                type: string
+            actionContext:
+              type: ["string", "null"]
+          required: [httpStatus, retryAfterSeconds, requiredAuth, requiredParameters, actionContext]
+      required: [contractVersion, status, code, summary, nextAction, context, details]
     ApiKeyInput:
       type: object
       properties:
@@ -2630,6 +2746,10 @@ components:
               type: string
             publicPreActionCheck:
               type: string
+            directOpenApiDiscovery:
+              type: string
+            agentOnboarding:
+              type: string
             openapi:
               type: string
             humanDocs:
@@ -2638,7 +2758,7 @@ components:
               type: string
             llms:
               type: string
-          required: [catalog, serviceDetail, publicPreActionCheck, openapi, humanDocs, wellKnown, llms]
+          required: [catalog, serviceDetail, publicPreActionCheck, directOpenApiDiscovery, agentOnboarding, openapi, humanDocs, wellKnown, llms]
         publicResponseFields:
           type: array
           items:
@@ -2681,6 +2801,62 @@ components:
         policy:
           $ref: "#/components/schemas/PreActionPolicy"
       required: [name, description, version, disclaimer, authentication, endpoints, dataSource, publicResponseFields, limits, policy]
+    AgentOnboarding:
+      type: object
+      properties:
+        version:
+          type: string
+        purpose:
+          type: string
+        feedback:
+          type: object
+          properties:
+            contractVersion:
+              type: string
+            statuses:
+              type: array
+              items:
+                type: string
+            secretPolicy:
+              type: string
+          required: [contractVersion, statuses, secretPolicy]
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              visibility:
+                type: string
+                enum: [PUBLIC, OWNER_BOOTSTRAP, OWNER_BOUND]
+              method:
+                type: string
+                enum: [GET, POST]
+              path:
+                type: string
+              authentication:
+                type: string
+              next:
+                type: ["string", "null"]
+              policy:
+                type: ["string", "null"]
+              requirement:
+                type: ["string", "null"]
+              result:
+                type: ["string", "null"]
+              quota:
+                type: ["string", "null"]
+              ownerBinding:
+                type: ["string", "null"]
+              body:
+                type: ["object", "null"]
+            required: [id, visibility, method, path, authentication]
+        securityBoundaries:
+          type: array
+          items:
+            type: string
+      required: [version, purpose, feedback, steps, securityBoundaries]
     PublicPreActionCheck:
       allOf:
         - $ref: "#/components/schemas/DeveloperPreActionCheck"

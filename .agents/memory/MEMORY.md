@@ -17,3 +17,4 @@
 - [CI secret scan fixtures](ci-secret-scan-fixtures.md) — test-only CI env names containing PASSWORD can trigger the tracked-secret scanner; prefer isolated trust auth.
 - [Local browser E2E contract](browser-e2e-contract.md) — dashboard fixtures need every list endpoint, and CI must provide Chromium explicitly.
 - [Public discovery test isolation](public-discovery-test-isolation.md) — persisted external metadata requires unique, low-collision query tokens and exact fixture cleanup.
+- [Headless agent onboarding](headless-agent-onboarding.md) — public discovery stays separate from verified owner bootstrap; direct OpenAPI detail is short-lived and unverified.

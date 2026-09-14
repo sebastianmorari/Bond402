@@ -22,6 +22,7 @@ const checks = [
   ["test:secret-leak", "Secret leak scan"],
   ["test:service-routes", "Service routes"],
   ["test:public-mvp", "Public MVP"],
+  ["test:headless-agent-e2e", "Headless agent E2E"],
   ["build", "Workspace build"],
   ["test:frontend-smoke", "Frontend smoke"],
   ["test:frontend-e2e", "Browser E2E"],

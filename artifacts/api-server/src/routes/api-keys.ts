@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-zod";
 import { consumeOwnerRateLimit, hashApiKey } from "../lib/api-key-auth";
 import { requireUserId } from "../lib/auth";
+import { createAgentFeedback, feedbackForHttpError } from "../lib/agent-feedback";
 
 const router: IRouter = Router();
 const MAX_ACTIVE_KEYS = 10;
@@ -33,6 +34,12 @@ async function requireKeyManagementCapacity(ownerId: string, res: Response) {
     res.status(429).json({
       error: "Zu viele Änderungen an API-Schlüsseln. Bitte warten Sie kurz.",
       code: "RATE_LIMITED",
+      feedback: feedbackForHttpError(
+        429,
+        "RATE_LIMITED",
+        "Das API-Key-Management-Limit wurde erreicht.",
+        { retryAfterSeconds: rate.retryAfter, nextAction: "Retry-After beachten und später erneut versuchen." },
+      ),
     });
     return false;
   }
@@ -74,7 +81,16 @@ router.post("/api-keys", async (req, res): Promise<void> => {
   const body = CreateApiKeyBody.safeParse(req.body);
   const name = body.success ? body.data.name.trim() : "";
   if (!body.success || name.length < 2) {
-    res.status(400).json({ error: "Bitte geben Sie einen Namen mit mindestens zwei Zeichen ein.", code: "INVALID_INPUT" });
+    res.status(400).json({
+      error: "Bitte geben Sie einen Namen mit mindestens zwei Zeichen ein.",
+      code: "INVALID_INPUT",
+      feedback: feedbackForHttpError(
+        400,
+        "INVALID_INPUT",
+        "Der API-Key-Name ist ungültig.",
+        { nextAction: "Einen Namen mit mindestens zwei Zeichen senden." },
+      ),
+    });
     return;
   }
 
@@ -100,10 +116,30 @@ router.post("/api-keys", async (req, res): Promise<void> => {
     return created;
   });
   if (!key) {
-    res.status(400).json({ error: "Sie können höchstens 10 aktive API-Schlüssel verwenden.", code: "KEY_LIMIT_REACHED" });
+    res.status(400).json({
+      error: "Sie können höchstens 10 aktive API-Schlüssel verwenden.",
+      code: "KEY_LIMIT_REACHED",
+      feedback: feedbackForHttpError(
+        400,
+        "KEY_LIMIT_REACHED",
+        "Die maximale Zahl aktiver API-Schlüssel ist erreicht.",
+        { nextAction: "Einen bestehenden Schlüssel widerrufen oder einen vorhandenen verwenden." },
+      ),
+    });
     return;
   }
-  res.status(201).json(CreateApiKeyResponse.parse({ ...toResponse(key), secret }));
+  const response = CreateApiKeyResponse.parse({ ...toResponse(key), secret });
+  res.status(201).json({
+    ...response,
+    feedback: createAgentFeedback({
+      status: "READY",
+      code: "DEVELOPER_KEY_CREATED",
+      summary: "Der owner-gebundene Developer-API-Key wurde erstellt.",
+      nextAction: "Das Secret jetzt sicher speichern; es wird nur einmal angezeigt und darf nicht geloggt werden.",
+      requiredAuth: true,
+      source: "BOND402_OWNER_CATALOG",
+    }),
+  });
 });
 
 router.delete("/api-keys/:id", async (req, res): Promise<void> => {
@@ -112,7 +148,11 @@ router.delete("/api-keys/:id", async (req, res): Promise<void> => {
   if (!(await requireKeyManagementCapacity(ownerId, res))) return;
   const params = RevokeApiKeyParams.safeParse(req.params);
   if (!params.success) {
-    res.status(400).json({ error: "Ungültige Schlüssel-ID.", code: "INVALID_ID" });
+    res.status(400).json({
+      error: "Ungültige Schlüssel-ID.",
+      code: "INVALID_ID",
+      feedback: feedbackForHttpError(400, "INVALID_ID", "Die API-Key-ID ist ungültig."),
+    });
     return;
   }
   const [revoked] = await db
@@ -127,7 +167,11 @@ router.delete("/api-keys/:id", async (req, res): Promise<void> => {
     )
     .returning({ id: apiKeysTable.id });
   if (!revoked) {
-    res.status(404).json({ error: "API-Schlüssel nicht gefunden.", code: "NOT_FOUND" });
+    res.status(404).json({
+      error: "API-Schlüssel nicht gefunden.",
+      code: "NOT_FOUND",
+      feedback: feedbackForHttpError(404, "NOT_FOUND", "Der API-Key gehört nicht zum aktuellen Owner oder existiert nicht."),
+    });
     return;
   }
   await pruneRevokedKeys(ownerId);

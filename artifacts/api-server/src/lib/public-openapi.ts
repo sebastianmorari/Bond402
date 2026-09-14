@@ -48,6 +48,20 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           },
         },
       },
+      "/public/agent-onboarding": {
+        get: {
+          operationId: "getHeadlessAgentOnboarding",
+          description:
+            "Machine-readable public and owner-bound steps for a dashboard-free Bond402 agent flow. The document contains no secrets.",
+          responses: {
+            "200": {
+              description: "Headless onboarding contract",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AgentOnboarding" } } },
+            },
+            "429": { description: "Rate limited; inspect Retry-After" },
+          },
+        },
+      },
       "/public/services": {
         get: {
           operationId: "searchPublicServices",
@@ -577,6 +591,45 @@ export function getPublicOpenApiDocument(baseUrl: string) {
             fallback: { type: "string", enum: ["NOT_USED", "USED", "UNAVAILABLE"] },
             sourceUrl: { type: "string" },
             refresh: { $ref: "#/components/schemas/DiscoveryRefresh" },
+          },
+        },
+        AgentOnboarding: {
+          type: "object",
+          required: ["version", "purpose", "feedback", "steps", "securityBoundaries"],
+          properties: {
+            version: { type: "string" },
+            purpose: { type: "string" },
+            feedback: {
+              type: "object",
+              required: ["contractVersion", "statuses", "secretPolicy"],
+              properties: {
+                contractVersion: { type: "string" },
+                statuses: { type: "array", items: { type: "string" } },
+                secretPolicy: { type: "string" },
+              },
+            },
+            steps: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "visibility", "method", "path", "authentication"],
+                properties: {
+                  id: { type: "string" },
+                  visibility: { type: "string", enum: ["PUBLIC", "OWNER_BOOTSTRAP", "OWNER_BOUND"] },
+                  method: { type: "string", enum: ["GET", "POST"] },
+                  path: { type: "string" },
+                  authentication: { type: "string" },
+                  next: { type: "string" },
+                  policy: { type: "string" },
+                  requirement: { type: "string" },
+                  result: { type: "string" },
+                  quota: { type: "string" },
+                  ownerBinding: { type: "string" },
+                  body: { type: "object" },
+                },
+              },
+            },
+            securityBoundaries: { type: "array", items: { type: "string" } },
           },
         },
         DiscoveryRefresh: {

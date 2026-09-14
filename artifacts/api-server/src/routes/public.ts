@@ -45,11 +45,13 @@ import {
 import { getPublicOpenApiDocument } from "../lib/public-openapi";
 import { publicBaseUrl } from "../lib/public-sitemap";
 import {
+  AGENT_FEEDBACK_CONTRACT_VERSION,
+  AGENT_FEEDBACK_STATUSES,
   createAgentFeedback,
   feedbackForDecision,
   feedbackForHttpError,
 } from "../lib/agent-feedback";
-import { discoverDirectOpenApi } from "../lib/public-external-detail";
+import { discoverDirectOpenApi, rememberExternalApiDetail } from "../lib/public-external-detail";
 
 const router: IRouter = Router();
 const PUBLIC_RATE_LIMIT = 60;
@@ -202,6 +204,135 @@ function externalCatalogSource(
 router.get("/openapi.json", async (req, res): Promise<void> => {
   if (!(await requirePublicRateLimit(req, res))) return;
   res.type("application/json").json(getPublicOpenApiDocument(publicBaseUrl(req)));
+});
+
+router.get("/public/agent-onboarding", async (req, res): Promise<void> => {
+  if (!(await requirePublicRateLimit(req, res))) return;
+  res.json({
+    version: "headless-agent-onboarding-v1",
+    purpose:
+      "Maschinenlesbarer Ablauf von öffentlicher Discovery bis zum owner-gebundenen Developer-Live-Check.",
+    feedback: {
+      contractVersion: AGENT_FEEDBACK_CONTRACT_VERSION,
+      statuses: AGENT_FEEDBACK_STATUSES,
+      secretPolicy: "Secrets erscheinen nur unmittelbar bei der Erstellung und niemals in Logs oder Fehlermeldungen.",
+    },
+    steps: [
+      {
+        id: "public-discovery",
+        visibility: "PUBLIC",
+        method: "GET",
+        path: "/api/public/services?q={query}",
+        authentication: "NONE",
+        next: "direct-openapi-discovery-or-public-detail",
+      },
+      {
+        id: "direct-openapi-discovery",
+        visibility: "PUBLIC",
+        method: "POST",
+        path: "/api/public/discovery/openapi",
+        authentication: "NONE",
+        body: { url: "https://api.example.com" },
+        next: "public-detail-and-safe-external-preflight",
+      },
+      {
+        id: "public-detail",
+        visibility: "PUBLIC",
+        method: "GET",
+        path: "/api/public/services/{id}",
+        authentication: "NONE",
+        next: "public-pre-action-or-owner-bootstrap",
+      },
+      {
+        id: "public-pre-action",
+        visibility: "PUBLIC",
+        method: "GET",
+        path: "/api/public/services/{id}/pre-action-check",
+        authentication: "NONE",
+        policy: "READ_ONLY_STORED_SIGNALS",
+        next: "owner-bootstrap-for-private-or-live-actions",
+      },
+      {
+        id: "safe-external-check",
+        visibility: "PUBLIC",
+        method: "POST",
+        path: "/api/public/services/{id}/external-check",
+        authentication: "NONE",
+        policy: "EXACT_BOUNDED_UNAUTHENTICATED_GET_OR_HEAD_ONLY",
+        next: "owner-bootstrap-for-persistent-live-checks",
+      },
+      {
+        id: "owner-registration",
+        visibility: "OWNER_BOOTSTRAP",
+        method: "POST",
+        path: "/api/auth/register",
+        authentication: "NONE",
+        requirement: "EMAIL_VERIFICATION_REQUIRED",
+        next: "verify-email",
+      },
+      {
+        id: "verify-email",
+        visibility: "OWNER_BOOTSTRAP",
+        method: "POST",
+        path: "/api/auth/verify-email",
+        authentication: "ONE_TIME_EMAIL_TOKEN",
+        policy: "TOKEN_MUST_NOT_BE_LOGGED_OR_RETURNED_BY_BOND402",
+        next: "owner-session-login",
+      },
+      {
+        id: "owner-session-login",
+        visibility: "OWNER_BOOTSTRAP",
+        method: "POST",
+        path: "/api/auth/login",
+        authentication: "NONE",
+        result: "HTTP_ONLY_BOND402_SESSION_COOKIE",
+        next: "owner-service-registration-and-key-creation",
+      },
+      {
+        id: "owner-service-registration",
+        visibility: "OWNER_BOUND",
+        method: "POST",
+        path: "/api/services",
+        authentication: "BOND402_SESSION_COOKIE",
+        ownerBinding: "The session owner becomes apiServices.ownerId.",
+        next: "developer-key-creation",
+      },
+      {
+        id: "developer-key-creation",
+        visibility: "OWNER_BOUND",
+        method: "POST",
+        path: "/api/api-keys",
+        authentication: "BOND402_SESSION_COOKIE",
+        result: "SECRET_RETURNED_ONCE",
+        policy: "STORE_SECURELY_AND_SEND_ONLY_AS_AUTHORIZATION_BEARER",
+        next: "developer-live-check",
+      },
+      {
+        id: "developer-live-check",
+        visibility: "OWNER_BOUND",
+        method: "POST",
+        path: "/api/developer/services/{id}/checks",
+        authentication: "BOND402_API_KEY",
+        quota: "MONTHLY_PRODUCT_CHECK_QUOTA_AND_DEVELOPER_RATE_LIMIT",
+        next: "developer-result-or-feedback-status",
+      },
+      {
+        id: "quota-and-feedback",
+        visibility: "OWNER_BOUND",
+        method: "POST",
+        path: "/api/developer/services/{id}/pre-action-check",
+        authentication: "BOND402_API_KEY",
+        quota: "PAYMENT_REQUIRED_WHEN_MONTHLY_PRODUCT_QUOTA_IS_EXHAUSTED",
+        next: "execute-agent-action-only-after-evaluating-decision-and-feedback",
+      },
+    ],
+    securityBoundaries: [
+      "Anonymous public steps never create owner services, never issue Developer API keys, and never run persistent owner live checks.",
+      "Owner service registration and API-key creation require a verified local account session.",
+      "The Developer API key is owner-bound, rate-limited, revocable, and never returned again after creation.",
+      "ALLOW and READY describe stored observations or workflow readiness, not a security guarantee.",
+    ],
+  });
 });
 
 router.get("/public/discovery", async (req, res): Promise<void> => {
@@ -361,6 +492,7 @@ router.post("/public/discovery/openapi", async (req, res): Promise<void> => {
   }
 
   const detail = result.detail;
+  rememberExternalApiDetail(detail);
   const feedbackStatus =
     detail.specification.auth.status === "REQUIRED"
       ? "AUTH_REQUIRED" as const

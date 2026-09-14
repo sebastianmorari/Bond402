@@ -49,6 +49,7 @@ import { runServiceCreationTransaction } from "../lib/service-creation";
 import { getServiceCreationErrorResponse } from "../lib/service-errors";
 import { getDomainRelationship } from "../lib/domain-verification-policy";
 import { logger } from "../lib/logger";
+import { createAgentFeedback, feedbackForHttpError } from "../lib/agent-feedback";
 import {
   encryptTargetSecret,
   validateTargetAuthHeaderName,
@@ -423,7 +424,16 @@ router.post("/services", async (req, res): Promise<void> => {
     !Number.isInteger(parsed.data.maxResponseTime) ||
     normalizedName.length < 2
   ) {
-    res.status(400).json({ error: "Bitte prüfen Sie alle Eingaben.", code: "INVALID_INPUT" });
+    res.status(400).json({
+      error: "Bitte prüfen Sie alle Eingaben.",
+      code: "INVALID_INPUT",
+      feedback: feedbackForHttpError(
+        400,
+        "INVALID_INPUT",
+        "Die Service-Registrierung enthält ungültige Parameter.",
+        { nextAction: "Name, URL, Antwortmodus und maximale Antwortzeit gemäß OpenAPI-Schema senden." },
+      ),
+    });
     return;
   }
 
@@ -432,14 +442,29 @@ router.post("/services", async (req, res): Promise<void> => {
     targetConfiguration = normalizeTargetConfiguration(parsed.data);
   } catch (error) {
     const result = targetConfigError(error);
-    res.status(result.status).json({ error: result.error, code: result.code });
+    res.status(result.status).json({
+      error: result.error,
+      code: result.code,
+      feedback: feedbackForHttpError(result.status, result.code, result.error, {
+        nextAction: "Target-Auth-Konfiguration prüfen; keine Ziel-Credentials in Feedback oder Logs senden.",
+      }),
+    });
     return;
   }
   let discoveryMetadata;
   try {
     discoveryMetadata = normalizeDiscoveryMetadata(parsed.data);
   } catch {
-    res.status(400).json({ error: "Die Quellen-Metadaten sind ungültig.", code: "INVALID_SOURCE_METADATA" });
+    res.status(400).json({
+      error: "Die Quellen-Metadaten sind ungültig.",
+      code: "INVALID_SOURCE_METADATA",
+      feedback: feedbackForHttpError(
+        400,
+        "INVALID_SOURCE_METADATA",
+        "Die Discovery-Quellen-Metadaten sind ungültig.",
+        { nextAction: "Nur begrenzte, öffentliche Quellen-Metadaten ohne Secrets senden." },
+      ),
+    });
     return;
   }
 
@@ -453,6 +478,9 @@ router.post("/services", async (req, res): Promise<void> => {
     res.status(400).json({
       error: publicUrlErrorMessage(code),
       code,
+      feedback: feedbackForHttpError(400, code, publicUrlErrorMessage(code), {
+        nextAction: "Eine öffentliche HTTP-/HTTPS-URL ohne Credentials oder private Netzwerkadresse verwenden.",
+      }),
     });
     return;
   }
@@ -507,7 +535,21 @@ router.post("/services", async (req, res): Promise<void> => {
       return CreateServiceResponse.parse(await toServiceResponse(service, tx));
       },
     );
-    res.status(201).json(response);
+    res.status(201).json({
+      ...response,
+      feedback: createAgentFeedback({
+        status: "READY",
+        code: "OWNER_SERVICE_REGISTERED",
+        summary: "Der Service wurde dem authentifizierten Owner zugeordnet.",
+        nextAction: "Einen owner-gebundenen Developer-API-Key erzeugen und danach die Developer-API verwenden.",
+        serviceId: response.id,
+        serviceName: response.name,
+        provider: new URL(response.url).hostname,
+        source: "BOND402_OWNER_CATALOG",
+        verification: "SANDBOX_PENDING",
+        requiredAuth: true,
+      }),
+    });
   } catch (error) {
     const conflict = getServiceCreationErrorResponse(error);
     if (conflict) {

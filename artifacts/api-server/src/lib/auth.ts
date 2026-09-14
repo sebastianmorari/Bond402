@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { and, eq, gt, lt } from "drizzle-orm";
 import { bond402SessionsTable, bond402UsersTable, db, type Bond402UserRow } from "@workspace/db";
 import { withTransientDatabaseReadRetry } from "./database-resilience";
+import { feedbackForHttpError } from "./agent-feedback";
 
 const SESSION_COOKIE = "bond402_session";
 const SESSION_DAYS = 30;
@@ -138,6 +139,12 @@ export async function requireUserId(
     res.status(401).json({
       error: "Bitte melden Sie sich an, um Ihre Dienste zu verwalten.",
       code: "UNAUTHORIZED",
+      feedback: feedbackForHttpError(
+        401,
+        "UNAUTHORIZED",
+        "Für diesen Owner-Schritt ist eine bestätigte Sitzung erforderlich.",
+        { nextAction: "Über /api/auth/login anmelden und das Session-Cookie mitsenden." },
+      ),
     });
     return null;
   }

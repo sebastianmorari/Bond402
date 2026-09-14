@@ -526,6 +526,8 @@ async function loadExternalDetail(record: ExternalApiRecord): Promise<ExternalAp
 export async function getExternalApiDetail(id: string) {
   const parsedId = parseExternalRecordId(id);
   if (!parsedId) return null;
+  const cachedDetail = detailCache.get(id);
+  if (cachedDetail && cachedDetail.expiresAt > Date.now()) return cachedDetail.detail;
   const catalogs = await Promise.all([
     parsedId.source === PUBLIC_EXTERNAL_DISCOVERY_SOURCE
       ? loadApisGuruCatalog()
@@ -542,6 +544,10 @@ export async function getExternalApiDetail(id: string) {
         candidate.id === externalRecordId(parsedId.provider, parsedId.version, parsedId.source)),
   );
   return record ? loadExternalDetail(record) : null;
+}
+
+export function rememberExternalApiDetail(detail: ExternalApiDetail) {
+  detailCache.set(detail.id, { expiresAt: Date.now() + DETAIL_CACHE_TTL_MS, detail });
 }
 
 export function resetExternalDetailCacheForTests() {
