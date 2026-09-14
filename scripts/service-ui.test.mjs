@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { readFileSync } from "node:fs";
 import {
   isDomainVerificationNotApplicableError,
   shouldShowDomainVerification,
@@ -28,4 +29,14 @@ test("DOMAIN_VERIFICATION_NOT_APPLICABLE ist im alten Client kein roter Fehler",
     }),
     false,
   );
+});
+
+test("Katalogfehler zeigen keinen normalen Leerzustand", () => {
+  const source = readFileSync(
+    new URL("../artifacts/bond402/src/pages/public-catalog.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /role="alert"/);
+  assert.match(source, /Erneut versuchen/);
+  assert.match(source, /error \? null : data\?\.items\.length/);
 });

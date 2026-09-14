@@ -458,16 +458,18 @@ export function PublicCatalogPage() {
   const [data, setData] = useState<CatalogResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setError("");
     getJson<CatalogResponse>(`/public/services?q=${encodeURIComponent(submittedQuery)}&page=${page}&pageSize=12`)
       .then((result) => { if (active) { setData(result); setError(""); } })
       .catch((reason: Error) => { if (active) setError(reason.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [submittedQuery, page]);
+  }, [submittedQuery, page, retryCount]);
 
   return (
     <PublicLayout>
@@ -480,9 +482,9 @@ export function PublicCatalogPage() {
         <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Dienstname oder API-URL suchen" aria-label="Katalog durchsuchen" />
         <Button type="submit"><Search className="mr-2 h-4 w-4" />Suchen</Button>
       </form>
-      {error && <div className="mt-8 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{error}</div>}
+      {error && <div role="alert" className="mt-8 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"><span>{error}</span><Button type="button" variant="outline" onClick={() => setRetryCount((value) => value + 1)}>Erneut versuchen</Button></div>}
        <div className="mt-10 flex items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Öffentliche API-/OpenAPI-Fundstellen" : "Interne Katalog- und Discovery-Treffer"}</h2><p className="mt-1 text-sm text-muted-foreground">{data?.source.mode === "EXTERNAL_FALLBACK" ? "Externe, unverifizierte Quelldaten als Fallback" : data ? `${data.total} öffentliche Einträge` : "Öffentliche Einträge werden geladen"}</p></div><a href={`${apiBase}/openapi.json`} className="hidden text-sm font-medium text-primary hover:underline sm:block">OpenAPI JSON</a></div>
-        {loading ? <div className="mt-6 grid gap-4 md:grid-cols-2"><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /></div> : data?.items.length ? <div className="mt-6 grid gap-4 md:grid-cols-2">{data.items.map((service) => isExternalDiscovery(service) ? <ExternalServiceCard key={service.id} service={service} /> : isInternalDiscovery(service) ? <InternalDiscoveryCard key={service.id} service={service} /> : <ServiceCard key={service.id} service={service} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-border/70 p-12 text-center text-muted-foreground">Noch keine Dienste entsprechen dieser Suche.</div>}
+        {loading ? <div className="mt-6 grid gap-4 md:grid-cols-2"><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /><div className="h-48 animate-pulse rounded-2xl bg-muted/50" /></div> : error ? null : data?.items.length ? <div className="mt-6 grid gap-4 md:grid-cols-2">{data.items.map((service) => isExternalDiscovery(service) ? <ExternalServiceCard key={service.id} service={service} /> : isInternalDiscovery(service) ? <InternalDiscoveryCard key={service.id} service={service} /> : <ServiceCard key={service.id} service={service} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-border/70 p-12 text-center text-muted-foreground">Noch keine Dienste entsprechen dieser Suche.</div>}
       <div className="mt-8 flex items-center justify-between"><Button variant="outline" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ArrowLeft className="mr-2 h-4 w-4" />Zurück</Button><span className="text-sm text-muted-foreground">Seite {page}</span><Button variant="outline" disabled={!data?.hasNextPage} onClick={() => setPage((value) => value + 1)}>Weiter<ArrowRight className="ml-2 h-4 w-4" /></Button></div>
     </PublicLayout>
   );
