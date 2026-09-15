@@ -50,6 +50,7 @@ export type AgentCandidateInput = {
   trustStatus: string | null;
   trustScore: number | null;
   authRequirement: AgentAuthRequirement;
+  providerCredentialsConfigured?: boolean;
   requiredParameters: string[];
   safeOperations: AgentSafeOperation[];
   preActionDecision: "ALLOW" | "CAUTION" | "BLOCK" | null;
@@ -176,7 +177,9 @@ function blockersForCandidate(candidate: AgentCandidateInput) {
   if (candidate.kind === "EXTERNAL_DISCOVERY" || normalize(candidate.verificationStatus) === "unverified_external") {
     blockers.push("UNVERIFIED_EXTERNAL");
   }
-  if (candidate.authRequirement === "REQUIRED") blockers.push("AUTH_REQUIRED");
+  if (candidate.authRequirement === "REQUIRED" && candidate.providerCredentialsConfigured !== true) {
+    blockers.push("AUTH_REQUIRED");
+  }
   if (candidate.requiredParameters.length > 0) blockers.push("REQUIRED_PARAMETERS");
   if (candidate.safeOperations.length === 0) blockers.push("NO_KNOWN_SAFE_OPERATION");
   if (candidate.preActionDecision && candidate.preActionDecision !== "ALLOW") {

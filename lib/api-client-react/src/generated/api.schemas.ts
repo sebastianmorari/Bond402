@@ -1020,6 +1020,130 @@ export interface DeveloperPreActionCheck {
   evaluatedAt: string;
 }
 
+export type AgentExecutionStatus = typeof AgentExecutionStatus[keyof typeof AgentExecutionStatus];
+
+
+export const AgentExecutionStatus = {
+  READY: 'READY',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  PARAMETER_REQUIRED: 'PARAMETER_REQUIRED',
+  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
+  RATE_LIMITED: 'RATE_LIMITED',
+  PROVIDER_ERROR: 'PROVIDER_ERROR',
+  UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
+  BLOCKED: 'BLOCKED',
+} as const;
+
+export type AgentExecutionPlanRequestOperationMethod = typeof AgentExecutionPlanRequestOperationMethod[keyof typeof AgentExecutionPlanRequestOperationMethod];
+
+
+export const AgentExecutionPlanRequestOperationMethod = {
+  GET: 'GET',
+  HEAD: 'HEAD',
+} as const;
+
+export type AgentExecutionPlanRequestOperation = {
+  method?: AgentExecutionPlanRequestOperationMethod;
+  /** @maxLength 2048 */
+  path?: string;
+};
+
+export type AgentExecutionPlanRequestParameters = { [key: string]: unknown };
+
+/**
+ * Send task or serviceId. operation and parameters must match owner-registered configuration.
+ */
+export interface AgentExecutionPlanRequest {
+  /** @maxLength 500 */
+  task?: string;
+  serviceId?: string;
+  operation?: AgentExecutionPlanRequestOperation;
+  parameters?: AgentExecutionPlanRequestParameters;
+}
+
+export type AgentExecutionRequestParameters = { [key: string]: unknown };
+
+export interface AgentExecutionRequest {
+  planId: string;
+  parameters?: AgentExecutionRequestParameters;
+}
+
+export type AgentExecutionPlanResponseService = { [key: string]: unknown };
+
+export type AgentExecutionPlanResponseOperation = { [key: string]: unknown };
+
+export type AgentExecutionPlanResponseParameters = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type AgentExecutionPlanResponseKnownCost = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type AgentExecutionPlanResponseCandidate = { [key: string]: unknown } | null;
+
+export type AgentExecutionPlanResponseDecision = { [key: string]: unknown };
+
+export interface AgentExecutionPlanResponse {
+  /** @nullable */
+  planId: string | null;
+  /** @nullable */
+  expiresAt: string | null;
+  status: AgentExecutionStatus;
+  canExecute: boolean;
+  service: AgentExecutionPlanResponseService;
+  operation: AgentExecutionPlanResponseOperation;
+  parameters: AgentExecutionPlanResponseParameters;
+  requiredParameters: string[];
+  /** @nullable */
+  knownCost: AgentExecutionPlanResponseKnownCost;
+  /** @nullable */
+  candidate?: AgentExecutionPlanResponseCandidate;
+  decision: AgentExecutionPlanResponseDecision;
+  feedback: AgentFeedback;
+  nextAction: string;
+}
+
+export type AgentExecutionResponseService = { [key: string]: unknown };
+
+export type AgentExecutionResponseOperation = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type AgentExecutionResponseCost = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type AgentExecutionResponseQuota = { [key: string]: unknown } | null;
+
+export interface AgentExecutionResponse {
+  requestId: string;
+  /** @nullable */
+  planId: string | null;
+  status: AgentExecutionStatus;
+  code: string;
+  service: AgentExecutionResponseService;
+  operation: AgentExecutionResponseOperation;
+  /** @nullable */
+  providerHttpStatus: number | null;
+  /** @minimum 0 */
+  latencyMs: number;
+  retryable: boolean;
+  /** @nullable */
+  retryAfterSeconds: number | null;
+  /** @nullable */
+  cost: AgentExecutionResponseCost;
+  /** @nullable */
+  quota: AgentExecutionResponseQuota;
+  data: unknown;
+  nextAction: string;
+  feedback: AgentFeedback;
+}
+
 export type PublicServiceVisibility = typeof PublicServiceVisibility[keyof typeof PublicServiceVisibility];
 
 

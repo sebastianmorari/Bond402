@@ -2269,6 +2269,122 @@ export const DeveloperPreActionCheckResponse = zod.object({
 
 
 /**
+ * PLAN/READINESS is read-only and does not contact a provider. The agent
+ * may send a natural-language task or an owned service and operation, but
+ * Bond402 uses only the registered HTTPS service URL and declared typed
+ * query parameters. READY returns a short-lived planId; every other
+ * status prohibits provider execution.
+ * @summary Create an owner-bound agent execution plan
+ */
+export const createDeveloperExecutionPlanBodyTaskMax = 500;
+
+export const createDeveloperExecutionPlanBodyOperationPathMax = 2048;
+
+
+
+export const CreateDeveloperExecutionPlanBody = zod.object({
+  "task": zod.string().max(createDeveloperExecutionPlanBodyTaskMax).optional(),
+  "serviceId": zod.string().optional(),
+  "operation": zod.object({
+  "method": zod.enum(['GET', 'HEAD']).optional(),
+  "path": zod.string().max(createDeveloperExecutionPlanBodyOperationPathMax).optional()
+}).optional(),
+  "parameters": zod.record(zod.string(), zod.unknown()).optional()
+}).describe('Send task or serviceId. operation and parameters must match owner-registered configuration.')
+
+export const CreateDeveloperExecutionPlanResponse = zod.object({
+  "planId": zod.string().uuid().nullable(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
+  "canExecute": zod.boolean(),
+  "service": zod.record(zod.string(), zod.unknown()),
+  "operation": zod.record(zod.string(), zod.unknown()),
+  "parameters": zod.record(zod.string(), zod.unknown()),
+  "requiredParameters": zod.array(zod.string()),
+  "knownCost": zod.record(zod.string(), zod.unknown()).nullable(),
+  "candidate": zod.record(zod.string(), zod.unknown()).nullish(),
+  "decision": zod.record(zod.string(), zod.unknown()),
+  "feedback": zod.object({
+  "contractVersion": zod.string(),
+  "status": zod.enum(['READY', 'CAUTION', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED', 'NOT_FOUND', 'NO_MATCH', 'INVALID_REQUEST', 'INTERNAL_ERROR']),
+  "code": zod.string(),
+  "summary": zod.string(),
+  "nextAction": zod.string(),
+  "context": zod.object({
+  "serviceId": zod.string().nullable(),
+  "serviceName": zod.string().nullable(),
+  "provider": zod.string().nullable(),
+  "source": zod.string().nullable(),
+  "verification": zod.string().nullable()
+}),
+  "details": zod.object({
+  "httpStatus": zod.number().int().nullable(),
+  "retryAfterSeconds": zod.number().int().nullable(),
+  "requiredAuth": zod.boolean().nullable(),
+  "requiredParameters": zod.array(zod.string()),
+  "actionContext": zod.string().nullable()
+})
+}),
+  "nextAction": zod.string()
+})
+
+
+/**
+ * EXECUTE revalidates a short-lived READY plan and current registered
+ * service configuration, then consumes monthly quota immediately before
+ * the provider call. The agent cannot supply a target URL. Only HTTPS
+ * GET/HEAD are currently executable; provider credentials remain server-side.
+ * @summary Execute one previously approved owner-bound agent plan
+ */
+export const ExecuteDeveloperAgentPlanBody = zod.object({
+  "planId": zod.string().uuid(),
+  "parameters": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+export const executeDeveloperAgentPlanResponseLatencyMsMin = 0;
+
+
+
+export const ExecuteDeveloperAgentPlanResponse = zod.object({
+  "requestId": zod.string(),
+  "planId": zod.string().uuid().nullable(),
+  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
+  "code": zod.string(),
+  "service": zod.record(zod.string(), zod.unknown()),
+  "operation": zod.record(zod.string(), zod.unknown()),
+  "providerHttpStatus": zod.number().int().nullable(),
+  "latencyMs": zod.number().int().min(executeDeveloperAgentPlanResponseLatencyMsMin),
+  "retryable": zod.boolean(),
+  "retryAfterSeconds": zod.number().int().nullable(),
+  "cost": zod.record(zod.string(), zod.unknown()).nullable(),
+  "quota": zod.record(zod.string(), zod.unknown()).nullable(),
+  "data": zod.unknown(),
+  "nextAction": zod.string(),
+  "feedback": zod.object({
+  "contractVersion": zod.string(),
+  "status": zod.enum(['READY', 'CAUTION', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED', 'NOT_FOUND', 'NO_MATCH', 'INVALID_REQUEST', 'INTERNAL_ERROR']),
+  "code": zod.string(),
+  "summary": zod.string(),
+  "nextAction": zod.string(),
+  "context": zod.object({
+  "serviceId": zod.string().nullable(),
+  "serviceName": zod.string().nullable(),
+  "provider": zod.string().nullable(),
+  "source": zod.string().nullable(),
+  "verification": zod.string().nullable()
+}),
+  "details": zod.object({
+  "httpStatus": zod.number().int().nullable(),
+  "retryAfterSeconds": zod.number().int().nullable(),
+  "requiredAuth": zod.boolean().nullable(),
+  "requiredParameters": zod.array(zod.string()),
+  "actionContext": zod.string().nullable()
+})
+})
+})
+
+
+/**
  * @summary Discover public Bond402 agent endpoints
  */
 export const GetPublicDiscoveryResponse = zod.object({
@@ -2420,10 +2536,10 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "source": zod.string(),
   "sourceLabel": zod.string(),
-   "sourceUrl": zod.string().url().nullable(),
+  "sourceUrl": zod.string().url().nullable(),
   "capabilityMatch": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMin).max(decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMax),
   "textMatch": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneTextMatchMin).max(decidePublicAgentTaskResponseBestCandidateOneTextMatchMax),
   "openApiMetadata": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMin).max(decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMax),
@@ -2435,7 +2551,7 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "safeOperations": zod.array(zod.object({
   "method": zod.string(),
   "path": zod.string(),
-   "url": zod.string().url().nullable(),
+  "url": zod.string().url().nullable(),
   "reason": zod.string()
 })),
   "preActionDecision": zod.union([zod.literal('ALLOW'),zod.literal('CAUTION'),zod.literal('BLOCK'),zod.literal(null)]).nullable(),
@@ -2449,10 +2565,10 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "source": zod.string(),
   "sourceLabel": zod.string(),
-   "sourceUrl": zod.string().url().nullable(),
+  "sourceUrl": zod.string().url().nullable(),
   "capabilityMatch": zod.number().min(decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMin).max(decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMax),
   "textMatch": zod.number().min(decidePublicAgentTaskResponseCandidatesItemTextMatchMin).max(decidePublicAgentTaskResponseCandidatesItemTextMatchMax),
   "openApiMetadata": zod.number().min(decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMin).max(decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMax),
@@ -2464,7 +2580,7 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "safeOperations": zod.array(zod.object({
   "method": zod.string(),
   "path": zod.string(),
-   "url": zod.string().url().nullable(),
+  "url": zod.string().url().nullable(),
   "reason": zod.string()
 })),
   "preActionDecision": zod.union([zod.literal('ALLOW'),zod.literal('CAUTION'),zod.literal('BLOCK'),zod.literal(null)]).nullable(),
@@ -2486,7 +2602,7 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
   "source": zod.string(),
   "sourceLabel": zod.string(),
-   "sourceUrl": zod.string().url().nullable()
+  "sourceUrl": zod.string().url().nullable()
 })),
   "externalCandidatesAlwaysUnverified": zod.literal(true)
 }),
@@ -2504,8 +2620,8 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "verification": zod.string().nullable()
 }),
   "details": zod.object({
-   "httpStatus": zod.number().int().nullable(),
-   "retryAfterSeconds": zod.number().int().nullable(),
+  "httpStatus": zod.number().int().nullable(),
+  "retryAfterSeconds": zod.number().int().nullable(),
   "requiredAuth": zod.boolean().nullable(),
   "requiredParameters": zod.array(zod.string()),
   "actionContext": zod.string().nullable()
@@ -2847,7 +2963,7 @@ export const SearchPublicServicesResponse = zod.object({
   "kind": zod.enum(['INTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "verification": zod.object({
   "status": zod.string(),
   "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
@@ -2868,8 +2984,8 @@ export const SearchPublicServicesResponse = zod.object({
   "publicSource": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMax)
 }),
   "evidence": zod.object({
-   "canonicalUrl": zod.string().url(),
-   "sourceUrl": zod.string().url(),
+  "canonicalUrl": zod.string().url(),
+  "sourceUrl": zod.string().url(),
   "provider": zod.string().nullable(),
   "version": zod.string().nullable(),
   "discoveredAt": zod.coerce.date()
@@ -2890,7 +3006,7 @@ export const SearchPublicServicesResponse = zod.object({
   "sourceLabel": zod.string(),
   "sources": zod.array(zod.object({
   "label": zod.string(),
-   "url": zod.string().url()
+  "url": zod.string().url()
 })).max(searchPublicServicesResponseItemsItemThreeDiscoverySourcesMax),
   "scope": zod.enum(['PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY']),
   "verification": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -3129,7 +3245,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "kind": zod.enum(['INTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "verification": zod.object({
   "status": zod.string(),
   "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
@@ -3150,8 +3266,8 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "publicSource": zod.number().min(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMin).max(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMax)
 }),
   "evidence": zod.object({
-   "canonicalUrl": zod.string().url(),
-   "sourceUrl": zod.string().url(),
+  "canonicalUrl": zod.string().url(),
+  "sourceUrl": zod.string().url(),
   "provider": zod.string().nullable(),
   "version": zod.string().nullable(),
   "discoveredAt": zod.coerce.date()
@@ -3167,9 +3283,9 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "source": zod.object({
   "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
   "label": zod.string(),
-   "catalogUrl": zod.string().url(),
-   "recordUrl": zod.string().url(),
-   "specificationUrl": zod.string().url()
+  "catalogUrl": zod.string().url(),
+  "recordUrl": zod.string().url(),
+  "specificationUrl": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -3181,7 +3297,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "title": zod.string().nullable(),
   "description": zod.string().nullable(),
   "servers": zod.array(zod.object({
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "description": zod.string().nullable(),
   "templated": zod.boolean()
 })),
@@ -3207,13 +3323,13 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "safeEndpoint": zod.union([zod.null(),zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })]),
   "safeEndpoints": zod.array(zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url(),
+  "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })),
   "safeEndpointNote": zod.string()
@@ -3450,7 +3566,7 @@ export const PostPublicExternalCheckParams = zod.object({
 export const PostPublicExternalCheckBody = zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url()
+  "url": zod.string().url()
 })
 
 export const PostPublicExternalCheckResponse = zod.object({
@@ -3458,7 +3574,7 @@ export const PostPublicExternalCheckResponse = zod.object({
   "endpoint": zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-   "url": zod.string().url()
+  "url": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['CHECKED_EXTERNAL']),
@@ -3486,7 +3602,7 @@ export const PostPublicExternalPreflightParams = zod.object({
 })
 
 export const PostPublicExternalPreflightBody = zod.object({
-   "serverUrl": zod.string().url().optional()
+  "serverUrl": zod.string().url().optional()
 })
 
 export const PostPublicExternalPreflightResponse = zod.object({

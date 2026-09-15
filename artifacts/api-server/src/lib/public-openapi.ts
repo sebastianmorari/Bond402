@@ -237,6 +237,58 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           },
         },
       },
+      "/developer/execution/plan": {
+        post: {
+          operationId: "createDeveloperExecutionPlan",
+          security: [{ Bond402ApiKey: [] }],
+          description:
+            "Create a short-lived, owner-bound PLAN without contacting a provider. A natural-language task or owned service can be supplied. Only the registered service URL and declared query parameter schema are used.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AgentExecutionPlanRequest" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description:
+                "Machine-readable PLAN/READINESS result. READY creates a short-lived planId; all other statuses prohibit provider execution.",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AgentExecutionPlanResponse" } } },
+            },
+            "400": { description: "Invalid PLAN request" },
+            "401": { description: "Developer key required" },
+            "429": { description: "Developer rate limit exceeded" },
+          },
+        },
+      },
+      "/developer/execution/execute": {
+        post: {
+          operationId: "executeDeveloperAgentPlan",
+          security: [{ Bond402ApiKey: [] }],
+          description:
+            "Execute one previously READY owner-bound plan exactly once. The plan is revalidated against the current owner service configuration. The agent cannot provide or change a target URL. Only HTTPS GET/HEAD are currently allowed.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AgentExecutionRequest" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Normalized successful provider result or stable provider status response",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AgentExecutionResponse" } } },
+            },
+            "401": { description: "Developer key or provider credential required" },
+            "409": { description: "Plan, service, operation, method, or parameter is blocked" },
+            "429": { description: "Developer rate limit or monthly quota exceeded" },
+            "502": { description: "Provider error, timeout, DNS/network failure, or response safety failure" },
+          },
+        },
+      },
     },
     components: {
       securitySchemes: {
@@ -251,6 +303,119 @@ export function getPublicOpenApiDocument(baseUrl: string) {
         ActionContext: {
           type: "string",
           enum: ["GENERAL", "READ", "WRITE", "PAYMENT", "CREDENTIAL_USE"],
+        },
+        AgentExecutionStatus: {
+          type: "string",
+          enum: [
+            "READY",
+            "AUTH_REQUIRED",
+            "PARAMETER_REQUIRED",
+            "PAYMENT_REQUIRED",
+            "RATE_LIMITED",
+            "PROVIDER_ERROR",
+            "UNVERIFIED_EXTERNAL",
+            "BLOCKED",
+          ],
+        },
+        AgentExecutionPlanRequest: {
+          type: "object",
+          additionalProperties: false,
+          anyOf: [
+            { required: ["task"] },
+            { required: ["serviceId"] },
+          ],
+          properties: {
+            task: { type: "string", maxLength: 500 },
+            serviceId: { type: "string", pattern: "^(?:[A-Za-z0-9_-]{8,200}|external:[A-Za-z0-9_-]{1,180})$" },
+            operation: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                method: { type: "string", enum: ["GET", "HEAD"] },
+                path: { type: "string", pattern: "^/.{0,2047}$" },
+              },
+            },
+            parameters: { type: "object", additionalProperties: true },
+          },
+          description: "Send task or serviceId. operation and parameters must match the owner-registered configuration.",
+        },
+        AgentExecutionRequest: {
+          type: "object",
+          required: ["planId"],
+          additionalProperties: false,
+          properties: {
+            planId: { type: "string", format: "uuid" },
+            parameters: { type: "object", additionalProperties: true },
+          },
+        },
+        AgentExecutionPlanResponse: {
+          type: "object",
+          required: [
+            "planId",
+            "expiresAt",
+            "status",
+            "canExecute",
+            "service",
+            "operation",
+            "parameters",
+            "requiredParameters",
+            "knownCost",
+            "decision",
+            "feedback",
+            "nextAction",
+          ],
+          properties: {
+            planId: { type: ["string", "null"], format: "uuid" },
+            expiresAt: { type: ["string", "null"], format: "date-time" },
+            status: { $ref: "#/components/schemas/AgentExecutionStatus" },
+            canExecute: { type: "boolean" },
+            service: { type: "object", additionalProperties: true },
+            operation: { type: "object", additionalProperties: true },
+            parameters: { type: "object", additionalProperties: true },
+            requiredParameters: { type: "array", items: { type: "string" } },
+            knownCost: { type: ["object", "null"], additionalProperties: true },
+            candidate: { type: ["object", "null"], additionalProperties: true },
+            decision: { type: "object", additionalProperties: true },
+            feedback: { $ref: "#/components/schemas/AgentFeedback" },
+            nextAction: { type: "string" },
+          },
+        },
+        AgentExecutionResponse: {
+          type: "object",
+          required: [
+            "requestId",
+            "planId",
+            "status",
+            "code",
+            "service",
+            "operation",
+            "providerHttpStatus",
+            "latencyMs",
+            "retryable",
+            "retryAfterSeconds",
+            "cost",
+            "quota",
+            "data",
+            "nextAction",
+            "feedback",
+          ],
+          properties: {
+            requestId: { type: "string" },
+            planId: { type: ["string", "null"], format: "uuid" },
+            status: { $ref: "#/components/schemas/AgentExecutionStatus" },
+            code: { type: "string" },
+            service: { type: "object", additionalProperties: true },
+            operation: { type: "object", additionalProperties: true },
+            providerHttpStatus: { type: ["integer", "null"] },
+            latencyMs: { type: "integer", minimum: 0 },
+            retryable: { type: "boolean" },
+            retryAfterSeconds: { type: ["integer", "null"] },
+            cost: { type: ["object", "null"], additionalProperties: true },
+            quota: { type: ["object", "null"], additionalProperties: true },
+            data: {},
+            nextAction: { type: "string" },
+            feedback: { $ref: "#/components/schemas/AgentFeedback" },
+          },
         },
         PublicExternalCheckBody: {
           type: "object",

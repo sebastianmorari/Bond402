@@ -24,6 +24,7 @@ const checks = [
   ["test:service-routes", "Service routes"],
   ["test:public-mvp", "Public MVP"],
   ["test:headless-agent-e2e", "Headless agent E2E"],
+  ["test:execution-gateway", "Execution gateway"],
   ["build", "Workspace build"],
   ["test:frontend-smoke", "Frontend smoke"],
   ["test:frontend-e2e", "Browser E2E"],

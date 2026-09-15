@@ -19,3 +19,4 @@
 - [Public discovery test isolation](public-discovery-test-isolation.md) — persisted external metadata requires unique, low-collision query tokens and exact fixture cleanup.
 - [Headless agent onboarding](headless-agent-onboarding.md) — public discovery stays separate from verified owner bootstrap; direct OpenAPI detail is short-lived and unverified.
 - [Public decision boundary](public-decision-boundary.md) — the public Decision API follows the VERIFIED_LOW_RISK catalog boundary, including first-live-check transitions.
+- [Execution gateway safety](execution-gateway-safety.md) — claim owner-bound plans before quota, bind service configuration, and cap/audit every provider execution.

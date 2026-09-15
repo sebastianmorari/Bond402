@@ -25,6 +25,10 @@ import type {
 import type {
   AgentDecisionRequest,
   AgentDecisionResponse,
+  AgentExecutionPlanRequest,
+  AgentExecutionPlanResponse,
+  AgentExecutionRequest,
+  AgentExecutionResponse,
   AgentOnboarding,
   ApiError,
   ApiKey,
@@ -2219,6 +2223,157 @@ export const useDeveloperPreActionCheck = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getDeveloperPreActionCheckMutationOptions(options));
+    }
+
+export const getCreateDeveloperExecutionPlanUrl = () => {
+
+
+
+
+  return `/api/developer/execution/plan`
+}
+
+/**
+ * PLAN/READINESS is read-only and does not contact a provider. The agent
+ * may send a natural-language task or an owned service and operation, but
+ * Bond402 uses only the registered HTTPS service URL and declared typed
+ * query parameters. READY returns a short-lived planId; every other
+ * status prohibits provider execution.
+ * @summary Create an owner-bound agent execution plan
+ */
+export const createDeveloperExecutionPlan = async (agentExecutionPlanRequest: AgentExecutionPlanRequest, options?: Parameters<typeof customFetch>[1]): Promise<AgentExecutionPlanResponse> => {
+
+  return customFetch<AgentExecutionPlanResponse>(getCreateDeveloperExecutionPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(agentExecutionPlanRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateDeveloperExecutionPlanMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDeveloperExecutionPlan>>, TError,{data: BodyType<AgentExecutionPlanRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDeveloperExecutionPlan>>, TError,{data: BodyType<AgentExecutionPlanRequest>}, TContext> => {
+
+const mutationKey = ['createDeveloperExecutionPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDeveloperExecutionPlan>>, {data: BodyType<AgentExecutionPlanRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDeveloperExecutionPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDeveloperExecutionPlanMutationResult = NonNullable<Awaited<ReturnType<typeof createDeveloperExecutionPlan>>>
+    export type CreateDeveloperExecutionPlanMutationBody = BodyType<AgentExecutionPlanRequest>
+    export type CreateDeveloperExecutionPlanMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Create an owner-bound agent execution plan
+ */
+export const useCreateDeveloperExecutionPlan = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDeveloperExecutionPlan>>, TError,{data: BodyType<AgentExecutionPlanRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDeveloperExecutionPlan>>,
+        TError,
+        {data: BodyType<AgentExecutionPlanRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateDeveloperExecutionPlanMutationOptions(options));
+    }
+
+export const getExecuteDeveloperAgentPlanUrl = () => {
+
+
+
+
+  return `/api/developer/execution/execute`
+}
+
+/**
+ * EXECUTE revalidates a short-lived READY plan and current registered
+ * service configuration, then consumes monthly quota immediately before
+ * the provider call. The agent cannot supply a target URL. Only HTTPS
+ * GET/HEAD are currently executable; provider credentials remain server-side.
+ * @summary Execute one previously approved owner-bound agent plan
+ */
+export const executeDeveloperAgentPlan = async (agentExecutionRequest: AgentExecutionRequest, options?: Parameters<typeof customFetch>[1]): Promise<AgentExecutionResponse> => {
+
+  return customFetch<AgentExecutionResponse>(getExecuteDeveloperAgentPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(agentExecutionRequest)
+  }
+);}
+
+
+
+
+
+export const getExecuteDeveloperAgentPlanMutationOptions = <TError = ErrorType<ApiError | AgentExecutionResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof executeDeveloperAgentPlan>>, TError,{data: BodyType<AgentExecutionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof executeDeveloperAgentPlan>>, TError,{data: BodyType<AgentExecutionRequest>}, TContext> => {
+
+const mutationKey = ['executeDeveloperAgentPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof executeDeveloperAgentPlan>>, {data: BodyType<AgentExecutionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  executeDeveloperAgentPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExecuteDeveloperAgentPlanMutationResult = NonNullable<Awaited<ReturnType<typeof executeDeveloperAgentPlan>>>
+    export type ExecuteDeveloperAgentPlanMutationBody = BodyType<AgentExecutionRequest>
+    export type ExecuteDeveloperAgentPlanMutationError = ErrorType<ApiError | AgentExecutionResponse>
+
+    /**
+ * @summary Execute one previously approved owner-bound agent plan
+ */
+export const useExecuteDeveloperAgentPlan = <TError = ErrorType<ApiError | AgentExecutionResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof executeDeveloperAgentPlan>>, TError,{data: BodyType<AgentExecutionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof executeDeveloperAgentPlan>>,
+        TError,
+        {data: BodyType<AgentExecutionRequest>},
+        TContext
+      > => {
+      return useMutation(getExecuteDeveloperAgentPlanMutationOptions(options));
     }
 
 export const getGetPublicDiscoveryUrl = () => {

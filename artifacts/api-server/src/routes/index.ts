@@ -6,6 +6,7 @@ import developerRouter from "./developer";
 import authRouter from "./auth";
 import usageRouter from "./usage";
 import publicRouter from "./public";
+import executionRouter from "./execution";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(developerRouter);
 router.use(authRouter);
 router.use(usageRouter);
 router.use(publicRouter);
+router.use(executionRouter);
 
 export default router;
