@@ -151,6 +151,18 @@ function sourcePriority(kind: AgentCandidateKind) {
   return kind === "INTERNAL_SERVICE" ? 3 : kind === "PERSISTED_DISCOVERY" ? 2 : 1;
 }
 
+function canonicalCandidateUrl(value: string) {
+  try {
+    const url = new URL(value);
+    url.search = "";
+    url.hash = "";
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    return url.toString();
+  } catch {
+    return value.trim().toLowerCase();
+  }
+}
+
 function verificationPriority(status: string) {
   const normalized = normalize(status);
   if (normalized === "verified_low_risk" || normalized === "verified") return 1;
@@ -177,6 +189,37 @@ function blockersForCandidate(candidate: AgentCandidateInput) {
     blockers.push("VERIFICATION_INSUFFICIENT");
   }
   return unique(blockers);
+}
+
+export function dedupeAgentCandidates(candidates: readonly AgentCandidateInput[]) {
+  const byIdentity = new Map<string, AgentCandidateInput>();
+  for (const candidate of candidates) {
+    const identity = `${canonicalCandidateUrl(candidate.url)}|${candidate.name.trim().toLowerCase()}`;
+    const existing = byIdentity.get(identity);
+    if (!existing) {
+      byIdentity.set(identity, {
+        ...candidate,
+        knownFacts: unique(candidate.knownFacts),
+      });
+      continue;
+    }
+    const candidatePriority =
+      sourcePriority(candidate.kind) * 10 +
+      verificationPriority(candidate.verificationStatus) * 5 +
+      candidate.capabilityMatch +
+      candidate.textMatch;
+    const existingPriority =
+      sourcePriority(existing.kind) * 10 +
+      verificationPriority(existing.verificationStatus) * 5 +
+      existing.capabilityMatch +
+      existing.textMatch;
+    const winner = candidatePriority > existingPriority ? candidate : existing;
+    byIdentity.set(identity, {
+      ...winner,
+      knownFacts: unique([...existing.knownFacts, ...candidate.knownFacts]),
+    });
+  }
+  return [...byIdentity.values()];
 }
 
 export function normalizeAgentTask(task: string): AgentIntent {
@@ -255,7 +298,7 @@ export function decideAgentTask(
   feedback?: AgentFeedback;
 } {
   const intent = normalizeAgentTask(task);
-  const scored = candidates
+  const scored = dedupeAgentCandidates(candidates)
     .filter((candidate) => candidate.name.trim() && candidate.url.trim())
     .map((candidate) => {
       const selectionScore = clampScore(
