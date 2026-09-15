@@ -10,10 +10,11 @@
  */
 import type { PublicDiscoverySource } from './publicDiscoverySource';
 import type { PublicExternalService } from './publicExternalService';
+import type { PublicInternalDiscovery } from './publicInternalDiscovery';
 import type { PublicServiceSearchResult } from './publicServiceSearchResult';
 
 export interface PublicServiceCatalog {
-  items: (PublicServiceSearchResult | PublicExternalService)[];
+  items: (PublicServiceSearchResult | PublicInternalDiscovery | PublicExternalService)[];
   query: string;
   page: number;
   pageSize: number;

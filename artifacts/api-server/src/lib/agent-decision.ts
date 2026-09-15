@@ -117,6 +117,7 @@ const CAPABILITY_DEFINITIONS: Array<{
       "waehrung",
       "exchange rate",
       "wechselkurs",
+      "convert",
       "convert currency",
       "währung umrechnen",
       "waehrung umrechnen",

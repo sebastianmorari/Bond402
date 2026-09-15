@@ -244,6 +244,7 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
   assert.equal(openApi.response.status, 200);
   assert.equal(openApi.data.openapi, "3.1.0");
   assert.ok(openApi.data.paths["/public/discovery"]);
+   assert.ok(openApi.data.paths["/public/agent/decision"].post);
   assert.ok(openApi.data.paths["/public/discovery/openapi"].post);
   assert.ok(openApi.data.paths["/public/services"]);
   assert.ok(openApi.data.paths["/public/services/{id}/pre-action-check"].post);
@@ -252,6 +253,7 @@ test("öffentliche Beta-Discovery, Kataloggrenzen und OpenAPI-Vertrag", async ()
    assert.ok(openApi.data.components.schemas.PublicServiceDiscovery);
    assert.ok(openApi.data.components.schemas.PublicServiceCatalog);
    assert.ok(openApi.data.components.schemas.AgentFeedback);
+   assert.ok(openApi.data.components.schemas.AgentDecisionResponse);
    assert.ok(openApi.data.components.schemas.RegionalAggregation);
    assert.ok(openApi.data.components.schemas.TrustMetrics.properties.regionalAggregation);
   assert.ok(openApi.data.components.schemas.SecurityHeaders);

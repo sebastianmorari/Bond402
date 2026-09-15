@@ -9,15 +9,13 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PublicDiscoveryEndpoints = {
-  catalog: string;
-  agentDecision: string;
-  serviceDetail: string;
-  publicPreActionCheck: string;
-  directOpenApiDiscovery: string;
-  agentOnboarding: string;
-  openapi: string;
-  humanDocs: string;
-  wellKnown: string;
-  llms: string;
-};
+export type AgentIntentCapability = typeof AgentIntentCapability[keyof typeof AgentIntentCapability];
+
+
+export const AgentIntentCapability = {
+  WEATHER: 'WEATHER',
+  IMAGE_GENERATION: 'IMAGE_GENERATION',
+  FOOTBALL_RESULTS: 'FOOTBALL_RESULTS',
+  CURRENCY_CONVERSION: 'CURRENCY_CONVERSION',
+  UNKNOWN: 'UNKNOWN',
+} as const;

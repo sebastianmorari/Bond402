@@ -120,6 +120,60 @@ export interface AuthRegistrationResponse {
   verificationRequired: boolean;
 }
 
+export type AgentFeedbackStatus = typeof AgentFeedbackStatus[keyof typeof AgentFeedbackStatus];
+
+
+export const AgentFeedbackStatus = {
+  READY: 'READY',
+  CAUTION: 'CAUTION',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  PARAMETER_REQUIRED: 'PARAMETER_REQUIRED',
+  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
+  RATE_LIMITED: 'RATE_LIMITED',
+  PROVIDER_ERROR: 'PROVIDER_ERROR',
+  UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
+  BLOCKED: 'BLOCKED',
+  NOT_FOUND: 'NOT_FOUND',
+  NO_MATCH: 'NO_MATCH',
+  INVALID_REQUEST: 'INVALID_REQUEST',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+} as const;
+
+export type AgentFeedbackContext = {
+  /** @nullable */
+  serviceId: string | null;
+  /** @nullable */
+  serviceName: string | null;
+  /** @nullable */
+  provider: string | null;
+  /** @nullable */
+  source: string | null;
+  /** @nullable */
+  verification: string | null;
+};
+
+export type AgentFeedbackDetails = {
+  /** @nullable */
+  httpStatus: number | null;
+  /** @nullable */
+  retryAfterSeconds: number | null;
+  /** @nullable */
+  requiredAuth: boolean | null;
+  requiredParameters: string[];
+  /** @nullable */
+  actionContext: string | null;
+};
+
+export interface AgentFeedback {
+  contractVersion: string;
+  status: AgentFeedbackStatus;
+  code: string;
+  summary: string;
+  nextAction: string;
+  context: AgentFeedbackContext;
+  details: AgentFeedbackDetails;
+}
+
 export type UsageSummaryPlan = typeof UsageSummaryPlan[keyof typeof UsageSummaryPlan];
 
 
@@ -172,6 +226,7 @@ export interface UsageSummary {
 export interface ApiError {
   error: string;
   code: string;
+  feedback?: AgentFeedback;
   quota?: UsageSummary | null;
 }
 
@@ -1062,6 +1117,7 @@ export type PublicServiceDiscoveryScope = typeof PublicServiceDiscoveryScope[key
 
 export const PublicServiceDiscoveryScope = {
   LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
+  LISTED_SERVICES_AND_PUBLIC_DISCOVERY: 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY',
 } as const;
 
 export type PublicServiceDiscoveryRankingFactors = {
@@ -1115,6 +1171,91 @@ export type PublicServiceSearchResult = PublicService & {
 }, Extract<keyof (PublicService & {
   discovery: PublicServiceDiscovery;
 }), 'securityStatus' | 'firstSeenAt' | 'sandboxObservedAt'>>>;
+
+export type PublicInternalDiscoveryKind = typeof PublicInternalDiscoveryKind[keyof typeof PublicInternalDiscoveryKind];
+
+
+export const PublicInternalDiscoveryKind = {
+  INTERNAL_DISCOVERY: 'INTERNAL_DISCOVERY',
+} as const;
+
+export type PublicInternalDiscoveryVerificationReason = typeof PublicInternalDiscoveryVerificationReason[keyof typeof PublicInternalDiscoveryVerificationReason];
+
+
+export const PublicInternalDiscoveryVerificationReason = {
+  PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK: 'PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK',
+} as const;
+
+export type PublicInternalDiscoveryDiscoveryScope = typeof PublicInternalDiscoveryDiscoveryScope[keyof typeof PublicInternalDiscoveryDiscoveryScope];
+
+
+export const PublicInternalDiscoveryDiscoveryScope = {
+  PUBLIC_INTERNAL_DISCOVERY: 'PUBLIC_INTERNAL_DISCOVERY',
+} as const;
+
+export type PublicInternalDiscoveryVerification = {
+  status: string;
+  reason: PublicInternalDiscoveryVerificationReason;
+};
+
+export type PublicInternalDiscoveryTrust = {
+  status: string;
+};
+
+export type PublicInternalDiscoveryDiscoveryRankingFactors = {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  textRelevance: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  discoveryFreshness: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  publicSource: number;
+};
+
+export type PublicInternalDiscoveryDiscoveryEvidence = {
+  canonicalUrl: string;
+  sourceUrl: string;
+  /** @nullable */
+  provider: string | null;
+  /** @nullable */
+  version: string | null;
+  discoveredAt: string;
+};
+
+export type PublicInternalDiscoveryDiscovery = {
+  source: string;
+  sourceLabel: string;
+  scope: PublicInternalDiscoveryDiscoveryScope;
+  verification: string;
+  trustStatus: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  matchScore: number;
+  rankingFactors: PublicInternalDiscoveryDiscoveryRankingFactors;
+  evidence: PublicInternalDiscoveryDiscoveryEvidence;
+};
+
+export interface PublicInternalDiscovery {
+  id: string;
+  kind: PublicInternalDiscoveryKind;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  url: string;
+  verification: PublicInternalDiscoveryVerification;
+  trust: PublicInternalDiscoveryTrust;
+  discovery: PublicInternalDiscoveryDiscovery;
+}
 
 export type PublicExternalServiceKind = typeof PublicExternalServiceKind[keyof typeof PublicExternalServiceKind];
 
@@ -1245,6 +1386,7 @@ export type PublicDiscoverySourceScope = typeof PublicDiscoverySourceScope[keyof
 
 export const PublicDiscoverySourceScope = {
   LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
+  LISTED_SERVICES_AND_PUBLIC_DISCOVERY: 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY',
   PUBLIC_UNVERIFIED_OPENAPI: 'PUBLIC_UNVERIFIED_OPENAPI',
   PUBLIC_UNVERIFIED_API_DIRECTORY: 'PUBLIC_UNVERIFIED_API_DIRECTORY',
   PUBLIC_UNVERIFIED_EXTERNAL_CATALOG: 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG',
@@ -1278,7 +1420,7 @@ export interface PublicDiscoverySource {
 }
 
 export interface PublicServiceCatalog {
-  items: (PublicServiceSearchResult | PublicExternalService)[];
+  items: (PublicServiceSearchResult | PublicInternalDiscovery | PublicExternalService)[];
   query: string;
   page: number;
   pageSize: number;
@@ -1475,8 +1617,11 @@ export type PublicDiscoveryAuthentication = {
 
 export type PublicDiscoveryEndpoints = {
   catalog: string;
+  agentDecision: string;
   serviceDetail: string;
   publicPreActionCheck: string;
+  directOpenApiDiscovery: string;
+  agentOnboarding: string;
   openapi: string;
   humanDocs: string;
   wellKnown: string;
@@ -1501,6 +1646,7 @@ export type PublicDiscoveryDataSourceScope = typeof PublicDiscoveryDataSourceSco
 
 export const PublicDiscoveryDataSourceScope = {
   LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
+  LISTED_SERVICES_AND_PUBLIC_DISCOVERY: 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY',
 } as const;
 
 export type PublicDiscoveryDataSource = {
@@ -1524,6 +1670,246 @@ export interface PublicDiscovery {
   limits: PublicDiscoveryLimits;
   dataSource: PublicDiscoveryDataSource;
   policy: PreActionPolicy;
+}
+
+export type AgentOnboardingFeedback = {
+  contractVersion: string;
+  statuses: string[];
+  secretPolicy: string;
+};
+
+export type AgentOnboardingStepsItemVisibility = typeof AgentOnboardingStepsItemVisibility[keyof typeof AgentOnboardingStepsItemVisibility];
+
+
+export const AgentOnboardingStepsItemVisibility = {
+  PUBLIC: 'PUBLIC',
+  OWNER_BOOTSTRAP: 'OWNER_BOOTSTRAP',
+  OWNER_BOUND: 'OWNER_BOUND',
+} as const;
+
+export type AgentOnboardingStepsItemMethod = typeof AgentOnboardingStepsItemMethod[keyof typeof AgentOnboardingStepsItemMethod];
+
+
+export const AgentOnboardingStepsItemMethod = {
+  GET: 'GET',
+  POST: 'POST',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AgentOnboardingStepsItemBody = { [key: string]: unknown } | null;
+
+export type AgentOnboardingStepsItem = {
+  id: string;
+  visibility: AgentOnboardingStepsItemVisibility;
+  method: AgentOnboardingStepsItemMethod;
+  path: string;
+  authentication: string;
+  /** @nullable */
+  next?: string | null;
+  /** @nullable */
+  policy?: string | null;
+  /** @nullable */
+  requirement?: string | null;
+  /** @nullable */
+  result?: string | null;
+  /** @nullable */
+  quota?: string | null;
+  /** @nullable */
+  ownerBinding?: string | null;
+  /** @nullable */
+  body?: AgentOnboardingStepsItemBody;
+};
+
+export interface AgentOnboarding {
+  version: string;
+  purpose: string;
+  feedback: AgentOnboardingFeedback;
+  steps: AgentOnboardingStepsItem[];
+  securityBoundaries: string[];
+}
+
+export interface AgentDecisionRequest {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  task: string;
+}
+
+export type AgentIntentCapability = typeof AgentIntentCapability[keyof typeof AgentIntentCapability];
+
+
+export const AgentIntentCapability = {
+  WEATHER: 'WEATHER',
+  IMAGE_GENERATION: 'IMAGE_GENERATION',
+  FOOTBALL_RESULTS: 'FOOTBALL_RESULTS',
+  CURRENCY_CONVERSION: 'CURRENCY_CONVERSION',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type AgentIntentConfidence = typeof AgentIntentConfidence[keyof typeof AgentIntentConfidence];
+
+
+export const AgentIntentConfidence = {
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface AgentIntent {
+  task: string;
+  capability: AgentIntentCapability;
+  confidence: AgentIntentConfidence;
+  matchedTerms: string[];
+  searchTerms: string[];
+  parameterHints: string[];
+  reason: string;
+}
+
+export interface AgentSafeOperation {
+  method: string;
+  path: string;
+  /** @nullable */
+  url: string | null;
+  reason: string;
+}
+
+export type AgentDecisionCandidateKind = typeof AgentDecisionCandidateKind[keyof typeof AgentDecisionCandidateKind];
+
+
+export const AgentDecisionCandidateKind = {
+  INTERNAL_SERVICE: 'INTERNAL_SERVICE',
+  PERSISTED_DISCOVERY: 'PERSISTED_DISCOVERY',
+  EXTERNAL_DISCOVERY: 'EXTERNAL_DISCOVERY',
+} as const;
+
+export type AgentDecisionCandidateAuthRequirement = typeof AgentDecisionCandidateAuthRequirement[keyof typeof AgentDecisionCandidateAuthRequirement];
+
+
+export const AgentDecisionCandidateAuthRequirement = {
+  REQUIRED: 'REQUIRED',
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  NOT_DECLARED: 'NOT_DECLARED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AgentDecisionCandidatePreActionDecision = typeof AgentDecisionCandidatePreActionDecision[keyof typeof AgentDecisionCandidatePreActionDecision] | null;
+
+
+export const AgentDecisionCandidatePreActionDecision = {
+  ALLOW: 'ALLOW',
+  CAUTION: 'CAUTION',
+  BLOCK: 'BLOCK',
+} as const;
+
+export interface AgentDecisionCandidate {
+  id: string;
+  kind: AgentDecisionCandidateKind;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  url: string;
+  source: string;
+  sourceLabel: string;
+  /** @nullable */
+  sourceUrl: string | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  capabilityMatch: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  textMatch: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  openApiMetadata: number;
+  verificationStatus: string;
+  /** @nullable */
+  trustStatus: string | null;
+  /** @nullable */
+  trustScore: number | null;
+  authRequirement: AgentDecisionCandidateAuthRequirement;
+  requiredParameters: string[];
+  safeOperations: AgentSafeOperation[];
+  /** @nullable */
+  preActionDecision: AgentDecisionCandidatePreActionDecision;
+  knownFacts: string[];
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  selectionScore: number;
+  blockers: string[];
+  canExecute: boolean;
+}
+
+export type AgentDecisionProvenanceMode = typeof AgentDecisionProvenanceMode[keyof typeof AgentDecisionProvenanceMode];
+
+
+export const AgentDecisionProvenanceMode = {
+  INTERNAL_PRIMARY: 'INTERNAL_PRIMARY',
+  EXTERNAL_FALLBACK: 'EXTERNAL_FALLBACK',
+} as const;
+
+export type AgentDecisionProvenanceSourcesItemKind = typeof AgentDecisionProvenanceSourcesItemKind[keyof typeof AgentDecisionProvenanceSourcesItemKind];
+
+
+export const AgentDecisionProvenanceSourcesItemKind = {
+  INTERNAL_SERVICE: 'INTERNAL_SERVICE',
+  PERSISTED_DISCOVERY: 'PERSISTED_DISCOVERY',
+  EXTERNAL_DISCOVERY: 'EXTERNAL_DISCOVERY',
+} as const;
+
+export type AgentDecisionProvenanceSourcesItem = {
+  kind: AgentDecisionProvenanceSourcesItemKind;
+  source: string;
+  sourceLabel: string;
+  /** @nullable */
+  sourceUrl: string | null;
+};
+
+export interface AgentDecisionProvenance {
+  mode: AgentDecisionProvenanceMode;
+  sources: AgentDecisionProvenanceSourcesItem[];
+  externalCandidatesAlwaysUnverified: true;
+}
+
+export type AgentDecisionResponseAuthRequirement = typeof AgentDecisionResponseAuthRequirement[keyof typeof AgentDecisionResponseAuthRequirement];
+
+
+export const AgentDecisionResponseAuthRequirement = {
+  REQUIRED: 'REQUIRED',
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  NOT_DECLARED: 'NOT_DECLARED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface AgentDecisionResponse {
+  contractVersion: string;
+  intent: AgentIntent;
+  bestCandidate: AgentDecisionCandidate | null;
+  /** @maxItems 20 */
+  candidates: AgentDecisionCandidate[];
+  why: string[];
+  authRequirement: AgentDecisionResponseAuthRequirement;
+  requiredParameters: string[];
+  verificationStatus: string;
+  canExecute: boolean;
+  blockers: string[];
+  nextAction: string;
+  provenance: AgentDecisionProvenance;
+  feedback: AgentFeedback;
 }
 
 export type PublicPreActionCheckAccess = {
@@ -1636,6 +2022,11 @@ export interface DemoService {
   maxResponseTime: number;
   explanation: string;
 }
+
+export type DiscoverOpenApiFromExplicitUrlBody = {
+  /** @maxLength 2048 */
+  url: string;
+};
 
 export type SearchPublicServicesParams = {
 /**

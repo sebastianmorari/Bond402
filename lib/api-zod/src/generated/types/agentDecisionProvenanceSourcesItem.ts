@@ -8,16 +8,12 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { AgentDecisionProvenanceSourcesItemKind } from './agentDecisionProvenanceSourcesItemKind';
 
-export type PublicDiscoveryEndpoints = {
-  catalog: string;
-  agentDecision: string;
-  serviceDetail: string;
-  publicPreActionCheck: string;
-  directOpenApiDiscovery: string;
-  agentOnboarding: string;
-  openapi: string;
-  humanDocs: string;
-  wellKnown: string;
-  llms: string;
+export type AgentDecisionProvenanceSourcesItem = {
+  kind: AgentDecisionProvenanceSourcesItemKind;
+  source: string;
+  sourceLabel: string;
+  /** @nullable */
+  sourceUrl: string | null;
 };

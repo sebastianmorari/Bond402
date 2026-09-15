@@ -52,6 +52,10 @@ import {
   feedbackForHttpError,
 } from "../lib/agent-feedback";
 import { discoverDirectOpenApi, rememberExternalApiDetail } from "../lib/public-external-detail";
+import {
+  buildPublicAgentDecision,
+  buildPublicAgentFeedback,
+} from "../lib/agent-decision-public";
 
 const router: IRouter = Router();
 const PUBLIC_RATE_LIMIT = 60;
@@ -224,7 +228,17 @@ router.get("/public/agent-onboarding", async (req, res): Promise<void> => {
         method: "GET",
         path: "/api/public/services?q={query}",
         authentication: "NONE",
-        next: "direct-openapi-discovery-or-public-detail",
+        next: "agent-decision-or-direct-openapi-discovery-or-public-detail",
+      },
+      {
+        id: "agent-decision",
+        visibility: "PUBLIC",
+        method: "POST",
+        path: "/api/public/agent/decision",
+        authentication: "NONE",
+        policy: "DETERMINISTIC_READ_ONLY_DECISION_NO_EXECUTION",
+        body: { task: "<natural-language-agent-task>" },
+        next: "public-detail-or-safe-external-preflight",
       },
       {
         id: "direct-openapi-discovery",
@@ -335,6 +349,39 @@ router.get("/public/agent-onboarding", async (req, res): Promise<void> => {
   });
 });
 
+router.post("/public/agent/decision", async (req, res): Promise<void> => {
+  if (!(await requirePublicRateLimit(req, res))) return;
+  const body = req.body && typeof req.body === "object"
+    ? req.body as Record<string, unknown>
+    : {};
+  const task = body.task;
+  if (typeof task !== "string" || task.trim().length === 0 || task.length > 500) {
+    sendPublicError(
+      res,
+      400,
+      "Bitte geben Sie genau eine natürliche Agent-Aufgabe mit höchstens 500 Zeichen an.",
+      "INVALID_AGENT_TASK",
+    );
+    return;
+  }
+
+  try {
+    const decision = await buildPublicAgentDecision(task);
+    res.json({
+      ...decision,
+      feedback: buildPublicAgentFeedback(decision),
+    });
+  } catch {
+    sendPublicError(
+      res,
+      503,
+      "Die öffentlichen Decision-Quellen sind derzeit nicht verfügbar.",
+      "DECISION_SOURCES_UNAVAILABLE",
+      { source: "BOND402_PUBLIC_AGENT_DECISION" },
+    );
+  }
+});
+
 router.get("/public/discovery", async (req, res): Promise<void> => {
   if (!(await requirePublicRateLimit(req, res))) return;
   const base = publicBaseUrl(req);
@@ -355,6 +402,7 @@ router.get("/public/discovery", async (req, res): Promise<void> => {
     },
     endpoints: {
       catalog: `${base}/api/public/services`,
+      agentDecision: `${base}/api/public/agent/decision`,
       serviceDetail: `${base}/api/public/services/{id}`,
       publicPreActionCheck: `${base}/api/public/services/{id}/pre-action-check`,
       directOpenApiDiscovery: `${base}/api/public/discovery/openapi`,

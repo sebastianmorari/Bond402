@@ -8,16 +8,13 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { AgentOnboardingFeedback } from './agentOnboardingFeedback';
+import type { AgentOnboardingStepsItem } from './agentOnboardingStepsItem';
 
-export type PublicDiscoveryEndpoints = {
-  catalog: string;
-  agentDecision: string;
-  serviceDetail: string;
-  publicPreActionCheck: string;
-  directOpenApiDiscovery: string;
-  agentOnboarding: string;
-  openapi: string;
-  humanDocs: string;
-  wellKnown: string;
-  llms: string;
-};
+export interface AgentOnboarding {
+  version: string;
+  purpose: string;
+  feedback: AgentOnboardingFeedback;
+  steps: AgentOnboardingStepsItem[];
+  securityBoundaries: string[];
+}

@@ -200,7 +200,7 @@ test("vollständiger headless Agent- und Developer-Onboarding-Flow", async () =>
   assert.equal(onboarding.data.feedback.contractVersion, "2026-09-14");
   assert.deepEqual(
     onboarding.data.steps.filter((step: { visibility: string }) => step.visibility === "PUBLIC").map((step: { id: string }) => step.id),
-    ["public-discovery", "direct-openapi-discovery", "public-detail", "public-pre-action", "safe-external-check"],
+    ["public-discovery", "agent-decision", "direct-openapi-discovery", "public-detail", "public-pre-action", "safe-external-check"],
   );
   assert.ok(onboarding.data.steps.some((step: { id: string; authentication: string }) =>
     step.id === "owner-service-registration" && step.authentication === "BOND402_SESSION_COOKIE"));
@@ -280,6 +280,34 @@ test("vollständiger headless Agent- und Developer-Onboarding-Flow", async () =>
   assert.equal(publicPreAction.response.status, 200);
   assert.equal(publicPreAction.data.feedback.status, "BLOCKED");
   assert.equal(publicPreAction.data.access.requiresDeveloperKey, false);
+
+  const decision = await request("/api/public/agent/decision", {
+    body: { task: `Headless Service ${runId}` },
+  });
+  assert.equal(decision.response.status, 200);
+  for (const field of [
+    "contractVersion",
+    "intent",
+    "bestCandidate",
+    "why",
+    "authRequirement",
+    "requiredParameters",
+    "verificationStatus",
+    "canExecute",
+    "blockers",
+    "nextAction",
+    "provenance",
+    "feedback",
+  ]) {
+    assert.ok(field in decision.data, `Decision-Feld ${field} fehlt.`);
+  }
+  assert.equal(decision.data.intent.capability, "UNKNOWN");
+  assert.equal(decision.data.bestCandidate.id, serviceId, JSON.stringify(decision.data.candidates));
+  assert.equal(decision.data.bestCandidate.kind, "INTERNAL_SERVICE");
+  assert.equal(decision.data.canExecute, false);
+  assert.ok(decision.data.blockers.includes("NO_KNOWN_SAFE_OPERATION"));
+  assert.equal(decision.data.provenance.externalCandidatesAlwaysUnverified, true);
+  assert.equal(decision.data.feedback.status, "BLOCKED");
 
   const missingKey = await request(`/api/developer/services/${encodeURIComponent(serviceId)}/checks`, {
     method: "POST",

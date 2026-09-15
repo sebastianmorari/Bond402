@@ -2284,8 +2284,11 @@ export const GetPublicDiscoveryResponse = zod.object({
 }),
   "endpoints": zod.object({
   "catalog": zod.string(),
+  "agentDecision": zod.string(),
   "serviceDetail": zod.string(),
   "publicPreActionCheck": zod.string(),
+  "directOpenApiDiscovery": zod.string(),
+  "agentOnboarding": zod.string(),
   "openapi": zod.string(),
   "humanDocs": zod.string(),
   "wellKnown": zod.string(),
@@ -2300,13 +2303,13 @@ export const GetPublicDiscoveryResponse = zod.object({
   "dataSource": zod.object({
   "source": zod.enum(['BOND402_INTERNAL_CATALOG']),
   "sourceLabel": zod.string(),
-  "scope": zod.enum(['LISTED_SERVICES_ONLY']),
+  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY']),
   "externalSources": zod.literal(false),
   "fallbackPolicy": zod.string(),
   "fallbacks": zod.array(zod.object({
   "source": zod.enum(['BOND402_INTERNAL_CATALOG', 'APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_EXTERNAL_CATALOG']),
   "sourceLabel": zod.string(),
-  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
+  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
   "externalSources": zod.boolean(),
   "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
   "fallback": zod.enum(['NOT_USED', 'USED', 'UNAVAILABLE']),
@@ -2319,6 +2322,272 @@ export const GetPublicDiscoveryResponse = zod.object({
   "version": zod.string(),
   "maxFreshnessSeconds": zod.number()
 })
+})
+
+
+/**
+ * Returns the exact public, owner-bootstrap, and owner-bound steps for a
+ * headless agent. This document contains no secrets. A verified local
+ * account session is required before a service can be registered or a
+ * Developer API key can be created.
+ * @summary Get the dashboard-free Bond402 agent onboarding contract
+ */
+export const GetHeadlessAgentOnboardingResponse = zod.object({
+  "version": zod.string(),
+  "purpose": zod.string(),
+  "feedback": zod.object({
+  "contractVersion": zod.string(),
+  "statuses": zod.array(zod.string()),
+  "secretPolicy": zod.string()
+}),
+  "steps": zod.array(zod.object({
+  "id": zod.string(),
+  "visibility": zod.enum(['PUBLIC', 'OWNER_BOOTSTRAP', 'OWNER_BOUND']),
+  "method": zod.enum(['GET', 'POST']),
+  "path": zod.string(),
+  "authentication": zod.string(),
+  "next": zod.string().nullish(),
+  "policy": zod.string().nullish(),
+  "requirement": zod.string().nullish(),
+  "result": zod.string().nullish(),
+  "quota": zod.string().nullish(),
+  "ownerBinding": zod.string().nullish(),
+  "body": zod.object({
+
+}).nullish()
+})),
+  "securityBoundaries": zod.array(zod.string())
+})
+
+
+/**
+ * Performs a deterministic, read-only decision over internally listed
+ * services, persisted public discovery, and bounded external discovery.
+ * External candidates remain UNVERIFIED_EXTERNAL and are never executable
+ * from ranking alone. No credentials, guessed parameters, or proxy
+ * execution are used.
+ * @summary Decide how a headless agent should handle a natural-language task
+ */
+export const decidePublicAgentTaskBodyTaskMax = 500;
+
+
+
+export const DecidePublicAgentTaskBody = zod.object({
+  "task": zod.string().min(1).max(decidePublicAgentTaskBodyTaskMax)
+})
+
+export const decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMin = 0;
+export const decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMax = 100;
+
+export const decidePublicAgentTaskResponseBestCandidateOneTextMatchMin = 0;
+export const decidePublicAgentTaskResponseBestCandidateOneTextMatchMax = 100;
+
+export const decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMin = 0;
+export const decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMax = 100;
+
+export const decidePublicAgentTaskResponseBestCandidateOneSelectionScoreMin = 0;
+export const decidePublicAgentTaskResponseBestCandidateOneSelectionScoreMax = 100;
+
+export const decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMin = 0;
+export const decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMax = 100;
+
+export const decidePublicAgentTaskResponseCandidatesItemTextMatchMin = 0;
+export const decidePublicAgentTaskResponseCandidatesItemTextMatchMax = 100;
+
+export const decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMin = 0;
+export const decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMax = 100;
+
+export const decidePublicAgentTaskResponseCandidatesItemSelectionScoreMin = 0;
+export const decidePublicAgentTaskResponseCandidatesItemSelectionScoreMax = 100;
+
+export const decidePublicAgentTaskResponseCandidatesMax = 20;
+
+
+
+export const DecidePublicAgentTaskResponse = zod.object({
+  "contractVersion": zod.string(),
+  "intent": zod.object({
+  "task": zod.string(),
+  "capability": zod.enum(['WEATHER', 'IMAGE_GENERATION', 'FOOTBALL_RESULTS', 'CURRENCY_CONVERSION', 'UNKNOWN']),
+  "confidence": zod.enum(['HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']),
+  "matchedTerms": zod.array(zod.string()),
+  "searchTerms": zod.array(zod.string()),
+  "parameterHints": zod.array(zod.string()),
+  "reason": zod.string()
+}),
+  "bestCandidate": zod.union([zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+   "url": zod.string().url(),
+  "source": zod.string(),
+  "sourceLabel": zod.string(),
+   "sourceUrl": zod.string().url().nullable(),
+  "capabilityMatch": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMin).max(decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMax),
+  "textMatch": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneTextMatchMin).max(decidePublicAgentTaskResponseBestCandidateOneTextMatchMax),
+  "openApiMetadata": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMin).max(decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMax),
+  "verificationStatus": zod.string(),
+  "trustStatus": zod.string().nullable(),
+  "trustScore": zod.number().nullable(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']),
+  "requiredParameters": zod.array(zod.string()),
+  "safeOperations": zod.array(zod.object({
+  "method": zod.string(),
+  "path": zod.string(),
+   "url": zod.string().url().nullable(),
+  "reason": zod.string()
+})),
+  "preActionDecision": zod.union([zod.literal('ALLOW'),zod.literal('CAUTION'),zod.literal('BLOCK'),zod.literal(null)]).nullable(),
+  "knownFacts": zod.array(zod.string()),
+  "selectionScore": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneSelectionScoreMin).max(decidePublicAgentTaskResponseBestCandidateOneSelectionScoreMax),
+  "blockers": zod.array(zod.string()),
+  "canExecute": zod.boolean()
+}),zod.null()]),
+  "candidates": zod.array(zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
+  "name": zod.string(),
+  "description": zod.string().nullable(),
+   "url": zod.string().url(),
+  "source": zod.string(),
+  "sourceLabel": zod.string(),
+   "sourceUrl": zod.string().url().nullable(),
+  "capabilityMatch": zod.number().min(decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMin).max(decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMax),
+  "textMatch": zod.number().min(decidePublicAgentTaskResponseCandidatesItemTextMatchMin).max(decidePublicAgentTaskResponseCandidatesItemTextMatchMax),
+  "openApiMetadata": zod.number().min(decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMin).max(decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMax),
+  "verificationStatus": zod.string(),
+  "trustStatus": zod.string().nullable(),
+  "trustScore": zod.number().nullable(),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']),
+  "requiredParameters": zod.array(zod.string()),
+  "safeOperations": zod.array(zod.object({
+  "method": zod.string(),
+  "path": zod.string(),
+   "url": zod.string().url().nullable(),
+  "reason": zod.string()
+})),
+  "preActionDecision": zod.union([zod.literal('ALLOW'),zod.literal('CAUTION'),zod.literal('BLOCK'),zod.literal(null)]).nullable(),
+  "knownFacts": zod.array(zod.string()),
+  "selectionScore": zod.number().min(decidePublicAgentTaskResponseCandidatesItemSelectionScoreMin).max(decidePublicAgentTaskResponseCandidatesItemSelectionScoreMax),
+  "blockers": zod.array(zod.string()),
+  "canExecute": zod.boolean()
+})).max(decidePublicAgentTaskResponseCandidatesMax),
+  "why": zod.array(zod.string()),
+  "authRequirement": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']),
+  "requiredParameters": zod.array(zod.string()),
+  "verificationStatus": zod.string(),
+  "canExecute": zod.boolean(),
+  "blockers": zod.array(zod.string()),
+  "nextAction": zod.string(),
+  "provenance": zod.object({
+  "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
+  "sources": zod.array(zod.object({
+  "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
+  "source": zod.string(),
+  "sourceLabel": zod.string(),
+   "sourceUrl": zod.string().url().nullable()
+})),
+  "externalCandidatesAlwaysUnverified": zod.literal(true)
+}),
+  "feedback": zod.object({
+  "contractVersion": zod.string(),
+  "status": zod.enum(['READY', 'CAUTION', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED', 'NOT_FOUND', 'NO_MATCH', 'INVALID_REQUEST', 'INTERNAL_ERROR']),
+  "code": zod.string(),
+  "summary": zod.string(),
+  "nextAction": zod.string(),
+  "context": zod.object({
+  "serviceId": zod.string().nullable(),
+  "serviceName": zod.string().nullable(),
+  "provider": zod.string().nullable(),
+  "source": zod.string().nullable(),
+  "verification": zod.string().nullable()
+}),
+  "details": zod.object({
+   "httpStatus": zod.number().int().nullable(),
+   "retryAfterSeconds": zod.number().int().nullable(),
+  "requiredAuth": zod.boolean().nullable(),
+  "requiredParameters": zod.array(zod.string()),
+  "actionContext": zod.string().nullable()
+})
+})
+})
+
+
+/**
+ * Tries only a small bounded set of typical OpenAPI/Swagger paths. No
+ * credentials or guessed parameters are used. Results remain
+ * UNVERIFIED_EXTERNAL until an owner-bound workflow is completed.
+ * @summary Detect an OpenAPI document from one explicit public URL
+ */
+export const discoverOpenApiFromExplicitUrlBodyUrlMax = 2048;
+
+
+
+export const DiscoverOpenApiFromExplicitUrlBody = zod.object({
+  "url": zod.string().url().max(discoverOpenApiFromExplicitUrlBodyUrlMax)
+})
+
+export const DiscoverOpenApiFromExplicitUrlResponse = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['EXTERNAL_DISCOVERY_DETAIL']),
+  "name": zod.string(),
+  "provider": zod.string(),
+  "version": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "source": zod.object({
+  "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
+  "label": zod.string(),
+  "catalogUrl": zod.string().url(),
+  "recordUrl": zod.string().url(),
+  "specificationUrl": zod.string().url()
+}),
+  "verification": zod.object({
+  "status": zod.enum(['UNVERIFIED_EXTERNAL']),
+  "reason": zod.enum(['SPECIFICATION_METADATA_ONLY_NO_BOND402_CHECK'])
+}),
+  "specification": zod.object({
+  "status": zod.enum(['PARSED', 'UNAVAILABLE', 'UNSUPPORTED']),
+  "openapiVersion": zod.string().nullable(),
+  "title": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "servers": zod.array(zod.object({
+  "url": zod.string().url(),
+  "description": zod.string().nullable(),
+  "templated": zod.boolean()
+})),
+  "auth": zod.object({
+  "status": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']),
+  "schemes": zod.array(zod.object({
+  "name": zod.string(),
+  "type": zod.string(),
+  "scheme": zod.string().nullable(),
+  "location": zod.string().nullable()
+}))
+}),
+  "endpoints": zod.array(zod.object({
+  "method": zod.string(),
+  "path": zod.string(),
+  "summary": zod.string().nullable(),
+  "operationId": zod.string().nullable(),
+  "auth": zod.enum(['REQUIRED', 'NOT_REQUIRED', 'NOT_DECLARED', 'UNKNOWN']),
+  "safeToProbe": zod.boolean(),
+  "reason": zod.string()
+}))
+}),
+  "safeEndpoint": zod.union([zod.null(),zod.object({
+  "method": zod.enum(['GET', 'HEAD']),
+  "path": zod.string(),
+  "url": zod.string().url(),
+  "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
+})]),
+  "safeEndpoints": zod.array(zod.object({
+  "method": zod.enum(['GET', 'HEAD']),
+  "path": zod.string(),
+  "url": zod.string().url(),
+  "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
+})),
+  "safeEndpointNote": zod.string()
 })
 
 
@@ -2369,13 +2638,19 @@ export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsDisc
 export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMin = 0;
 export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMax = 1;
 
-export const searchPublicServicesResponseItemsItemTwoDiscoverySourcesMax = 4;
+export const searchPublicServicesResponseItemsItemThreeDiscoverySourcesMax = 4;
 
-export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsSourceFreshnessMin = 0;
-export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsSourceFreshnessMax = 1;
+export const searchPublicServicesResponseItemsItemThreeDiscoveryMatchScoreMin = 0;
+export const searchPublicServicesResponseItemsItemThreeDiscoveryMatchScoreMax = 100;
 
-export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsOpenApiMetadataMin = 0;
-export const searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsOpenApiMetadataMax = 1;
+export const searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsTextRelevanceMin = 0;
+export const searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsTextRelevanceMax = 1;
+
+export const searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsSourceFreshnessMin = 0;
+export const searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsSourceFreshnessMax = 1;
+
+export const searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsOpenApiMetadataMin = 0;
+export const searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsOpenApiMetadataMax = 1;
 
 
 
@@ -2553,7 +2828,7 @@ export const SearchPublicServicesResponse = zod.object({
   "discovery": zod.object({
   "source": zod.enum(['BOND402_INTERNAL_CATALOG']),
   "sourceLabel": zod.string(),
-  "scope": zod.enum(['LISTED_SERVICES_ONLY']),
+  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY']),
   "matchScore": zod.number().min(searchPublicServicesResponseItemsItemOneTwoDiscoveryMatchScoreMin).max(searchPublicServicesResponseItemsItemOneTwoDiscoveryMatchScoreMax),
   "rankingFactors": zod.object({
   "textRelevance": zod.number().min(searchPublicServicesResponseItemsItemOneTwoDiscoveryRankingFactorsTextRelevanceMin).max(searchPublicServicesResponseItemsItemOneTwoDiscoveryRankingFactorsTextRelevanceMax),
@@ -2572,7 +2847,7 @@ export const SearchPublicServicesResponse = zod.object({
   "kind": zod.enum(['INTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "verification": zod.object({
   "status": zod.string(),
   "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
@@ -2593,8 +2868,8 @@ export const SearchPublicServicesResponse = zod.object({
   "publicSource": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMax)
 }),
   "evidence": zod.object({
-  "canonicalUrl": zod.string().url(),
-  "sourceUrl": zod.string().url(),
+   "canonicalUrl": zod.string().url(),
+   "sourceUrl": zod.string().url(),
   "provider": zod.string().nullable(),
   "version": zod.string().nullable(),
   "discoveredAt": zod.coerce.date()
@@ -2615,15 +2890,15 @@ export const SearchPublicServicesResponse = zod.object({
   "sourceLabel": zod.string(),
   "sources": zod.array(zod.object({
   "label": zod.string(),
-  "url": zod.string().url()
-})).max(searchPublicServicesResponseItemsItemTwoDiscoverySourcesMax),
+   "url": zod.string().url()
+})).max(searchPublicServicesResponseItemsItemThreeDiscoverySourcesMax),
   "scope": zod.enum(['PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY']),
   "verification": zod.enum(['UNVERIFIED_EXTERNAL']),
-  "matchScore": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryMatchScoreMax),
+  "matchScore": zod.number().min(searchPublicServicesResponseItemsItemThreeDiscoveryMatchScoreMin).max(searchPublicServicesResponseItemsItemThreeDiscoveryMatchScoreMax),
   "rankingFactors": zod.object({
-  "textRelevance": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsTextRelevanceMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsTextRelevanceMax),
-  "sourceFreshness": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsSourceFreshnessMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsSourceFreshnessMax),
-  "openApiMetadata": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsOpenApiMetadataMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsOpenApiMetadataMax)
+  "textRelevance": zod.number().min(searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsTextRelevanceMin).max(searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsTextRelevanceMax),
+  "sourceFreshness": zod.number().min(searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsSourceFreshnessMin).max(searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsSourceFreshnessMax),
+  "openApiMetadata": zod.number().min(searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsOpenApiMetadataMin).max(searchPublicServicesResponseItemsItemThreeDiscoveryRankingFactorsOpenApiMetadataMax)
 }),
   "evidence": zod.object({
   "provider": zod.string(),
@@ -2647,7 +2922,7 @@ export const SearchPublicServicesResponse = zod.object({
   "source": zod.object({
   "source": zod.enum(['BOND402_INTERNAL_CATALOG', 'APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_EXTERNAL_CATALOG']),
   "sourceLabel": zod.string(),
-   "scope": zod.enum(['LISTED_SERVICES_ONLY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
+  "scope": zod.enum(['LISTED_SERVICES_ONLY', 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY', 'PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY', 'PUBLIC_UNVERIFIED_EXTERNAL_CATALOG']),
   "externalSources": zod.boolean(),
   "mode": zod.enum(['INTERNAL_PRIMARY', 'EXTERNAL_FALLBACK']),
   "fallback": zod.enum(['NOT_USED', 'USED', 'UNAVAILABLE']),
@@ -2657,7 +2932,7 @@ export const SearchPublicServicesResponse = zod.object({
 
 
 /**
- * @summary Read public trust metadata or external discovery detail
+ * @summary Read public trust metadata or public discovery detail
  */
 
 
@@ -2854,7 +3129,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "kind": zod.enum(['INTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "verification": zod.object({
   "status": zod.string(),
   "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
@@ -2875,8 +3150,8 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "publicSource": zod.number().min(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMin).max(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMax)
 }),
   "evidence": zod.object({
-  "canonicalUrl": zod.string().url(),
-  "sourceUrl": zod.string().url(),
+   "canonicalUrl": zod.string().url(),
+   "sourceUrl": zod.string().url(),
   "provider": zod.string().nullable(),
   "version": zod.string().nullable(),
   "discoveredAt": zod.coerce.date()
@@ -2892,9 +3167,9 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "source": zod.object({
   "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
   "label": zod.string(),
-  "catalogUrl": zod.string().url(),
-  "recordUrl": zod.string().url(),
-  "specificationUrl": zod.string().url()
+   "catalogUrl": zod.string().url(),
+   "recordUrl": zod.string().url(),
+   "specificationUrl": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -2906,7 +3181,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "title": zod.string().nullable(),
   "description": zod.string().nullable(),
   "servers": zod.array(zod.object({
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "description": zod.string().nullable(),
   "templated": zod.boolean()
 })),
@@ -2932,13 +3207,13 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "safeEndpoint": zod.union([zod.null(),zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })]),
   "safeEndpoints": zod.array(zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+   "url": zod.string().url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })),
   "safeEndpointNote": zod.string()
@@ -3175,7 +3450,7 @@ export const PostPublicExternalCheckParams = zod.object({
 export const PostPublicExternalCheckBody = zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url()
+   "url": zod.string().url()
 })
 
 export const PostPublicExternalCheckResponse = zod.object({
@@ -3183,7 +3458,7 @@ export const PostPublicExternalCheckResponse = zod.object({
   "endpoint": zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url()
+   "url": zod.string().url()
 }),
   "verification": zod.object({
   "status": zod.enum(['CHECKED_EXTERNAL']),
@@ -3211,7 +3486,7 @@ export const PostPublicExternalPreflightParams = zod.object({
 })
 
 export const PostPublicExternalPreflightBody = zod.object({
-  "serverUrl": zod.string().url().optional()
+   "serverUrl": zod.string().url().optional()
 })
 
 export const PostPublicExternalPreflightResponse = zod.object({

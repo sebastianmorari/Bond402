@@ -9,15 +9,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PublicDiscoveryEndpoints = {
-  catalog: string;
-  agentDecision: string;
-  serviceDetail: string;
-  publicPreActionCheck: string;
-  directOpenApiDiscovery: string;
-  agentOnboarding: string;
-  openapi: string;
-  humanDocs: string;
-  wellKnown: string;
-  llms: string;
-};
+export type AgentDecisionProvenanceMode = typeof AgentDecisionProvenanceMode[keyof typeof AgentDecisionProvenanceMode];
+
+
+export const AgentDecisionProvenanceMode = {
+  INTERNAL_PRIMARY: 'INTERNAL_PRIMARY',
+  EXTERNAL_FALLBACK: 'EXTERNAL_FALLBACK',
+} as const;

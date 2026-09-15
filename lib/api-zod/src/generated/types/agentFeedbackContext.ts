@@ -9,15 +9,15 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PublicDiscoveryEndpoints = {
-  catalog: string;
-  agentDecision: string;
-  serviceDetail: string;
-  publicPreActionCheck: string;
-  directOpenApiDiscovery: string;
-  agentOnboarding: string;
-  openapi: string;
-  humanDocs: string;
-  wellKnown: string;
-  llms: string;
+export type AgentFeedbackContext = {
+  /** @nullable */
+  serviceId: string | null;
+  /** @nullable */
+  serviceName: string | null;
+  /** @nullable */
+  provider: string | null;
+  /** @nullable */
+  source: string | null;
+  /** @nullable */
+  verification: string | null;
 };

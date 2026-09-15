@@ -9,10 +9,11 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PublicDiscoveryDataSourceScope = typeof PublicDiscoveryDataSourceScope[keyof typeof PublicDiscoveryDataSourceScope];
+export type AgentDecisionProvenanceSourcesItemKind = typeof AgentDecisionProvenanceSourcesItemKind[keyof typeof AgentDecisionProvenanceSourcesItemKind];
 
 
-export const PublicDiscoveryDataSourceScope = {
-  LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
-  LISTED_SERVICES_AND_PUBLIC_DISCOVERY: 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY',
+export const AgentDecisionProvenanceSourcesItemKind = {
+  INTERNAL_SERVICE: 'INTERNAL_SERVICE',
+  PERSISTED_DISCOVERY: 'PERSISTED_DISCOVERY',
+  EXTERNAL_DISCOVERY: 'EXTERNAL_DISCOVERY',
 } as const;

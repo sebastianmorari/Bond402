@@ -8,10 +8,12 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { AgentFeedback } from './agentFeedback';
 import type { UsageSummary } from './usageSummary';
 
 export interface ApiError {
   error: string;
   code: string;
+  feedback?: AgentFeedback;
   quota?: UsageSummary | null;
 }

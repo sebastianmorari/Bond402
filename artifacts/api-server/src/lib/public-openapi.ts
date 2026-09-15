@@ -62,6 +62,34 @@ export function getPublicOpenApiDocument(baseUrl: string) {
           },
         },
       },
+      "/public/agent/decision": {
+        post: {
+          operationId: "decidePublicAgentTask",
+          description:
+            "Deterministic, read-only headless decision for a natural-language task. Internal listed services are primary; external discovery remains UNVERIFIED_EXTERNAL and never becomes executable through ranking alone.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AgentDecisionRequest" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Machine-readable public agent decision",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/AgentDecisionResponse" },
+                },
+              },
+            },
+            "400": { description: "Invalid natural-language agent task" },
+            "429": { description: "Rate limited; inspect Retry-After" },
+            "503": { description: "Decision sources are temporarily unavailable" },
+          },
+        },
+      },
       "/public/services": {
         get: {
           operationId: "searchPublicServices",
@@ -630,6 +658,168 @@ export function getPublicOpenApiDocument(baseUrl: string) {
               },
             },
             securityBoundaries: { type: "array", items: { type: "string" } },
+          },
+        },
+        AgentDecisionRequest: {
+          type: "object",
+          required: ["task"],
+          properties: {
+            task: { type: "string", minLength: 1, maxLength: 500 },
+          },
+        },
+        AgentIntent: {
+          type: "object",
+          required: ["task", "capability", "confidence", "matchedTerms", "searchTerms", "parameterHints", "reason"],
+          properties: {
+            task: { type: "string" },
+            capability: {
+              type: "string",
+              enum: ["WEATHER", "IMAGE_GENERATION", "FOOTBALL_RESULTS", "CURRENCY_CONVERSION", "UNKNOWN"],
+            },
+            confidence: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
+            matchedTerms: { type: "array", items: { type: "string" } },
+            searchTerms: { type: "array", items: { type: "string" } },
+            parameterHints: { type: "array", items: { type: "string" } },
+            reason: { type: "string" },
+          },
+        },
+        AgentSafeOperation: {
+          type: "object",
+          required: ["method", "path", "url", "reason"],
+          properties: {
+            method: { type: "string" },
+            path: { type: "string" },
+            url: { type: ["string", "null"], format: "uri" },
+            reason: { type: "string" },
+          },
+        },
+        AgentDecisionCandidate: {
+          type: "object",
+          required: [
+            "id",
+            "kind",
+            "name",
+            "description",
+            "url",
+            "source",
+            "sourceLabel",
+            "sourceUrl",
+            "capabilityMatch",
+            "textMatch",
+            "openApiMetadata",
+            "verificationStatus",
+            "trustStatus",
+            "trustScore",
+            "authRequirement",
+            "requiredParameters",
+            "safeOperations",
+            "preActionDecision",
+            "knownFacts",
+            "selectionScore",
+            "blockers",
+            "canExecute",
+          ],
+          properties: {
+            id: { type: "string" },
+            kind: {
+              type: "string",
+              enum: ["INTERNAL_SERVICE", "PERSISTED_DISCOVERY", "EXTERNAL_DISCOVERY"],
+            },
+            name: { type: "string" },
+            description: { type: ["string", "null"] },
+            url: { type: "string", format: "uri" },
+            source: { type: "string" },
+            sourceLabel: { type: "string" },
+            sourceUrl: { type: ["string", "null"], format: "uri" },
+            capabilityMatch: { type: "number", minimum: 0, maximum: 100 },
+            textMatch: { type: "number", minimum: 0, maximum: 100 },
+            openApiMetadata: { type: "number", minimum: 0, maximum: 100 },
+            verificationStatus: { type: "string" },
+            trustStatus: { type: ["string", "null"] },
+            trustScore: { type: ["number", "null"] },
+            authRequirement: {
+              type: "string",
+              enum: ["REQUIRED", "NOT_REQUIRED", "NOT_DECLARED", "UNKNOWN"],
+            },
+            requiredParameters: { type: "array", items: { type: "string" } },
+            safeOperations: { type: "array", items: { $ref: "#/components/schemas/AgentSafeOperation" } },
+            preActionDecision: {
+              type: ["string", "null"],
+              enum: ["ALLOW", "CAUTION", "BLOCK", null],
+            },
+            knownFacts: { type: "array", items: { type: "string" } },
+            selectionScore: { type: "number", minimum: 0, maximum: 100 },
+            blockers: { type: "array", items: { type: "string" } },
+            canExecute: { type: "boolean" },
+          },
+        },
+        AgentDecisionProvenance: {
+          type: "object",
+          required: ["mode", "sources", "externalCandidatesAlwaysUnverified"],
+          properties: {
+            mode: { type: "string", enum: ["INTERNAL_PRIMARY", "EXTERNAL_FALLBACK"] },
+            sources: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["kind", "source", "sourceLabel", "sourceUrl"],
+                properties: {
+                  kind: {
+                    type: "string",
+                    enum: ["INTERNAL_SERVICE", "PERSISTED_DISCOVERY", "EXTERNAL_DISCOVERY"],
+                  },
+                  source: { type: "string" },
+                  sourceLabel: { type: "string" },
+                  sourceUrl: { type: ["string", "null"], format: "uri" },
+                },
+              },
+            },
+            externalCandidatesAlwaysUnverified: { type: "boolean", enum: [true] },
+          },
+        },
+        AgentDecisionResponse: {
+          type: "object",
+          required: [
+            "contractVersion",
+            "intent",
+            "bestCandidate",
+            "candidates",
+            "why",
+            "authRequirement",
+            "requiredParameters",
+            "verificationStatus",
+            "canExecute",
+            "blockers",
+            "nextAction",
+            "provenance",
+            "feedback",
+          ],
+          properties: {
+            contractVersion: { type: "string" },
+            intent: { $ref: "#/components/schemas/AgentIntent" },
+            bestCandidate: {
+              oneOf: [
+                { $ref: "#/components/schemas/AgentDecisionCandidate" },
+                { type: "null" },
+              ],
+            },
+            candidates: {
+              type: "array",
+              maxItems: 20,
+              items: { $ref: "#/components/schemas/AgentDecisionCandidate" },
+            },
+            why: { type: "array", items: { type: "string" } },
+            authRequirement: {
+              type: "string",
+              enum: ["REQUIRED", "NOT_REQUIRED", "NOT_DECLARED", "UNKNOWN"],
+            },
+            requiredParameters: { type: "array", items: { type: "string" } },
+            verificationStatus: { type: "string" },
+            canExecute: { type: "boolean" },
+            blockers: { type: "array", items: { type: "string" } },
+            nextAction: { type: "string" },
+            provenance: { $ref: "#/components/schemas/AgentDecisionProvenance" },
+            feedback: { $ref: "#/components/schemas/AgentFeedback" },
           },
         },
         DiscoveryRefresh: {

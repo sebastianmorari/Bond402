@@ -22,6 +22,7 @@ import {
 import type {
   ApiService,
   PublicExternalService,
+  PublicInternalDiscovery,
   PublicServiceCatalog,
   PublicServiceSearchResult,
 } from "@workspace/api-client-react";
@@ -80,6 +81,10 @@ function getLocalScore(service: ApiService, query: string) {
 
 function isExternalService(item: PublicCatalogItem): item is PublicExternalService {
   return "kind" in item && item.kind === "EXTERNAL_DISCOVERY";
+}
+
+function isPersistedDiscovery(item: PublicCatalogItem): item is PublicInternalDiscovery {
+  return "kind" in item && item.kind === "INTERNAL_DISCOVERY";
 }
 
 function formatDate(value: string | null | undefined) {
@@ -176,8 +181,14 @@ function LocalServiceResult({
   );
 }
 
-function PublicCatalogResult({ item }: { item: PublicServiceSearchResult }) {
-  const latestCheck = item.latestCheck;
+function PublicCatalogResult({
+  item,
+}: {
+  item: PublicServiceSearchResult | PublicInternalDiscovery;
+}) {
+  const latestCheck = "latestCheck" in item ? item.latestCheck : null;
+  const detailHref = "links" in item ? item.links.detail : item.url;
+  const label = isPersistedDiscovery(item) ? "Persistierte Discovery" : "Öffentlicher Katalog";
 
   return (
     <div className="rounded-lg border border-border/70 bg-background/45 p-3">
@@ -190,7 +201,7 @@ function PublicCatalogResult({ item }: { item: PublicServiceSearchResult }) {
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="truncate font-semibold tracking-tight">{item.name}</h4>
             <Badge variant="secondary" className="text-[10px] uppercase tracking-[0.08em]">
-              Öffentlicher Katalog
+              {label}
             </Badge>
           </div>
           <p className="mt-1 truncate font-mono text-xs text-muted-foreground" title={item.url}>
@@ -202,7 +213,9 @@ function PublicCatalogResult({ item }: { item: PublicServiceSearchResult }) {
             <span>
               Verifikation: {latestCheck?.status ? checkStatusLabel(latestCheck.status) : "Keine Prüfung"}
             </span>
-            {item.trustScore !== null && <span className="font-mono text-foreground/75">Trust {item.trustScore}%</span>}
+            {"trustScore" in item && item.trustScore !== null && (
+              <span className="font-mono text-foreground/75">Trust {item.trustScore}%</span>
+            )}
           </div>
         </div>
 
@@ -214,7 +227,7 @@ function PublicCatalogResult({ item }: { item: PublicServiceSearchResult }) {
           asChild
         >
           <a
-            href={item.links.detail}
+            href={detailHref}
             target="_blank"
             rel="noreferrer"
             aria-label={`${item.name}: öffentlichen Bond402-Eintrag öffnen`}

@@ -14,4 +14,5 @@ export type PublicServiceDiscoveryScope = typeof PublicServiceDiscoveryScope[key
 
 export const PublicServiceDiscoveryScope = {
   LISTED_SERVICES_ONLY: 'LISTED_SERVICES_ONLY',
+  LISTED_SERVICES_AND_PUBLIC_DISCOVERY: 'LISTED_SERVICES_AND_PUBLIC_DISCOVERY',
 } as const;

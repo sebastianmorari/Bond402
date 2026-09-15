@@ -9,15 +9,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PublicDiscoveryEndpoints = {
-  catalog: string;
-  agentDecision: string;
-  serviceDetail: string;
-  publicPreActionCheck: string;
-  directOpenApiDiscovery: string;
-  agentOnboarding: string;
-  openapi: string;
-  humanDocs: string;
-  wellKnown: string;
-  llms: string;
-};
+/**
+ * @nullable
+ */
+export type AgentOnboardingStepsItemBody = { [key: string]: unknown } | null;

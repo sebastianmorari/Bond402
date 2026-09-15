@@ -23,6 +23,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AgentDecisionRequest,
+  AgentDecisionResponse,
+  AgentOnboarding,
   ApiError,
   ApiKey,
   ApiKeyInput,
@@ -44,6 +47,7 @@ import type {
   DemoService,
   DeveloperPreActionCheck,
   DeveloperServiceResult,
+  DiscoverOpenApiFromExplicitUrlBody,
   DomainVerificationIssue,
   DomainVerificationResult,
   HealthStatus,
@@ -53,6 +57,7 @@ import type {
   PublicExternalDiscoveryDetail,
   PublicExternalPreflightBody,
   PublicExternalPreflightResponse,
+  PublicInternalDiscovery,
   PublicPreActionBody,
   PublicPreActionCheck,
   PublicService,
@@ -2293,6 +2298,237 @@ export function useGetPublicDiscovery<TData = Awaited<ReturnType<typeof getPubli
 
 
 
+export const getGetHeadlessAgentOnboardingUrl = () => {
+
+
+
+
+  return `/api/public/agent-onboarding`
+}
+
+/**
+ * Returns the exact public, owner-bootstrap, and owner-bound steps for a
+ * headless agent. This document contains no secrets. A verified local
+ * account session is required before a service can be registered or a
+ * Developer API key can be created.
+ * @summary Get the dashboard-free Bond402 agent onboarding contract
+ */
+export const getHeadlessAgentOnboarding = async ( options?: Parameters<typeof customFetch>[1]): Promise<AgentOnboarding> => {
+
+  return customFetch<AgentOnboarding>(getGetHeadlessAgentOnboardingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHeadlessAgentOnboardingQueryKey = () => {
+    return [
+    `/api/public/agent-onboarding`
+    ] as const;
+    }
+
+
+export const getGetHeadlessAgentOnboardingQueryOptions = <TData = Awaited<ReturnType<typeof getHeadlessAgentOnboarding>>, TError = ErrorType<ApiError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHeadlessAgentOnboarding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHeadlessAgentOnboardingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHeadlessAgentOnboarding>>> = ({ signal }) => getHeadlessAgentOnboarding({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHeadlessAgentOnboarding>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetHeadlessAgentOnboardingQueryResult = NonNullable<Awaited<ReturnType<typeof getHeadlessAgentOnboarding>>>
+export type GetHeadlessAgentOnboardingQueryError = ErrorType<ApiError>
+
+
+/**
+ * @summary Get the dashboard-free Bond402 agent onboarding contract
+ */
+
+export function useGetHeadlessAgentOnboarding<TData = Awaited<ReturnType<typeof getHeadlessAgentOnboarding>>, TError = ErrorType<ApiError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getHeadlessAgentOnboarding>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetHeadlessAgentOnboardingQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDecidePublicAgentTaskUrl = () => {
+
+
+
+
+  return `/api/public/agent/decision`
+}
+
+/**
+ * Performs a deterministic, read-only decision over internally listed
+ * services, persisted public discovery, and bounded external discovery.
+ * External candidates remain UNVERIFIED_EXTERNAL and are never executable
+ * from ranking alone. No credentials, guessed parameters, or proxy
+ * execution are used.
+ * @summary Decide how a headless agent should handle a natural-language task
+ */
+export const decidePublicAgentTask = async (agentDecisionRequest: AgentDecisionRequest, options?: Parameters<typeof customFetch>[1]): Promise<AgentDecisionResponse> => {
+
+  return customFetch<AgentDecisionResponse>(getDecidePublicAgentTaskUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(agentDecisionRequest)
+  }
+);}
+
+
+
+
+
+export const getDecidePublicAgentTaskMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decidePublicAgentTask>>, TError,{data: BodyType<AgentDecisionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decidePublicAgentTask>>, TError,{data: BodyType<AgentDecisionRequest>}, TContext> => {
+
+const mutationKey = ['decidePublicAgentTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decidePublicAgentTask>>, {data: BodyType<AgentDecisionRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  decidePublicAgentTask(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecidePublicAgentTaskMutationResult = NonNullable<Awaited<ReturnType<typeof decidePublicAgentTask>>>
+    export type DecidePublicAgentTaskMutationBody = BodyType<AgentDecisionRequest>
+    export type DecidePublicAgentTaskMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Decide how a headless agent should handle a natural-language task
+ */
+export const useDecidePublicAgentTask = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decidePublicAgentTask>>, TError,{data: BodyType<AgentDecisionRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decidePublicAgentTask>>,
+        TError,
+        {data: BodyType<AgentDecisionRequest>},
+        TContext
+      > => {
+      return useMutation(getDecidePublicAgentTaskMutationOptions(options));
+    }
+
+export const getDiscoverOpenApiFromExplicitUrlUrl = () => {
+
+
+
+
+  return `/api/public/discovery/openapi`
+}
+
+/**
+ * Tries only a small bounded set of typical OpenAPI/Swagger paths. No
+ * credentials or guessed parameters are used. Results remain
+ * UNVERIFIED_EXTERNAL until an owner-bound workflow is completed.
+ * @summary Detect an OpenAPI document from one explicit public URL
+ */
+export const discoverOpenApiFromExplicitUrl = async (discoverOpenApiFromExplicitUrlBody: DiscoverOpenApiFromExplicitUrlBody, options?: Parameters<typeof customFetch>[1]): Promise<PublicExternalDiscoveryDetail> => {
+
+  return customFetch<PublicExternalDiscoveryDetail>(getDiscoverOpenApiFromExplicitUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(discoverOpenApiFromExplicitUrlBody)
+  }
+);}
+
+
+
+
+
+export const getDiscoverOpenApiFromExplicitUrlMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverOpenApiFromExplicitUrl>>, TError,{data: BodyType<DiscoverOpenApiFromExplicitUrlBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discoverOpenApiFromExplicitUrl>>, TError,{data: BodyType<DiscoverOpenApiFromExplicitUrlBody>}, TContext> => {
+
+const mutationKey = ['discoverOpenApiFromExplicitUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discoverOpenApiFromExplicitUrl>>, {data: BodyType<DiscoverOpenApiFromExplicitUrlBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  discoverOpenApiFromExplicitUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscoverOpenApiFromExplicitUrlMutationResult = NonNullable<Awaited<ReturnType<typeof discoverOpenApiFromExplicitUrl>>>
+    export type DiscoverOpenApiFromExplicitUrlMutationBody = BodyType<DiscoverOpenApiFromExplicitUrlBody>
+    export type DiscoverOpenApiFromExplicitUrlMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Detect an OpenAPI document from one explicit public URL
+ */
+export const useDiscoverOpenApiFromExplicitUrl = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverOpenApiFromExplicitUrl>>, TError,{data: BodyType<DiscoverOpenApiFromExplicitUrlBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof discoverOpenApiFromExplicitUrl>>,
+        TError,
+        {data: BodyType<DiscoverOpenApiFromExplicitUrlBody>},
+        TContext
+      > => {
+      return useMutation(getDiscoverOpenApiFromExplicitUrlMutationOptions(options));
+    }
+
 export const getSearchPublicServicesUrl = (params?: SearchPublicServicesParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2386,11 +2622,11 @@ export const getGetPublicServiceUrl = (id: string,) => {
 }
 
 /**
- * @summary Read public trust metadata or external discovery detail
+ * @summary Read public trust metadata or public discovery detail
  */
-export const getPublicService = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicService | PublicExternalDiscoveryDetail> => {
+export const getPublicService = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PublicService | PublicInternalDiscovery | PublicExternalDiscoveryDetail> => {
 
-  return customFetch<PublicService | PublicExternalDiscoveryDetail>(getGetPublicServiceUrl(id),
+  return customFetch<PublicService | PublicInternalDiscovery | PublicExternalDiscoveryDetail>(getGetPublicServiceUrl(id),
   {
     ...options,
     method: 'GET'
@@ -2433,7 +2669,7 @@ export type GetPublicServiceQueryError = ErrorType<ApiError>
 
 
 /**
- * @summary Read public trust metadata or external discovery detail
+ * @summary Read public trust metadata or public discovery detail
  */
 
 export function useGetPublicService<TData = Awaited<ReturnType<typeof getPublicService>>, TError = ErrorType<ApiError>>(

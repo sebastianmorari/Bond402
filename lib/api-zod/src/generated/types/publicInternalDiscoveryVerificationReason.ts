@@ -9,15 +9,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PublicDiscoveryEndpoints = {
-  catalog: string;
-  agentDecision: string;
-  serviceDetail: string;
-  publicPreActionCheck: string;
-  directOpenApiDiscovery: string;
-  agentOnboarding: string;
-  openapi: string;
-  humanDocs: string;
-  wellKnown: string;
-  llms: string;
-};
+export type PublicInternalDiscoveryVerificationReason = typeof PublicInternalDiscoveryVerificationReason[keyof typeof PublicInternalDiscoveryVerificationReason];
+
+
+export const PublicInternalDiscoveryVerificationReason = {
+  PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK: 'PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK',
+} as const;
