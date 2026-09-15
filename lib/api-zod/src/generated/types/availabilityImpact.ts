@@ -8,10 +8,12 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { AgentExecutionPlanRequestOperationMethod } from './agentExecutionPlanRequestOperationMethod';
 
-export type AgentExecutionPlanRequestOperation = {
-  method?: AgentExecutionPlanRequestOperationMethod;
-  /** @pattern ^/.{0,2047}$ */
-  path?: string;
-};
+export type AvailabilityImpact = typeof AvailabilityImpact[keyof typeof AvailabilityImpact];
+
+
+export const AvailabilityImpact = {
+  AVAILABLE: 'AVAILABLE',
+  UNAVAILABLE: 'UNAVAILABLE',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+} as const;

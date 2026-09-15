@@ -8,7 +8,7 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import * as zod from 'zod';
+import * as zod from '../zod-compat';
 
 
 /**
@@ -294,6 +294,8 @@ export const ListServicesResponseItem = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -314,6 +316,8 @@ export const ListServicesResponseItem = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -532,6 +536,8 @@ export const CreateServiceResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -552,6 +558,8 @@ export const CreateServiceResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -726,6 +734,8 @@ export const GetServiceResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -746,6 +756,8 @@ export const GetServiceResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -979,6 +991,8 @@ export const UpdateServiceResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -999,6 +1013,8 @@ export const UpdateServiceResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -1097,6 +1113,8 @@ export const RunServiceCheckResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -1117,6 +1135,8 @@ export const RunServiceCheckResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -1222,6 +1242,8 @@ export const VerifyServiceResponseResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -1242,6 +1264,8 @@ export const VerifyServiceResponseResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -1486,6 +1510,8 @@ export const DeveloperGetServiceResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -1506,6 +1532,8 @@ export const DeveloperGetServiceResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -1591,6 +1619,8 @@ export const DeveloperGetServiceResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -1611,6 +1641,8 @@ export const DeveloperGetServiceResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -1730,6 +1762,8 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -1750,6 +1784,8 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -1835,6 +1871,8 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -1855,6 +1893,8 @@ export const DeveloperRunServiceCheckResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -1974,6 +2014,8 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -1994,6 +2036,8 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -2079,6 +2123,8 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "serviceId": zod.string(),
   "checkedAt": zod.coerce.date(),
   "status": zod.enum(['PASS', 'FAIL', 'REVIEW']),
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "checkType": zod.enum(['LIVE', 'MANUAL']),
   "reachable": zod.boolean(),
   "responseTimeMs": zod.number(),
@@ -2099,6 +2145,8 @@ export const DeveloperGetLatestCheckResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -2207,6 +2255,8 @@ export const DeveloperPreActionCheckResponse = zod.object({
   "latestResponseTimeMs": zod.number().nullable(),
   "latestReachable": zod.boolean().nullable(),
   "latestStructureMatch": zod.boolean().nullable(),
+  "latestClassification": zod.union([zod.literal('SUCCESS'),zod.literal('AUTH_REQUIRED'),zod.literal('RATE_LIMITED'),zod.literal('CHECK_NOT_APPLICABLE'),zod.literal('RESPONSE_SCHEMA_MISMATCH'),zod.literal('PROVIDER_ERROR'),zod.literal('NETWORK_UNAVAILABLE'),zod.literal(null)]).nullable(),
+  "latestAvailabilityImpact": zod.union([zod.literal('AVAILABLE'),zod.literal('UNAVAILABLE'),zod.literal('NOT_EVALUATED'),zod.literal(null)]).nullable(),
   "signals": zod.object({
   "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
@@ -2276,26 +2326,26 @@ export const DeveloperPreActionCheckResponse = zod.object({
  * status prohibits provider execution.
  * @summary Create an owner-bound agent execution plan
  */
-export const createDeveloperExecutionPlanBodyTaskMax = 500;
+export const createDeveloperExecutionPlanBodyThreeTaskMax = 500;
 
-export const createDeveloperExecutionPlanBodyOperationPathMax = 2048;
+export const createDeveloperExecutionPlanBodyThreeServiceIdRegExp = new RegExp('^(?:[A-Za-z0-9_-]{8,200}|external:[A-Za-z0-9_-]{1,180})$');
+export const createDeveloperExecutionPlanBodyThreeOperationPathRegExp = new RegExp('^/.{0,2047}$');
 
 
-
-export const CreateDeveloperExecutionPlanBody = zod.object({
-  "task": zod.string().max(createDeveloperExecutionPlanBodyTaskMax).optional(),
-  "serviceId": zod.string().optional(),
+export const CreateDeveloperExecutionPlanBody = zod.union([zod.unknown(),zod.unknown()]).and(zod.object({
+  "task": zod.string().max(createDeveloperExecutionPlanBodyThreeTaskMax).optional(),
+  "serviceId": zod.string().regex(createDeveloperExecutionPlanBodyThreeServiceIdRegExp).optional(),
   "operation": zod.object({
   "method": zod.enum(['GET', 'HEAD']).optional(),
-  "path": zod.string().max(createDeveloperExecutionPlanBodyOperationPathMax).optional()
+  "path": zod.string().regex(createDeveloperExecutionPlanBodyThreeOperationPathRegExp).optional()
 }).optional(),
   "parameters": zod.record(zod.string(), zod.unknown()).optional()
-}).describe('Send task or serviceId. operation and parameters must match owner-registered configuration.')
+})).describe('Send task or serviceId. operation and parameters must match owner-registered configuration.')
 
 export const CreateDeveloperExecutionPlanResponse = zod.object({
-  "planId": zod.string().uuid().nullable(),
+  "planId": zod.uuid().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
-  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
+  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'NETWORK_UNAVAILABLE', 'CHECK_NOT_APPLICABLE', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
   "canExecute": zod.boolean(),
   "service": zod.record(zod.string(), zod.unknown()),
   "operation": zod.record(zod.string(), zod.unknown()),
@@ -2318,8 +2368,8 @@ export const CreateDeveloperExecutionPlanResponse = zod.object({
   "verification": zod.string().nullable()
 }),
   "details": zod.object({
-  "httpStatus": zod.number().int().nullable(),
-  "retryAfterSeconds": zod.number().int().nullable(),
+  "httpStatus": zod.int().nullable(),
+  "retryAfterSeconds": zod.int().nullable(),
   "requiredAuth": zod.boolean().nullable(),
   "requiredParameters": zod.array(zod.string()),
   "actionContext": zod.string().nullable()
@@ -2337,7 +2387,7 @@ export const CreateDeveloperExecutionPlanResponse = zod.object({
  * @summary Execute one previously approved owner-bound agent plan
  */
 export const ExecuteDeveloperAgentPlanBody = zod.object({
-  "planId": zod.string().uuid(),
+  "planId": zod.uuid(),
   "parameters": zod.record(zod.string(), zod.unknown()).optional()
 })
 
@@ -2347,15 +2397,15 @@ export const executeDeveloperAgentPlanResponseLatencyMsMin = 0;
 
 export const ExecuteDeveloperAgentPlanResponse = zod.object({
   "requestId": zod.string(),
-  "planId": zod.string().uuid().nullable(),
-  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
+  "planId": zod.uuid().nullable(),
+  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'NETWORK_UNAVAILABLE', 'CHECK_NOT_APPLICABLE', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
   "code": zod.string(),
   "service": zod.record(zod.string(), zod.unknown()),
   "operation": zod.record(zod.string(), zod.unknown()),
-  "providerHttpStatus": zod.number().int().nullable(),
-  "latencyMs": zod.number().int().min(executeDeveloperAgentPlanResponseLatencyMsMin),
+  "providerHttpStatus": zod.int().nullable(),
+  "latencyMs": zod.int().min(executeDeveloperAgentPlanResponseLatencyMsMin),
   "retryable": zod.boolean(),
-  "retryAfterSeconds": zod.number().int().nullable(),
+  "retryAfterSeconds": zod.int().nullable(),
   "cost": zod.record(zod.string(), zod.unknown()).nullable(),
   "quota": zod.record(zod.string(), zod.unknown()).nullable(),
   "data": zod.unknown(),
@@ -2374,8 +2424,8 @@ export const ExecuteDeveloperAgentPlanResponse = zod.object({
   "verification": zod.string().nullable()
 }),
   "details": zod.object({
-  "httpStatus": zod.number().int().nullable(),
-  "retryAfterSeconds": zod.number().int().nullable(),
+  "httpStatus": zod.int().nullable(),
+  "retryAfterSeconds": zod.int().nullable(),
   "requiredAuth": zod.boolean().nullable(),
   "requiredParameters": zod.array(zod.string()),
   "actionContext": zod.string().nullable()
@@ -2468,7 +2518,7 @@ export const GetHeadlessAgentOnboardingResponse = zod.object({
   "result": zod.string().nullish(),
   "quota": zod.string().nullish(),
   "ownerBinding": zod.string().nullish(),
-  "body": zod.object({
+  "body": zod.looseObject({
 
 }).nullish()
 })),
@@ -2536,10 +2586,10 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "source": zod.string(),
   "sourceLabel": zod.string(),
-  "sourceUrl": zod.string().url().nullable(),
+  "sourceUrl": zod.url().nullable(),
   "capabilityMatch": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMin).max(decidePublicAgentTaskResponseBestCandidateOneCapabilityMatchMax),
   "textMatch": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneTextMatchMin).max(decidePublicAgentTaskResponseBestCandidateOneTextMatchMax),
   "openApiMetadata": zod.number().min(decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMin).max(decidePublicAgentTaskResponseBestCandidateOneOpenApiMetadataMax),
@@ -2551,7 +2601,7 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "safeOperations": zod.array(zod.object({
   "method": zod.string(),
   "path": zod.string(),
-  "url": zod.string().url().nullable(),
+  "url": zod.url().nullable(),
   "reason": zod.string()
 })),
   "preActionDecision": zod.union([zod.literal('ALLOW'),zod.literal('CAUTION'),zod.literal('BLOCK'),zod.literal(null)]).nullable(),
@@ -2565,10 +2615,10 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "source": zod.string(),
   "sourceLabel": zod.string(),
-  "sourceUrl": zod.string().url().nullable(),
+  "sourceUrl": zod.url().nullable(),
   "capabilityMatch": zod.number().min(decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMin).max(decidePublicAgentTaskResponseCandidatesItemCapabilityMatchMax),
   "textMatch": zod.number().min(decidePublicAgentTaskResponseCandidatesItemTextMatchMin).max(decidePublicAgentTaskResponseCandidatesItemTextMatchMax),
   "openApiMetadata": zod.number().min(decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMin).max(decidePublicAgentTaskResponseCandidatesItemOpenApiMetadataMax),
@@ -2580,7 +2630,7 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "safeOperations": zod.array(zod.object({
   "method": zod.string(),
   "path": zod.string(),
-  "url": zod.string().url().nullable(),
+  "url": zod.url().nullable(),
   "reason": zod.string()
 })),
   "preActionDecision": zod.union([zod.literal('ALLOW'),zod.literal('CAUTION'),zod.literal('BLOCK'),zod.literal(null)]).nullable(),
@@ -2602,7 +2652,7 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "kind": zod.enum(['INTERNAL_SERVICE', 'PERSISTED_DISCOVERY', 'EXTERNAL_DISCOVERY']),
   "source": zod.string(),
   "sourceLabel": zod.string(),
-  "sourceUrl": zod.string().url().nullable()
+  "sourceUrl": zod.url().nullable()
 })),
   "externalCandidatesAlwaysUnverified": zod.literal(true)
 }),
@@ -2620,8 +2670,8 @@ export const DecidePublicAgentTaskResponse = zod.object({
   "verification": zod.string().nullable()
 }),
   "details": zod.object({
-  "httpStatus": zod.number().int().nullable(),
-  "retryAfterSeconds": zod.number().int().nullable(),
+  "httpStatus": zod.int().nullable(),
+  "retryAfterSeconds": zod.int().nullable(),
   "requiredAuth": zod.boolean().nullable(),
   "requiredParameters": zod.array(zod.string()),
   "actionContext": zod.string().nullable()
@@ -2641,7 +2691,7 @@ export const discoverOpenApiFromExplicitUrlBodyUrlMax = 2048;
 
 
 export const DiscoverOpenApiFromExplicitUrlBody = zod.object({
-  "url": zod.string().url().max(discoverOpenApiFromExplicitUrlBodyUrlMax)
+  "url": zod.url().max(discoverOpenApiFromExplicitUrlBodyUrlMax)
 })
 
 export const DiscoverOpenApiFromExplicitUrlResponse = zod.object({
@@ -2654,9 +2704,9 @@ export const DiscoverOpenApiFromExplicitUrlResponse = zod.object({
   "source": zod.object({
   "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
   "label": zod.string(),
-  "catalogUrl": zod.string().url(),
-  "recordUrl": zod.string().url(),
-  "specificationUrl": zod.string().url()
+  "catalogUrl": zod.url(),
+  "recordUrl": zod.url(),
+  "specificationUrl": zod.url()
 }),
   "verification": zod.object({
   "status": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -2668,7 +2718,7 @@ export const DiscoverOpenApiFromExplicitUrlResponse = zod.object({
   "title": zod.string().nullable(),
   "description": zod.string().nullable(),
   "servers": zod.array(zod.object({
-  "url": zod.string().url(),
+  "url": zod.url(),
   "description": zod.string().nullable(),
   "templated": zod.boolean()
 })),
@@ -2694,13 +2744,13 @@ export const DiscoverOpenApiFromExplicitUrlResponse = zod.object({
   "safeEndpoint": zod.union([zod.null(),zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })]),
   "safeEndpoints": zod.array(zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })),
   "safeEndpointNote": zod.string()
@@ -2850,6 +2900,8 @@ export const SearchPublicServicesResponse = zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -2963,7 +3015,7 @@ export const SearchPublicServicesResponse = zod.object({
   "kind": zod.enum(['INTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "verification": zod.object({
   "status": zod.string(),
   "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
@@ -2984,8 +3036,8 @@ export const SearchPublicServicesResponse = zod.object({
   "publicSource": zod.number().min(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMin).max(searchPublicServicesResponseItemsItemTwoDiscoveryRankingFactorsPublicSourceMax)
 }),
   "evidence": zod.object({
-  "canonicalUrl": zod.string().url(),
-  "sourceUrl": zod.string().url(),
+  "canonicalUrl": zod.url(),
+  "sourceUrl": zod.url(),
   "provider": zod.string().nullable(),
   "version": zod.string().nullable(),
   "discoveredAt": zod.coerce.date()
@@ -3006,7 +3058,7 @@ export const SearchPublicServicesResponse = zod.object({
   "sourceLabel": zod.string(),
   "sources": zod.array(zod.object({
   "label": zod.string(),
-  "url": zod.string().url()
+  "url": zod.url()
 })).max(searchPublicServicesResponseItemsItemThreeDiscoverySourcesMax),
   "scope": zod.enum(['PUBLIC_UNVERIFIED_OPENAPI', 'PUBLIC_UNVERIFIED_API_DIRECTORY']),
   "verification": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -3150,6 +3202,8 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "missing": zod.array(zod.string())
 }),
   "securitySignals": zod.object({
+  "classification": zod.enum(['SUCCESS', 'AUTH_REQUIRED', 'RATE_LIMITED', 'CHECK_NOT_APPLICABLE', 'RESPONSE_SCHEMA_MISMATCH', 'PROVIDER_ERROR', 'NETWORK_UNAVAILABLE']),
+  "availabilityImpact": zod.enum(['AVAILABLE', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "reachability": zod.object({
   "status": zod.enum(['PASS', 'WARNING', 'FAIL', 'UNKNOWN']),
   "summary": zod.string()
@@ -3245,7 +3299,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "kind": zod.enum(['INTERNAL_DISCOVERY']),
   "name": zod.string(),
   "description": zod.string().nullable(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "verification": zod.object({
   "status": zod.string(),
   "reason": zod.enum(['PERSISTED_PUBLIC_METADATA_NO_BOND402_CHECK'])
@@ -3266,8 +3320,8 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "publicSource": zod.number().min(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMin).max(getPublicServiceResponseTwoDiscoveryRankingFactorsPublicSourceMax)
 }),
   "evidence": zod.object({
-  "canonicalUrl": zod.string().url(),
-  "sourceUrl": zod.string().url(),
+  "canonicalUrl": zod.url(),
+  "sourceUrl": zod.url(),
   "provider": zod.string().nullable(),
   "version": zod.string().nullable(),
   "discoveredAt": zod.coerce.date()
@@ -3283,9 +3337,9 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "source": zod.object({
   "id": zod.enum(['APIS_GURU_OPENAPI_DIRECTORY', 'PUBLIC_APIS_DIRECTORY']),
   "label": zod.string(),
-  "catalogUrl": zod.string().url(),
-  "recordUrl": zod.string().url(),
-  "specificationUrl": zod.string().url()
+  "catalogUrl": zod.url(),
+  "recordUrl": zod.url(),
+  "specificationUrl": zod.url()
 }),
   "verification": zod.object({
   "status": zod.enum(['UNVERIFIED_EXTERNAL']),
@@ -3297,7 +3351,7 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "title": zod.string().nullable(),
   "description": zod.string().nullable(),
   "servers": zod.array(zod.object({
-  "url": zod.string().url(),
+  "url": zod.url(),
   "description": zod.string().nullable(),
   "templated": zod.boolean()
 })),
@@ -3323,13 +3377,13 @@ export const GetPublicServiceResponse = zod.union([zod.object({
   "safeEndpoint": zod.union([zod.null(),zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })]),
   "safeEndpoints": zod.array(zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url(),
+  "url": zod.url(),
   "reason": zod.enum(['EXPLICITLY_PUBLIC_PARAMETER_FREE_READ'])
 })),
   "safeEndpointNote": zod.string()
@@ -3362,6 +3416,8 @@ export const GetPublicPreActionCheckResponse = zod.object({
   "latestResponseTimeMs": zod.number().nullable(),
   "latestReachable": zod.boolean().nullable(),
   "latestStructureMatch": zod.boolean().nullable(),
+  "latestClassification": zod.union([zod.literal('SUCCESS'),zod.literal('AUTH_REQUIRED'),zod.literal('RATE_LIMITED'),zod.literal('CHECK_NOT_APPLICABLE'),zod.literal('RESPONSE_SCHEMA_MISMATCH'),zod.literal('PROVIDER_ERROR'),zod.literal('NETWORK_UNAVAILABLE'),zod.literal(null)]).nullable(),
+  "latestAvailabilityImpact": zod.union([zod.literal('AVAILABLE'),zod.literal('UNAVAILABLE'),zod.literal('NOT_EVALUATED'),zod.literal(null)]).nullable(),
   "signals": zod.object({
   "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
@@ -3469,6 +3525,8 @@ export const PostPublicPreActionCheckResponse = zod.object({
   "latestResponseTimeMs": zod.number().nullable(),
   "latestReachable": zod.boolean().nullable(),
   "latestStructureMatch": zod.boolean().nullable(),
+  "latestClassification": zod.union([zod.literal('SUCCESS'),zod.literal('AUTH_REQUIRED'),zod.literal('RATE_LIMITED'),zod.literal('CHECK_NOT_APPLICABLE'),zod.literal('RESPONSE_SCHEMA_MISMATCH'),zod.literal('PROVIDER_ERROR'),zod.literal('NETWORK_UNAVAILABLE'),zod.literal(null)]).nullable(),
+  "latestAvailabilityImpact": zod.union([zod.literal('AVAILABLE'),zod.literal('UNAVAILABLE'),zod.literal('NOT_EVALUATED'),zod.literal(null)]).nullable(),
   "signals": zod.object({
   "https": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
   "tls": zod.enum(['CHECKED', 'WARNING', 'UNAVAILABLE', 'NOT_EVALUATED']),
@@ -3566,7 +3624,7 @@ export const PostPublicExternalCheckParams = zod.object({
 export const PostPublicExternalCheckBody = zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url()
+  "url": zod.url()
 })
 
 export const PostPublicExternalCheckResponse = zod.object({
@@ -3574,7 +3632,7 @@ export const PostPublicExternalCheckResponse = zod.object({
   "endpoint": zod.object({
   "method": zod.enum(['GET', 'HEAD']),
   "path": zod.string(),
-  "url": zod.string().url()
+  "url": zod.url()
 }),
   "verification": zod.object({
   "status": zod.enum(['CHECKED_EXTERNAL']),
@@ -3602,7 +3660,7 @@ export const PostPublicExternalPreflightParams = zod.object({
 })
 
 export const PostPublicExternalPreflightBody = zod.object({
-  "serverUrl": zod.string().url().optional()
+  "serverUrl": zod.url().optional()
 })
 
 export const PostPublicExternalPreflightResponse = zod.object({

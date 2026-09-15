@@ -84,6 +84,8 @@ function simulatedCheck(serviceId: string): CheckResult {
     serviceId,
     checkedAt: new Date().toISOString(),
     status: "PASS",
+    classification: "SUCCESS",
+    availabilityImpact: "AVAILABLE",
     checkType: "LIVE",
     reachable: true,
     responseTimeMs: 142,
@@ -104,6 +106,8 @@ function simulatedCheck(serviceId: string): CheckResult {
       missing: [],
     },
     securitySignals: {
+      classification: "SUCCESS",
+      availabilityImpact: "AVAILABLE",
       reachability: { status: "PASS", summary: "Sandbox-Erreichbarkeit simuliert." },
       transport: {
         status: "PASS",

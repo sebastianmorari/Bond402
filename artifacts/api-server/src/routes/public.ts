@@ -988,6 +988,8 @@ router.post("/public/services/:id/external-preflight", async (req, res): Promise
       },
       check: {
         status: "REVIEW",
+        classification: "CHECK_NOT_APPLICABLE",
+        availabilityImpact: "NOT_EVALUATED",
         summary: "Es wurde kein sicherer HTTPS-Server aus der Spezifikation gefunden. Es wurde kein Netzwerkziel aufgerufen.",
         reachable: false,
         responseTimeMs: 0,
@@ -996,6 +998,8 @@ router.post("/public/services/:id/external-preflight", async (req, res): Promise
         https: false,
         tlsStatus: "NOT_EVALUATED",
         securitySignals: {
+          classification: "CHECK_NOT_APPLICABLE",
+          availabilityImpact: "NOT_EVALUATED",
           reachability: { status: "UNKNOWN", summary: "Kein sicher ableitbarer Server vorhanden." },
           transport: { status: "UNKNOWN", summary: "HTTPS/TLS konnte nicht geprüft werden." },
           network: { status: "UNKNOWN", summary: "Kein Netzwerkziel wurde aufgerufen." },

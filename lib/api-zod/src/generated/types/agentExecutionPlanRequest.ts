@@ -14,10 +14,11 @@ import type { AgentExecutionPlanRequestParameters } from './agentExecutionPlanRe
 /**
  * Send task or serviceId. operation and parameters must match owner-registered configuration.
  */
-export interface AgentExecutionPlanRequest {
+export type AgentExecutionPlanRequest = (unknown & {
   /** @maxLength 500 */
   task?: string;
+  /** @pattern ^(?:[A-Za-z0-9_-]{8,200}|external:[A-Za-z0-9_-]{1,180})$ */
   serviceId?: string;
   operation?: AgentExecutionPlanRequestOperation;
   parameters?: AgentExecutionPlanRequestParameters;
-}
+});

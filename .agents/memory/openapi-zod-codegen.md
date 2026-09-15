@@ -7,4 +7,8 @@ The current OpenAPI generator emits `zod.url()` for URI-formatted strings, but t
 
 **Why:** A successful code-generation run can still fail the library build immediately when the generated validator uses the newer API shape.
 
-**How to apply:** After OpenAPI codegen, search generated Zod files for `zod.url()` and normalize those validators before running the workspace typecheck. Keep the correction limited to generated output; do not weaken URI validation.
+**How to apply:** After OpenAPI codegen, restore the generated API import to the local compatibility module, remove the duplicate body export from the generated type index, then run the workspace typecheck. Keep the correction limited to generated output; do not weaken URI validation.
+
+The generator also emits a duplicate `DiscoverOpenApiFromExplicitUrlBody` export in both the generated API module and type barrel, so codegen currently requires this same post-generation cleanup.
+
+**Why:** These are generator/workspace compatibility issues, not API-contract errors; leaving either one unresolved blocks all library consumers after an otherwise successful codegen run.

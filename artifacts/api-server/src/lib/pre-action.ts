@@ -1,6 +1,10 @@
 import type { ApiCheckRow, ApiServiceRow } from "@workspace/db";
 import { getDomainSignal } from "./domain-verification-policy";
-import { calculateTrust } from "./service-data";
+import {
+  calculateTrust,
+  getCheckAvailabilityImpact,
+  getCheckClassification,
+} from "./service-data";
 
 export type AgentDecision = "ALLOW" | "CAUTION" | "BLOCK";
 export type ActionContext = "GENERAL" | "READ" | "WRITE" | "PAYMENT" | "CREDENTIAL_USE";
@@ -62,18 +66,43 @@ export function evaluatePreAction(
       anomalies.push("STALE_CHECK");
       caution("Die letzte Live-Prüfung ist älter als 24 Stunden.");
     }
-    if (!latest.reachable) block("Der Dienst war bei der letzten Prüfung nicht erreichbar.");
-    if (!latest.structureMatch) block("Die Antwortstruktur entspricht nicht dem erwarteten Schema.");
+    const latestClassification = getCheckClassification(latest);
+    const latestAvailabilityImpact = getCheckAvailabilityImpact(latest);
+    if (latestClassification === "NETWORK_UNAVAILABLE") {
+      block("Host oder Netzwerk war bei der letzten Prüfung nicht erreichbar.");
+    }
+    if (latestClassification === "PROVIDER_ERROR") {
+      block("Der Provider war bei der letzten Prüfung nicht verfügbar.");
+    }
+    if (latestClassification === "AUTH_REQUIRED") {
+      block("Authentifizierung oder Berechtigung ist für den geprüften Endpoint erforderlich.");
+    }
+    if (latestClassification === "RATE_LIMITED") {
+      caution("Der Provider hat bei der letzten Prüfung ein Rate-Limit signalisiert.");
+    }
+    if (latestClassification === "CHECK_NOT_APPLICABLE") {
+      block("Host erreichbar, aber der geprüfte Endpoint ist nicht geeignet.");
+    }
+    if (latestClassification === "RESPONSE_SCHEMA_MISMATCH") {
+      block("Die erfolgreiche Response entspricht nicht dem erwarteten Schema.");
+    }
     if (latest.responseTimeMs > service.maxResponseTime) {
       anomalies.push("SLOW_RESPONSE");
       caution(`Die letzte Antwortzeit von ${latest.responseTimeMs} ms überschreitet das Ziel von ${service.maxResponseTime} ms.`);
     }
-    if (latest.httpStatus !== null && latest.httpStatus >= 500) {
+    if (latest.httpStatus !== null && latest.httpStatus >= 500 && latestClassification !== "PROVIDER_ERROR") {
       anomalies.push("SERVER_ERROR");
       block(`Der Dienst antwortete zuletzt mit einem Serverfehler (${latest.httpStatus}).`);
     }
-    if (latest.status === "FAIL") block("Die letzte gespeicherte Live-Prüfung ist fehlgeschlagen.");
-    if (latest.status === "REVIEW") caution("Die letzte Live-Prüfung benötigt eine genauere Prüfung.");
+    if (
+      latest.status === "FAIL" &&
+      latestClassification === "SUCCESS"
+    ) {
+      block("Die letzte gespeicherte Live-Prüfung ist fehlgeschlagen.");
+    }
+    if (latest.status === "REVIEW" && latestClassification === "SUCCESS") {
+      caution("Die letzte Live-Prüfung benötigt eine genauere Prüfung.");
+    }
     if (latest.tlsStatus !== "NOT_EVALUATED" && !latest.https) {
       caution("Der Dienst wurde nicht über HTTPS geprüft.");
     }
@@ -111,9 +140,13 @@ export function evaluatePreAction(
     }
   }
 
-  const recent = liveChecks.slice(0, 5);
-  const failures = recent.filter((check) => check.status === "FAIL" || !check.reachable).length;
-  const passes = recent.filter((check) => check.status === "PASS").length;
+   const recent = liveChecks.slice(0, 5);
+   const failures = recent.filter(
+     (check) => getCheckAvailabilityImpact(check) === "UNAVAILABLE",
+   ).length;
+   const passes = recent.filter(
+     (check) => getCheckClassification(check) === "SUCCESS",
+   ).length;
   if (failures >= 2) {
     anomalies.push("REPEATED_FAILURES");
     block(`${failures} der letzten ${recent.length} Live-Prüfungen waren auffällig oder fehlgeschlagen.`);
@@ -156,6 +189,8 @@ export function evaluatePreAction(
       latestResponseTimeMs: latest?.responseTimeMs ?? null,
       latestReachable: latest?.reachable ?? null,
       latestStructureMatch: latest?.structureMatch ?? null,
+      latestClassification: latest ? getCheckClassification(latest) : null,
+      latestAvailabilityImpact: latest ? getCheckAvailabilityImpact(latest) : null,
       signals: latestSignals,
       trustMetrics: trust.metrics,
       recentLiveChecks: recent.length,

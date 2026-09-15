@@ -1770,6 +1770,10 @@ components:
         status:
           type: string
           enum: [PASS, FAIL, REVIEW]
+        classification:
+          $ref: "#/components/schemas/CheckClassification"
+        availabilityImpact:
+          $ref: "#/components/schemas/AvailabilityImpact"
         checkType:
           type: string
           enum: [LIVE, MANUAL]
@@ -1808,7 +1812,7 @@ components:
           $ref: "#/components/schemas/SecuritySignals"
         probeRegion:
           type: string
-      required: [id, serviceId, checkedAt, status, checkType, reachable, responseTimeMs, structureMatch, httpStatus, errorCode, summary, foundFields, missingFields, https, tlsStatus, tlsExpiresAt, tlsDaysRemaining, securityHeaders, securitySignals, probeRegion]
+      required: [id, serviceId, checkedAt, status, classification, availabilityImpact, checkType, reachable, responseTimeMs, structureMatch, httpStatus, errorCode, summary, foundFields, missingFields, https, tlsStatus, tlsExpiresAt, tlsDaysRemaining, securityHeaders, securitySignals, probeRegion]
     VerificationInput:
       type: object
       properties:
@@ -1840,6 +1844,12 @@ components:
     SignalState:
       type: string
       enum: [CHECKED, WARNING, UNAVAILABLE, NOT_EVALUATED]
+    CheckClassification:
+      type: string
+      enum: [SUCCESS, AUTH_REQUIRED, RATE_LIMITED, CHECK_NOT_APPLICABLE, RESPONSE_SCHEMA_MISMATCH, PROVIDER_ERROR, NETWORK_UNAVAILABLE]
+    AvailabilityImpact:
+      type: string
+      enum: [AVAILABLE, UNAVAILABLE, NOT_EVALUATED]
     DomainSignalState:
       type: string
       enum: [CHECKED, WARNING, UNAVAILABLE, NOT_EVALUATED, NOT_APPLICABLE]
@@ -1914,6 +1924,10 @@ components:
     SecuritySignals:
       type: object
       properties:
+        classification:
+          $ref: "#/components/schemas/CheckClassification"
+        availabilityImpact:
+          $ref: "#/components/schemas/AvailabilityImpact"
         reachability:
           type: object
           properties:
@@ -2051,7 +2065,7 @@ components:
           $ref: "#/components/schemas/ThreatIndicators"
         historicalDrift:
           $ref: "#/components/schemas/HistoricalDrift"
-      required: [reachability, transport, network, redirects, responseType, suspiciousPayload, securityHeaders, reputation, rateLimit, authentication, securityConfidence, threatIndicators, historicalDrift]
+      required: [classification, availabilityImpact, reachability, transport, network, redirects, responseType, suspiciousPayload, securityHeaders, reputation, rateLimit, authentication, securityConfidence, threatIndicators, historicalDrift]
     SignalStates:
       type: object
       properties:
@@ -2249,6 +2263,12 @@ components:
           type: ["boolean", "null"]
         latestStructureMatch:
           type: ["boolean", "null"]
+        latestClassification:
+          type: ["string", "null"]
+          enum: [SUCCESS, AUTH_REQUIRED, RATE_LIMITED, CHECK_NOT_APPLICABLE, RESPONSE_SCHEMA_MISMATCH, PROVIDER_ERROR, NETWORK_UNAVAILABLE, null]
+        latestAvailabilityImpact:
+          type: ["string", "null"]
+          enum: [AVAILABLE, UNAVAILABLE, NOT_EVALUATED, null]
         signals:
           type: object
           properties:
@@ -2273,7 +2293,7 @@ components:
           type: array
           items:
             type: string
-      required: [trustScore, latestStatus, latestCheckAt, latestResponseTimeMs, latestReachable, latestStructureMatch, signals, trustMetrics, recentLiveChecks, recentPasses, recentFailures, anomalies]
+      required: [trustScore, latestStatus, latestCheckAt, latestResponseTimeMs, latestReachable, latestStructureMatch, latestClassification, latestAvailabilityImpact, signals, trustMetrics, recentLiveChecks, recentPasses, recentFailures, anomalies]
     DeveloperPreActionCheck:
       type: object
       properties:
@@ -2305,7 +2325,7 @@ components:
       enum: [GENERAL, READ, WRITE, PAYMENT, CREDENTIAL_USE]
     AgentExecutionStatus:
       type: string
-      enum: [READY, AUTH_REQUIRED, PARAMETER_REQUIRED, PAYMENT_REQUIRED, RATE_LIMITED, PROVIDER_ERROR, UNVERIFIED_EXTERNAL, BLOCKED]
+      enum: [READY, AUTH_REQUIRED, PARAMETER_REQUIRED, PAYMENT_REQUIRED, RATE_LIMITED, NETWORK_UNAVAILABLE, CHECK_NOT_APPLICABLE, PROVIDER_ERROR, UNVERIFIED_EXTERNAL, BLOCKED]
     AgentExecutionPlanRequest:
       type: object
       additionalProperties: false

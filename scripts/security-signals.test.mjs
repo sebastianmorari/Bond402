@@ -256,7 +256,18 @@ test("Auth- und Rate-Limit-Antworten werden nicht als Malware bewertet", async (
       }, { status }),
     );
 
-    assert.equal(result.status, "FAIL");
+    assert.equal(result.status, status === 500 ? "FAIL" : "REVIEW");
+    assert.equal(
+      result.classification,
+      status === 500
+        ? "PROVIDER_ERROR"
+        : status === 429
+          ? "RATE_LIMITED"
+          : status === 401
+            ? "AUTH_REQUIRED"
+            : "CHECK_NOT_APPLICABLE",
+    );
+    assert.equal(result.availabilityImpact, status === 500 ? "UNAVAILABLE" : "NOT_EVALUATED");
     assert.equal(result.httpStatus, status);
     assert.equal(result.securitySignals.threatIndicators.status, "NONE_DETECTED");
     assert.equal(result.securitySignals.suspiciousPayload.status, "PASS");
@@ -268,6 +279,49 @@ test("Auth- und Rate-Limit-Antworten werden nicht als Malware bewertet", async (
       assert.equal(result.securitySignals.rateLimit.retryAfterSeconds, 30);
     }
   }
+});
+
+test("HTTP-Fehler trennen Endpoint-Eignung, Auth, Rate-Limit und Provider-Ausfall", async () => {
+  for (const [status, classification] of [
+    [404, "CHECK_NOT_APPLICABLE"],
+    [410, "CHECK_NOT_APPLICABLE"],
+  ]) {
+    const result = await runLiveVerification(
+      "https://service.example",
+      "",
+      1000,
+      {},
+      "HTTP",
+      fakeFetcher("", { "content-type": "application/json" }, { status }),
+    );
+    assert.equal(result.reachable, true);
+    assert.equal(result.classification, classification);
+    assert.equal(result.availabilityImpact, "NOT_EVALUATED");
+    assert.deepEqual(result.missingFields, []);
+  }
+
+  const forbidden = await runLiveVerification(
+    "https://service.example",
+    "",
+    1000,
+    { declaredAuthRequirement: "REQUIRED" },
+    "HTTP",
+    fakeFetcher("", { "content-type": "application/json" }, { status: 403 }),
+  );
+  assert.equal(forbidden.classification, "AUTH_REQUIRED");
+  assert.equal(forbidden.availabilityImpact, "NOT_EVALUATED");
+
+  const schemaMismatch = await runLiveVerification(
+    "https://service.example/data",
+    "status",
+    1000,
+    {},
+    "JSON",
+    fakeFetcher('{"other":"value"}'),
+  );
+  assert.equal(schemaMismatch.classification, "RESPONSE_SCHEMA_MISMATCH");
+  assert.equal(schemaMismatch.availabilityImpact, "AVAILABLE");
+  assert.equal(schemaMismatch.reachable, true);
 });
 
 test("Timeout und Redirect-Loop bleiben sichere Verbindungsfehler", async () => {

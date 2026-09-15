@@ -37,6 +37,8 @@ export type ExecutionStatus =
   | "PARAMETER_REQUIRED"
   | "PAYMENT_REQUIRED"
   | "RATE_LIMITED"
+  | "NETWORK_UNAVAILABLE"
+  | "CHECK_NOT_APPLICABLE"
   | "PROVIDER_ERROR"
   | "UNVERIFIED_EXTERNAL"
   | "BLOCKED";
@@ -351,6 +353,10 @@ function nextActionForStatus(status: ExecutionStatus) {
       return "Quota oder Plan prüfen; keinen automatischen Retry-Loop starten.";
     case "RATE_LIMITED":
       return "Retry-After beachten und später erneut versuchen.";
+    case "NETWORK_UNAVAILABLE":
+      return "Host, Netzwerk oder Timeout prüfen und nur bei retryable=true später erneut versuchen.";
+    case "CHECK_NOT_APPLICABLE":
+      return "Die registrierte Operation oder ihr Ziel ist für diese Anfrage nicht geeignet; keine Parameter erfinden.";
     case "UNVERIFIED_EXTERNAL":
       return "Externen Treffer nicht ausführen; zuerst owner-gebunden registrieren und verifizieren.";
     case "PROVIDER_ERROR":
@@ -847,7 +853,7 @@ export async function executeAgentPlan(
         /^(?:application\/json|application\/[^;]+\+json)\b/i.test(contentType) ||
         /^text\/plain\b/i.test(contentType)
       ));
-    if (!allowedContentType) {
+    if (response.status >= 200 && response.status < 300 && !allowedContentType) {
       const normalized = result(requestId, plan, "PROVIDER_ERROR", "UNSUPPORTED_CONTENT_TYPE", service, { method: operation.method, path: operation.path }, startedAt, {
         providerHttpStatus: response.status,
         quota: usage.usage,
@@ -859,13 +865,20 @@ export async function executeAgentPlan(
     }
     const retryAfter = response.status === 429 ? parseRetryAfter(response.headers) : null;
     const responseData = safeProviderData(response.body, contentType, service);
+    const authPlausible =
+      response.status === 401 ||
+      Boolean(response.headers["www-authenticate"]) ||
+      service.targetAuthType !== "NONE" ||
+      service.authRequirement === "REQUIRED";
     const status: ExecutionStatus = response.status === 429
       ? "RATE_LIMITED"
       : response.status >= 200 && response.status < 300
         ? "READY"
         : response.status === 401 || response.status === 403
-          ? service.targetAuthType === "NONE" ? "PROVIDER_ERROR" : "AUTH_REQUIRED"
-          : "PROVIDER_ERROR";
+          ? authPlausible ? "AUTH_REQUIRED" : "CHECK_NOT_APPLICABLE"
+          : [400, 404, 410].includes(response.status)
+            ? "CHECK_NOT_APPLICABLE"
+            : "PROVIDER_ERROR";
     const code =
       status === "READY"
         ? "EXECUTION_COMPLETED"
@@ -873,6 +886,8 @@ export async function executeAgentPlan(
           ? "PROVIDER_RATE_LIMITED"
           : status === "AUTH_REQUIRED"
             ? "PROVIDER_AUTH_REJECTED"
+            : status === "CHECK_NOT_APPLICABLE"
+              ? "OPERATION_NOT_APPLICABLE"
             : response.status >= 500
               ? "PROVIDER_5XX"
               : "PROVIDER_HTTP_ERROR";
@@ -890,6 +905,8 @@ export async function executeAgentPlan(
             ? "Der Provider hat das Kontingent oder Rate-Limit signalisiert."
             : status === "AUTH_REQUIRED"
               ? "Der Provider hat die serverseitige Authentifizierung abgelehnt."
+              : status === "CHECK_NOT_APPLICABLE"
+                ? "Der Provider ist erreichbar, aber die registrierte Operation ist für diese Antwort nicht geeignet."
               : "Der Provider-Aufruf ist mit einem kontrollierten HTTP-Fehler fehlgeschlagen.",
     });
     await saveExecutionAudit(normalized, ownerId, service.id, operation, startedDate, plan.parametersDigest, usage.usage.usedChecks);
@@ -901,6 +918,8 @@ export async function executeAgentPlan(
         ? "AUTH_REQUIRED"
         : isBlockedSafetyError(code)
           ? "BLOCKED"
+          : isRetryableProviderError(code)
+            ? "NETWORK_UNAVAILABLE"
           : "PROVIDER_ERROR";
     const retryable = isRetryableProviderError(code);
     const normalized = result(requestId, plan, status, code, service, { method: operation.method, path: operation.path }, startedAt, {

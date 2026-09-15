@@ -340,6 +340,28 @@ export const CheckResultStatus = {
   REVIEW: 'REVIEW',
 } as const;
 
+export type CheckClassification = typeof CheckClassification[keyof typeof CheckClassification];
+
+
+export const CheckClassification = {
+  SUCCESS: 'SUCCESS',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  RATE_LIMITED: 'RATE_LIMITED',
+  CHECK_NOT_APPLICABLE: 'CHECK_NOT_APPLICABLE',
+  RESPONSE_SCHEMA_MISMATCH: 'RESPONSE_SCHEMA_MISMATCH',
+  PROVIDER_ERROR: 'PROVIDER_ERROR',
+  NETWORK_UNAVAILABLE: 'NETWORK_UNAVAILABLE',
+} as const;
+
+export type AvailabilityImpact = typeof AvailabilityImpact[keyof typeof AvailabilityImpact];
+
+
+export const AvailabilityImpact = {
+  AVAILABLE: 'AVAILABLE',
+  UNAVAILABLE: 'UNAVAILABLE',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+} as const;
+
 export type CheckResultCheckType = typeof CheckResultCheckType[keyof typeof CheckResultCheckType];
 
 
@@ -513,6 +535,8 @@ export type SecuritySignalsAuthentication = {
 };
 
 export interface SecuritySignals {
+  classification: CheckClassification;
+  availabilityImpact: AvailabilityImpact;
   reachability: SecuritySignalsReachability;
   transport: SecuritySignalsTransport;
   network: SecuritySignalsNetwork;
@@ -537,6 +561,8 @@ export interface CheckResult {
   serviceId: string;
   checkedAt: string;
   status: CheckResultStatus;
+  classification: CheckClassification;
+  availabilityImpact: AvailabilityImpact;
   checkType: CheckResultCheckType;
   reachable: boolean;
   responseTimeMs: number;
@@ -938,6 +964,34 @@ export const DeveloperPreActionFactorsLatestStatus = {
   REVIEW: 'REVIEW',
 } as const;
 
+/**
+ * @nullable
+ */
+export type DeveloperPreActionFactorsLatestClassification = typeof DeveloperPreActionFactorsLatestClassification[keyof typeof DeveloperPreActionFactorsLatestClassification] | null;
+
+
+export const DeveloperPreActionFactorsLatestClassification = {
+  SUCCESS: 'SUCCESS',
+  AUTH_REQUIRED: 'AUTH_REQUIRED',
+  RATE_LIMITED: 'RATE_LIMITED',
+  CHECK_NOT_APPLICABLE: 'CHECK_NOT_APPLICABLE',
+  RESPONSE_SCHEMA_MISMATCH: 'RESPONSE_SCHEMA_MISMATCH',
+  PROVIDER_ERROR: 'PROVIDER_ERROR',
+  NETWORK_UNAVAILABLE: 'NETWORK_UNAVAILABLE',
+} as const;
+
+/**
+ * @nullable
+ */
+export type DeveloperPreActionFactorsLatestAvailabilityImpact = typeof DeveloperPreActionFactorsLatestAvailabilityImpact[keyof typeof DeveloperPreActionFactorsLatestAvailabilityImpact] | null;
+
+
+export const DeveloperPreActionFactorsLatestAvailabilityImpact = {
+  AVAILABLE: 'AVAILABLE',
+  UNAVAILABLE: 'UNAVAILABLE',
+  NOT_EVALUATED: 'NOT_EVALUATED',
+} as const;
+
 export type DeveloperPreActionFactorsSignals = {
   https: SignalState;
   tls: SignalState;
@@ -958,6 +1012,10 @@ export interface DeveloperPreActionFactors {
   latestReachable: boolean | null;
   /** @nullable */
   latestStructureMatch: boolean | null;
+  /** @nullable */
+  latestClassification: DeveloperPreActionFactorsLatestClassification;
+  /** @nullable */
+  latestAvailabilityImpact: DeveloperPreActionFactorsLatestAvailabilityImpact;
   signals: DeveloperPreActionFactorsSignals;
   trustMetrics: TrustMetrics;
   recentLiveChecks: number;
@@ -1029,6 +1087,8 @@ export const AgentExecutionStatus = {
   PARAMETER_REQUIRED: 'PARAMETER_REQUIRED',
   PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
   RATE_LIMITED: 'RATE_LIMITED',
+  NETWORK_UNAVAILABLE: 'NETWORK_UNAVAILABLE',
+  CHECK_NOT_APPLICABLE: 'CHECK_NOT_APPLICABLE',
   PROVIDER_ERROR: 'PROVIDER_ERROR',
   UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
   BLOCKED: 'BLOCKED',
@@ -1044,7 +1104,7 @@ export const AgentExecutionPlanRequestOperationMethod = {
 
 export type AgentExecutionPlanRequestOperation = {
   method?: AgentExecutionPlanRequestOperationMethod;
-  /** @maxLength 2048 */
+  /** @pattern ^/.{0,2047}$ */
   path?: string;
 };
 
@@ -1053,13 +1113,14 @@ export type AgentExecutionPlanRequestParameters = { [key: string]: unknown };
 /**
  * Send task or serviceId. operation and parameters must match owner-registered configuration.
  */
-export interface AgentExecutionPlanRequest {
+export type AgentExecutionPlanRequest = (unknown & {
   /** @maxLength 500 */
   task?: string;
+  /** @pattern ^(?:[A-Za-z0-9_-]{8,200}|external:[A-Za-z0-9_-]{1,180})$ */
   serviceId?: string;
   operation?: AgentExecutionPlanRequestOperation;
   parameters?: AgentExecutionPlanRequestParameters;
-}
+});
 
 export type AgentExecutionRequestParameters = { [key: string]: unknown };
 

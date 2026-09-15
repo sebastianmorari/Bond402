@@ -41,6 +41,15 @@ export const apiServicesTable = pgTable("bond402_api_services", {
 });
 
 export type SecuritySignalsJson = {
+  classification:
+    | "SUCCESS"
+    | "AUTH_REQUIRED"
+    | "RATE_LIMITED"
+    | "CHECK_NOT_APPLICABLE"
+    | "RESPONSE_SCHEMA_MISMATCH"
+    | "PROVIDER_ERROR"
+    | "NETWORK_UNAVAILABLE";
+  availabilityImpact: "AVAILABLE" | "UNAVAILABLE" | "NOT_EVALUATED";
   reachability: { status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN"; summary: string };
   transport: {
     status: "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
@@ -141,6 +150,8 @@ export const apiChecksTable = pgTable("bond402_api_checks", {
     .$type<SecuritySignalsJson>()
     .notNull()
     .default({
+      classification: "CHECK_NOT_APPLICABLE",
+      availabilityImpact: "NOT_EVALUATED",
       reachability: { status: "UNKNOWN", summary: "Erreichbarkeit wurde nicht bewertet." },
       transport: {
         status: "UNKNOWN",

@@ -52,7 +52,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { checkStatusLabel, checkTypeLabel } from "@/lib/presentation";
+import {
+  availabilityImpactLabel,
+  checkClassificationLabel,
+  checkStatusLabel,
+  checkTypeLabel,
+} from "@/lib/presentation";
 import {
   isDomainVerificationNotApplicableError,
   shouldShowDomainVerification,
@@ -639,6 +644,12 @@ export function ServiceDetails({ serviceId, onClose }: ServiceDetailsProps) {
                                   <ShieldAlert className="h-4 w-4 text-warning" />
                                 )}
                                  <span className="font-semibold">{checkStatusLabel(check.status)}</span>
+                                <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                                  {checkClassificationLabel(check.classification)}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {availabilityImpactLabel(check.availabilityImpact)}
+                                </span>
                                 <span className="text-muted-foreground text-xs bg-muted px-2 py-0.5 rounded">
                                    {checkTypeLabel(check.checkType)}
                                 </span>

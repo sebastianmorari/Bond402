@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PublicFooter } from "@/components/public-footer";
 import { useAuth } from "@/lib/auth";
+import { availabilityImpactLabel, checkClassificationLabel } from "@/lib/presentation";
 
 const apiBase = `${window.location.origin}/api`;
 
@@ -76,6 +77,8 @@ type PublicService = {
     tlsExpiresAt: string | null;
     tlsDaysRemaining: number | null;
     securityHeaders: { status: string; present: string[]; missing: string[] };
+    classification: string;
+    availabilityImpact: string;
     probeRegion: string;
   } | null;
   access: { preActionRequiresDeveloperKey: boolean; liveCheckRequiresDeveloperKey: boolean };
@@ -343,6 +346,11 @@ function ServiceCard({ service }: { service: PublicService }) {
          <div className="flex flex-wrap justify-end gap-2">
            <Badge variant="outline">{service.discovery?.sourceLabel || "Interne Bond402-Daten"}</Badge>
            <Badge variant={service.latestStatus === "PASS" ? "default" : service.latestStatus === "FAIL" ? "destructive" : "outline"}>{service.latestStatus || "Neu"}</Badge>
+           {service.latestCheck && (
+             <Badge variant="outline">
+               {checkClassificationLabel(service.latestCheck.classification)}
+             </Badge>
+           )}
          </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
@@ -352,6 +360,9 @@ function ServiceCard({ service }: { service: PublicService }) {
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
         <Badge variant="outline">HTTPS: {signalLabel(service.signals.https)}</Badge>
         <Badge variant="outline">TLS: {signalLabel(service.signals.tls)}</Badge>
+        {service.latestCheck && (
+          <Badge variant="outline">{availabilityImpactLabel(service.latestCheck.availabilityImpact)}</Badge>
+        )}
         <Badge variant="outline">Domain: {signalLabel(service.domainVerification.status === "VERIFIED" ? "CHECKED" : service.domainVerification.status === "NOT_EVALUATED" ? "NOT_EVALUATED" : "WARNING")}</Badge>
         <Badge variant="outline">Regionen: {regionalStateLabel(service.trustMetrics.regionalAggregation.state)}</Badge>
       </div>
@@ -921,6 +932,8 @@ type ExternalCheckResult = {
   };
   check: {
     status: "PASS" | "FAIL" | "REVIEW";
+    classification: string;
+    availabilityImpact: string;
     summary: string;
     reachable: boolean;
     responseTimeMs: number;
@@ -966,7 +979,9 @@ function ExternalCheckResultView({ result }: { result: ExternalCheckResult }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Badge variant={result.check.status === "PASS" ? "secondary" : "warning"}>Bond402-Prüfung abgeschlossen</Badge>
-          <p className="mt-2 text-sm font-semibold">{result.check.status} · HTTP {result.check.httpStatus ?? "nicht erreicht"}</p>
+          <p className="mt-2 text-sm font-semibold">
+            {result.check.status} · {checkClassificationLabel(result.check.classification)} · HTTP {result.check.httpStatus ?? "nicht erreicht"}
+          </p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{result.check.summary}</p>
         </div>
         <p className="text-xs text-muted-foreground">{result.check.responseTimeMs} ms · {new Date(result.verification.checkedAt).toLocaleString("de-CH")}</p>

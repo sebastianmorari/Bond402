@@ -1,4 +1,5 @@
 import type { ApiCheckRow } from "@workspace/db";
+import { getCheckAvailabilityImpact } from "./api-verifier";
 
 const TRUST_HALF_LIFE_DAYS = 14;
 
@@ -68,7 +69,11 @@ function regionalOutcome(check: ApiCheckRow) {
 }
 
 export function calculateRegionalAggregation(checks: ApiCheckRow[]): RegionalAggregation {
-  const liveChecks = checks.filter((check) => check.checkType === "LIVE");
+  const liveChecks = checks.filter(
+    (check) =>
+      check.checkType === "LIVE" &&
+      getCheckAvailabilityImpact(check) !== "NOT_EVALUATED",
+  );
   const byRegion = new Map<string, ApiCheckRow[]>();
   let unassignedLiveCheckCount = 0;
 
@@ -168,8 +173,14 @@ export function calculateTrustMetrics(
   now = new Date(),
 ) {
   const liveChecks = checks.filter((check) => check.checkType === "LIVE");
+  const availabilityChecks = liveChecks.filter(
+    (check) => getCheckAvailabilityImpact(check) !== "NOT_EVALUATED",
+  );
   const timedChecks = liveChecks.filter(
-    (check) => check.reachable && check.responseTimeMs > 0,
+    (check) =>
+      getCheckAvailabilityImpact(check) === "AVAILABLE" &&
+      check.reachable &&
+      check.responseTimeMs > 0,
   );
   const responseTimes = timedChecks.map((check) => check.responseTimeMs);
   const firstCheck = liveChecks.at(-1);
@@ -179,9 +190,16 @@ export function calculateTrustMetrics(
     sampleCount: liveChecks.length,
     timedSampleCount: timedChecks.length,
     uptimePercent:
-      liveChecks.length === 0
+      availabilityChecks.length === 0
         ? null
-        : Math.round(weightedRatio(liveChecks, (check) => check.reachable, now) * 1000) / 10,
+        : Math.round(
+            weightedRatio(
+              availabilityChecks,
+              (check) =>
+                getCheckAvailabilityImpact(check) === "AVAILABLE" && check.reachable,
+              now,
+            ) * 1000,
+          ) / 10,
     averageResponseTimeMs:
       timedChecks.length === 0
         ? null

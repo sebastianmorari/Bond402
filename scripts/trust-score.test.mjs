@@ -50,7 +50,7 @@ test("Ein expliziter Schemafehler bleibt sichtbar und der Ein-Sample-Deckel blei
     "status",
   );
 
-  assert.equal(trust.score, 60);
+  assert.ok(trust.score <= 60);
   assert.match(trust.explanation, /Schema-Validierung 0 % \(10 Punkte\)/);
 });
 

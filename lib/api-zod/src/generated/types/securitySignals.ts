@@ -8,6 +8,8 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { AvailabilityImpact } from './availabilityImpact';
+import type { CheckClassification } from './checkClassification';
 import type { HistoricalDrift } from './historicalDrift';
 import type { SecurityConfidence } from './securityConfidence';
 import type { SecuritySignalsAuthentication } from './securitySignalsAuthentication';
@@ -24,6 +26,8 @@ import type { SecurityStatus } from './securityStatus';
 import type { ThreatIndicators } from './threatIndicators';
 
 export interface SecuritySignals {
+  classification: CheckClassification;
+  availabilityImpact: AvailabilityImpact;
   reachability: SecuritySignalsReachability;
   transport: SecuritySignalsTransport;
   network: SecuritySignalsNetwork;

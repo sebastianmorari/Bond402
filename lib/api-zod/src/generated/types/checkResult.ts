@@ -8,6 +8,8 @@
  *
  * OpenAPI spec version: 0.2.0
  */
+import type { AvailabilityImpact } from './availabilityImpact';
+import type { CheckClassification } from './checkClassification';
 import type { CheckResultCheckType } from './checkResultCheckType';
 import type { CheckResultStatus } from './checkResultStatus';
 import type { SecurityHeaders } from './securityHeaders';
@@ -19,6 +21,8 @@ export interface CheckResult {
   serviceId: string;
   checkedAt: Date;
   status: CheckResultStatus;
+  classification: CheckClassification;
+  availabilityImpact: AvailabilityImpact;
   checkType: CheckResultCheckType;
   reachable: boolean;
   responseTimeMs: number;

@@ -9,18 +9,15 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type AgentExecutionStatus = typeof AgentExecutionStatus[keyof typeof AgentExecutionStatus];
+export type CheckClassification = typeof CheckClassification[keyof typeof CheckClassification];
 
 
-export const AgentExecutionStatus = {
-  READY: 'READY',
+export const CheckClassification = {
+  SUCCESS: 'SUCCESS',
   AUTH_REQUIRED: 'AUTH_REQUIRED',
-  PARAMETER_REQUIRED: 'PARAMETER_REQUIRED',
-  PAYMENT_REQUIRED: 'PAYMENT_REQUIRED',
   RATE_LIMITED: 'RATE_LIMITED',
-  NETWORK_UNAVAILABLE: 'NETWORK_UNAVAILABLE',
   CHECK_NOT_APPLICABLE: 'CHECK_NOT_APPLICABLE',
+  RESPONSE_SCHEMA_MISMATCH: 'RESPONSE_SCHEMA_MISMATCH',
   PROVIDER_ERROR: 'PROVIDER_ERROR',
-  UNVERIFIED_EXTERNAL: 'UNVERIFIED_EXTERNAL',
-  BLOCKED: 'BLOCKED',
+  NETWORK_UNAVAILABLE: 'NETWORK_UNAVAILABLE',
 } as const;

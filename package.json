@@ -29,7 +29,7 @@
     "test:service-registration": "pnpm --filter @workspace/scripts exec tsx --test service-registration-payload.test.mjs",
     "test:service-ui": "pnpm --filter @workspace/scripts exec tsx --test service-ui.test.mjs",
     "test:service-routes": "pnpm --filter @workspace/api-server run build && node --test scripts/service-routes.test.mjs",
-    "test:trust-metrics": "node --experimental-strip-types --test scripts/trust-metrics.test.mjs",
+    "test:trust-metrics": "pnpm --filter @workspace/scripts exec tsx --test trust-metrics.test.mjs",
     "test:trust-score": "pnpm --filter @workspace/scripts exec tsx --test trust-score.test.mjs",
     "test:frontend-smoke": "node --test scripts/frontend-smoke.test.mjs",
     "test:frontend-e2e": "node --test scripts/frontend-e2e.test.mjs",

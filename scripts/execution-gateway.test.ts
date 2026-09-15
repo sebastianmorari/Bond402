@@ -413,7 +413,7 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
   }
   const timeoutPlan = await plan(timeoutId);
   const timeout = await execute(timeoutPlan.data.planId, {});
-  assert.equal(timeout.data.status, "PROVIDER_ERROR");
+  assert.equal(timeout.data.status, "NETWORK_UNAVAILABLE");
   assert.equal(timeout.data.retryable, true);
   const manyPlan = await plan(manyId);
   const many = await execute(manyPlan.data.planId, {});

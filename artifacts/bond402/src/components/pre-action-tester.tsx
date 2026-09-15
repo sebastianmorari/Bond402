@@ -4,6 +4,7 @@ import type { DeveloperPreActionCheck } from "@workspace/api-client-react";
 import { Activity, AlertTriangle, Ban, CheckCircle2, Clock3, KeyRound, ShieldCheck, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { availabilityImpactLabel, checkClassificationLabel } from "@/lib/presentation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -252,6 +253,19 @@ export function PreActionTester({ services }: PreActionTesterProps) {
                     <div className="rounded-lg border border-border/60 bg-card/60 p-3">
                       <dt className="text-xs text-muted-foreground">Letzter Status</dt>
                       <dd className="mt-1 font-semibold">{result.factors.latestStatus ?? "Keine Prüfung"}</dd>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                      <dt className="text-xs text-muted-foreground">Ergebnis</dt>
+                      <dd className="mt-1 font-semibold">
+                        {result.factors.latestClassification
+                          ? checkClassificationLabel(result.factors.latestClassification)
+                          : "Nicht bewertet"}
+                      </dd>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {result.factors.latestAvailabilityImpact
+                          ? availabilityImpactLabel(result.factors.latestAvailabilityImpact)
+                          : "Verfügbarkeit: nicht bewertet"}
+                      </p>
                     </div>
                     <div className="rounded-lg border border-border/60 bg-card/60 p-3">
                       <dt className="text-xs text-muted-foreground">Erreichbarkeit</dt>

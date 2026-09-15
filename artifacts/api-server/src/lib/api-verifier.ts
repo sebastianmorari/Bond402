@@ -21,6 +21,8 @@ const decompressDeflate = promisify(inflate);
 
 export type VerificationOutcome = {
   status: "PASS" | "FAIL" | "REVIEW";
+  classification: CheckClassification;
+  availabilityImpact: AvailabilityImpact;
   reachable: boolean;
   responseTimeMs: number;
   structureMatch: boolean;
@@ -50,6 +52,17 @@ export type SecurityObservation = {
   indicators: string[];
 };
 
+export type CheckClassification =
+  | "SUCCESS"
+  | "AUTH_REQUIRED"
+  | "RATE_LIMITED"
+  | "CHECK_NOT_APPLICABLE"
+  | "RESPONSE_SCHEMA_MISMATCH"
+  | "PROVIDER_ERROR"
+  | "NETWORK_UNAVAILABLE";
+
+export type AvailabilityImpact = "AVAILABLE" | "UNAVAILABLE" | "NOT_EVALUATED";
+
 export type SignalStatus = "CHECKED" | "WARNING" | "UNAVAILABLE" | "NOT_EVALUATED";
 export type SecuritySignalStatus = "PASS" | "WARNING" | "FAIL" | "UNKNOWN";
 
@@ -65,6 +78,7 @@ export type TargetRequestOptions = {
   targetAuthHeaderName?: string | null;
   targetAuthSecretCiphertext?: string | null;
   requestBody?: unknown;
+  declaredAuthRequirement?: "REQUIRED" | "NOT_REQUIRED" | "NOT_DECLARED" | "UNKNOWN";
 };
 
 export type SecurityHeadersSnapshot = {
@@ -84,6 +98,8 @@ export type ResponseContentKind =
   | "UNKNOWN";
 
 export type SecuritySignals = {
+  classification: CheckClassification;
+  availabilityImpact: AvailabilityImpact;
   reachability: { status: SecuritySignalStatus; summary: string };
   transport: {
     status: SecuritySignalStatus;
@@ -164,6 +180,8 @@ const DEFAULT_SECURITY_HEADERS: SecurityHeadersSnapshot = {
 };
 
 export const UNKNOWN_SECURITY_SIGNALS: SecuritySignals = {
+  classification: "CHECK_NOT_APPLICABLE",
+  availabilityImpact: "NOT_EVALUATED",
   reachability: { status: "UNKNOWN", summary: "Erreichbarkeit wurde nicht bewertet." },
   transport: {
     status: "UNKNOWN",
@@ -233,6 +251,70 @@ export const UNKNOWN_SECURITY_SIGNALS: SecuritySignals = {
     summary: "Historische Abweichungen benötigen mehrere Bond402-Beobachtungen.",
   },
 };
+
+export function inferCheckClassification(check: {
+  status: string;
+  reachable: boolean;
+  httpStatus: number | null;
+  errorCode: string | null;
+  structureMatch: boolean;
+  securitySignals?: unknown;
+}): CheckClassification {
+  const stored = check.securitySignals;
+  if (
+    stored &&
+    typeof stored === "object" &&
+    "classification" in stored &&
+    typeof stored.classification === "string"
+  ) {
+    return stored.classification as CheckClassification;
+  }
+  if (check.httpStatus === 401 || check.httpStatus === 403) return "AUTH_REQUIRED";
+  if (check.httpStatus === 404 || check.httpStatus === 410) return "CHECK_NOT_APPLICABLE";
+  if (check.httpStatus === 429) return "RATE_LIMITED";
+  if (check.httpStatus !== null && check.httpStatus >= 500) return "PROVIDER_ERROR";
+  if (check.errorCode === "STRUCTURE_MISMATCH" || check.errorCode === "INVALID_JSON") {
+    return "RESPONSE_SCHEMA_MISMATCH";
+  }
+  if (
+    check.httpStatus !== null &&
+    check.httpStatus >= 200 &&
+    check.httpStatus < 300 &&
+    !check.structureMatch
+  ) {
+    return "RESPONSE_SCHEMA_MISMATCH";
+  }
+  if (!check.reachable) return "NETWORK_UNAVAILABLE";
+  if (check.status === "PASS" && check.httpStatus !== null && check.httpStatus >= 200 && check.httpStatus < 300) {
+    return "SUCCESS";
+  }
+  return check.structureMatch ? "SUCCESS" : "CHECK_NOT_APPLICABLE";
+}
+
+export function getCheckAvailabilityImpact(check: {
+  status: string;
+  reachable: boolean;
+  httpStatus: number | null;
+  errorCode: string | null;
+  structureMatch: boolean;
+  securitySignals?: unknown;
+}): AvailabilityImpact {
+  const stored = check.securitySignals;
+  if (
+    stored &&
+    typeof stored === "object" &&
+    "availabilityImpact" in stored &&
+    typeof stored.availabilityImpact === "string"
+  ) {
+    return stored.availabilityImpact as AvailabilityImpact;
+  }
+  const classification = inferCheckClassification(check);
+  if (classification === "SUCCESS" || classification === "RESPONSE_SCHEMA_MISMATCH") return "AVAILABLE";
+  if (classification === "NETWORK_UNAVAILABLE" || classification === "PROVIDER_ERROR") {
+    return "UNAVAILABLE";
+  }
+  return "NOT_EVALUATED";
+}
 
 const SECURITY_HEADERS = [
   "strict-transport-security",
@@ -601,6 +683,8 @@ function createSecuritySignals(input: {
         ? "WARNING"
         : "UNKNOWN";
   const signals: SecuritySignals = {
+    classification: "CHECK_NOT_APPLICABLE",
+    availabilityImpact: "NOT_EVALUATED",
     reachability: { status: "PASS", summary: "Der Dienst war über den sicheren Prüfpfad erreichbar." },
     transport: {
       status: tls.status === "CHECKED" && !redirects.downgraded ? "PASS" : tlsStatus,
@@ -727,6 +811,73 @@ function publicVerificationSummary(code: string) {
     default:
       return "Der Dienst konnte nicht sicher erreicht werden.";
   }
+}
+
+function classifyHttpResponse(
+  status: number,
+  options: TargetRequestOptions,
+  headers: Record<string, string>,
+): {
+  status: VerificationOutcome["status"];
+  classification: CheckClassification;
+  availabilityImpact: AvailabilityImpact;
+  errorCode: string;
+  summary: string;
+} {
+  if (status === 401 || status === 403) {
+    const authPlausible =
+      status === 401 ||
+      Boolean(headers["www-authenticate"]) ||
+      options.targetAuthType !== undefined && options.targetAuthType !== "NONE" ||
+      options.declaredAuthRequirement === "REQUIRED";
+    if (authPlausible) {
+      return {
+        status: "REVIEW",
+        classification: "AUTH_REQUIRED",
+        availabilityImpact: "NOT_EVALUATED",
+        errorCode: "AUTH_REQUIRED",
+        summary: "Host erreichbar, aber Authentifizierung oder Berechtigung ist erforderlich.",
+      };
+    }
+  }
+  if (status === 429) {
+    return {
+      status: "REVIEW",
+      classification: "RATE_LIMITED",
+      availabilityImpact: "NOT_EVALUATED",
+      errorCode: "RATE_LIMITED",
+      summary: "Host erreichbar, aber der Provider signalisiert ein Rate-Limit.",
+    };
+  }
+  if (status === 404 || status === 410) {
+    return {
+      status: "REVIEW",
+      classification: "CHECK_NOT_APPLICABLE",
+      availabilityImpact: "NOT_EVALUATED",
+      errorCode: status === 410 ? "ENDPOINT_GONE" : "ENDPOINT_NOT_FOUND",
+      summary: "Host erreichbar, Endpoint nicht geeignet.",
+    };
+  }
+  if (status >= 500) {
+    return {
+      status: "FAIL",
+      classification: "PROVIDER_ERROR",
+      availabilityImpact: "UNAVAILABLE",
+      errorCode: "PROVIDER_5XX",
+      summary: `Der Provider ist mit HTTP ${status} nicht verfügbar.`,
+    };
+  }
+  return {
+    status: "REVIEW",
+    classification: "CHECK_NOT_APPLICABLE",
+    availabilityImpact: "NOT_EVALUATED",
+    errorCode: "OPERATION_NOT_APPLICABLE",
+    summary: `Host erreichbar, Operation mit HTTP ${status} nicht geeignet.`,
+  };
+}
+
+function networkErrorCode(code: string) {
+  return ["TIMEOUT", "UNREACHABLE", "ECONNRESET", "ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN"].includes(code);
 }
 
 function isBlockedIpv4(address: string): boolean {
@@ -1267,17 +1418,22 @@ export async function runLiveVerification(
   try {
     const response = await fetchResponse(url, timeoutMs, options);
     if (response.status < 200 || response.status >= 300) {
+      const classified = classifyHttpResponse(response.status, options, response.headers);
       const securitySignals = createSecuritySignals({ reachable: true, response });
+      securitySignals.classification = classified.classification;
+      securitySignals.availabilityImpact = classified.availabilityImpact;
       return {
-        status: "FAIL",
+        status: classified.status,
+        classification: classified.classification,
+        availabilityImpact: classified.availabilityImpact,
         reachable: true,
         responseTimeMs: response.elapsedMs,
         structureMatch: false,
         httpStatus: response.status,
-        errorCode: "HTTP_ERROR",
-        summary: `Der Dienst antwortete mit HTTP-Status ${response.status}.`,
+        errorCode: classified.errorCode,
+        summary: classified.summary,
         foundFields: [],
-        missingFields: responseMode === "HTTP" ? [] : parseExpectedFields(expectedStructure),
+        missingFields: [],
         https: url.startsWith("https:"),
         tlsStatus: response.tls.status,
         tlsExpiresAt: response.tls.expiresAt,
@@ -1293,8 +1449,12 @@ export async function runLiveVerification(
       const fastEnough = response.elapsedMs <= maxResponseTime;
       const status = fastEnough ? "PASS" : "REVIEW";
       const securitySignals = createSecuritySignals({ reachable: true, response });
+      securitySignals.classification = "SUCCESS";
+      securitySignals.availabilityImpact = "AVAILABLE";
       return {
         status,
+        classification: "SUCCESS",
+        availabilityImpact: "AVAILABLE",
         reachable: true,
         responseTimeMs: response.elapsedMs,
         structureMatch: true,
@@ -1322,8 +1482,12 @@ export async function runLiveVerification(
       json = JSON.parse(response.body);
     } catch {
       const securitySignals = createSecuritySignals({ reachable: true, response });
+      securitySignals.classification = "RESPONSE_SCHEMA_MISMATCH";
+      securitySignals.availabilityImpact = "AVAILABLE";
       return {
         status: "FAIL",
+        classification: "RESPONSE_SCHEMA_MISMATCH",
+        availabilityImpact: "AVAILABLE",
         reachable: true,
         responseTimeMs: response.elapsedMs,
         structureMatch: false,
@@ -1360,9 +1524,14 @@ export async function runLiveVerification(
           ? "Der Dienst antwortet, aber Antwortzeit oder Struktur weichen teilweise ab."
           : "Der Dienst antwortet, aber wichtige erwartete Felder fehlen.";
     const securitySignals = createSecuritySignals({ reachable: true, response });
+    securitySignals.classification =
+      status === "PASS" ? "SUCCESS" : "RESPONSE_SCHEMA_MISMATCH";
+    securitySignals.availabilityImpact = "AVAILABLE";
 
     return {
       status,
+      classification: securitySignals.classification,
+      availabilityImpact: "AVAILABLE",
       reachable: true,
       responseTimeMs: response.elapsedMs,
       structureMatch: comparison.matches,
@@ -1385,14 +1554,37 @@ export async function runLiveVerification(
       typeof error === "object" && error && "code" in error
         ? String(error.code)
         : "UNREACHABLE";
+    const isNetworkFailure = networkErrorCode(code);
+    const classification: CheckClassification = isNetworkFailure
+      ? "NETWORK_UNAVAILABLE"
+      : "CHECK_NOT_APPLICABLE";
+    const availabilityImpact: AvailabilityImpact = isNetworkFailure
+      ? "UNAVAILABLE"
+      : "NOT_EVALUATED";
+    const reachable = code === "RESPONSE_TOO_LARGE";
+    const securitySignals = createSecuritySignals({
+      reachable,
+      networkStatus: isNetworkFailure ? "FAIL" : "UNKNOWN",
+      networkSummary: isNetworkFailure
+        ? "DNS-, Verbindungs- oder Timeout-Fehler verhindern eine echte Verfügbarkeitsprüfung."
+        : "Der Host-/Endpoint-Status konnte für diese Prüfung nicht als Verfügbarkeitsprobe gewertet werden.",
+    });
+    securitySignals.classification = classification;
+    securitySignals.availabilityImpact = availabilityImpact;
     return {
-      status: "FAIL",
-      reachable: false,
+      status: isNetworkFailure ? "FAIL" : "REVIEW",
+      classification,
+      availabilityImpact,
+      reachable,
       responseTimeMs: 0,
       structureMatch: false,
       httpStatus: null,
       errorCode: code,
-      summary: publicVerificationSummary(code),
+      summary: isNetworkFailure
+        ? publicVerificationSummary(code)
+        : code === "RESPONSE_TOO_LARGE"
+          ? "Host erreichbar, Antwort für diese Prüfung zu groß."
+          : publicVerificationSummary(code),
       foundFields: [],
       missingFields: responseMode === "HTTP" ? [] : parseExpectedFields(expectedStructure),
       https: url.startsWith("https:"),
@@ -1404,14 +1596,7 @@ export async function runLiveVerification(
       tlsExpiresAt: null,
       tlsDaysRemaining: null,
       securityHeaders: DEFAULT_SECURITY_HEADERS,
-      securitySignals: createSecuritySignals({
-        reachable: false,
-        networkStatus: code === "PRIVATE_ADDRESS" ? "FAIL" : "UNKNOWN",
-        networkSummary:
-          code === "PRIVATE_ADDRESS"
-            ? "SSRF-Schutz hat ein privates, lokales oder nicht öffentliches Ziel blockiert."
-            : undefined,
-      }),
+      securitySignals,
       probeRegion: process.env.BOND402_PROBE_REGION?.trim() || "default",
     };
   }
@@ -1454,6 +1639,8 @@ export function runManualVerification(
   if (responseMode === "HTTP") {
     return {
       status: "PASS",
+      classification: "SUCCESS",
+      availabilityImpact: "AVAILABLE",
       reachable: true,
       responseTimeMs: 0,
       structureMatch: true,
@@ -1478,6 +1665,8 @@ export function runManualVerification(
   } catch {
     return {
       status: "FAIL",
+      classification: "RESPONSE_SCHEMA_MISMATCH",
+      availabilityImpact: "AVAILABLE",
       reachable: true,
       responseTimeMs: 0,
       structureMatch: false,
@@ -1500,6 +1689,8 @@ export function runManualVerification(
   const status = comparison.matches ? "PASS" : comparison.ratio >= 0.5 ? "REVIEW" : "FAIL";
   return {
     status,
+    classification: comparison.matches ? "SUCCESS" : "RESPONSE_SCHEMA_MISMATCH",
+    availabilityImpact: "AVAILABLE",
     reachable: true,
     responseTimeMs: 0,
     structureMatch: comparison.matches,

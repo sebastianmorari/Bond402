@@ -8,10 +8,8 @@
  *
  * OpenAPI spec version: 0.2.0
  */
-import type { AgentExecutionPlanRequestOperationMethod } from './agentExecutionPlanRequestOperationMethod';
 
-export type AgentExecutionPlanRequestOperation = {
-  method?: AgentExecutionPlanRequestOperationMethod;
-  /** @pattern ^/.{0,2047}$ */
-  path?: string;
+export type DiscoverOpenApiFromExplicitUrlBody = {
+  /** @maxLength 2048 */
+  url: string;
 };

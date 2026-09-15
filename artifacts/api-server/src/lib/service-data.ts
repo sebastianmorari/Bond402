@@ -16,8 +16,12 @@ import type {
 } from "./api-verifier";
 import {
   calculateSecurityConfidence,
+  getCheckAvailabilityImpact as inferAvailabilityImpact,
+  inferCheckClassification,
   normalizeResponseMode,
   UNKNOWN_SECURITY_SIGNALS,
+  type AvailabilityImpact,
+  type CheckClassification,
 } from "./api-verifier";
 import {
   getDomainRelationship,
@@ -34,6 +38,7 @@ export function getTargetRequestOptions(service: ApiServiceRow): TargetRequestOp
     targetAuthHeaderName: service.targetAuthHeaderName,
     targetAuthSecretCiphertext: service.targetAuthSecretCiphertext,
     requestBody: service.requestBody ?? undefined,
+    declaredAuthRequirement: service.authRequirement as "REQUIRED" | "NOT_REQUIRED" | "NOT_DECLARED" | "UNKNOWN",
   };
 }
 
@@ -59,14 +64,36 @@ function signalState(check: ApiCheckRow | undefined) {
 }
 
 function getSecuritySignals(check: ApiCheckRow | undefined): SecuritySignals {
-  if (!check?.securitySignals) return structuredClone(UNKNOWN_SECURITY_SIGNALS);
+  const inferredClassification: CheckClassification = check
+    ? inferCheckClassification(check)
+    : "CHECK_NOT_APPLICABLE";
+  const inferredAvailability: AvailabilityImpact = check
+    ? inferAvailabilityImpact(check)
+    : "NOT_EVALUATED";
+  if (!check?.securitySignals) {
+    return {
+      ...structuredClone(UNKNOWN_SECURITY_SIGNALS),
+      classification: inferredClassification,
+      availabilityImpact: inferredAvailability,
+    };
+  }
   const stored = check.securitySignals as Partial<SecuritySignals>;
   return {
     ...structuredClone(UNKNOWN_SECURITY_SIGNALS),
     ...stored,
+    classification: stored.classification ?? inferredClassification,
+    availabilityImpact: stored.availabilityImpact ?? inferredAvailability,
     threatIndicators: stored.threatIndicators ?? structuredClone(UNKNOWN_SECURITY_SIGNALS.threatIndicators),
     historicalDrift: stored.historicalDrift ?? structuredClone(UNKNOWN_SECURITY_SIGNALS.historicalDrift),
   };
+}
+
+export function getCheckClassification(check: ApiCheckRow) {
+  return getSecuritySignals(check).classification;
+}
+
+export function getCheckAvailabilityImpact(check: ApiCheckRow) {
+  return getSecuritySignals(check).availabilityImpact;
 }
 
 function isQualifyingFirstSeenCheck(check: ApiCheckRow) {
@@ -83,6 +110,8 @@ function isQualifyingFirstSeenCheck(check: ApiCheckRow) {
 
   const signals = getSecuritySignals(check);
   return (
+    signals.classification === "SUCCESS" &&
+    signals.availabilityImpact === "AVAILABLE" &&
     signals.network.status !== "FAIL" &&
     signals.transport.status !== "FAIL" &&
     signals.threatIndicators.status === "NONE_DETECTED" &&
@@ -116,6 +145,8 @@ export function toCheckResponse(check: ApiCheckRow) {
     tlsDaysRemaining: check.tlsDaysRemaining,
     securityHeaders: check.securityHeaders,
     securitySignals: getSecuritySignals(check),
+    classification: getSecuritySignals(check).classification,
+    availabilityImpact: getSecuritySignals(check).availabilityImpact,
     probeRegion: check.probeRegion,
   };
 }
@@ -137,49 +168,64 @@ export function calculateTrust(
     };
   }
 
-  const reachability = weightedRatio(liveChecks, (check) => check.reachable);
+  const availabilityChecks = liveChecks.filter(
+    (check) => getCheckAvailabilityImpact(check) !== "NOT_EVALUATED",
+  );
+  const operationChecks = liveChecks.filter((check) => {
+    const classification = getSecuritySignals(check).classification;
+    return !["AUTH_REQUIRED", "RATE_LIMITED", "CHECK_NOT_APPLICABLE"].includes(classification);
+  });
+  const structureChecks = liveChecks.filter((check) =>
+    ["SUCCESS", "RESPONSE_SCHEMA_MISMATCH"].includes(getSecuritySignals(check).classification),
+  );
+  const reachability = weightedRatio(
+    availabilityChecks,
+    (check) => getCheckAvailabilityImpact(check) === "AVAILABLE" && check.reachable,
+  );
   const performance = weightedRatio(
-    liveChecks,
+    availabilityChecks,
     (check) =>
+      getCheckAvailabilityImpact(check) === "AVAILABLE" &&
       check.reachable &&
       check.responseTimeMs > 0 &&
       check.responseTimeMs <= maxResponseTime,
   );
   const httpSuccess = weightedRatio(
-    liveChecks,
-    (check) =>
-      check.reachable &&
-      check.httpStatus !== null &&
-      check.httpStatus >= 200 &&
-      check.httpStatus < 300,
+    operationChecks,
+    (check) => getSecuritySignals(check).classification === "SUCCESS",
   );
   const schemaConfigured = expectedStructure.trim().length > 0;
   const structure = schemaConfigured
-    ? weightedRatio(liveChecks, (check) => check.structureMatch)
+    ? weightedRatio(structureChecks, (check) => check.structureMatch)
     : 1;
   const latestLiveCheck = liveChecks[0];
   const securityConfidence = latestLiveCheck
     ? calculateSecurityConfidence(getSecuritySignals(latestLiveCheck), liveChecks.length)
     : structuredClone(UNKNOWN_SECURITY_SIGNALS.securityConfidence);
-  const availabilityScore = Math.round(
-    (reachability * 0.4 + httpSuccess * 0.35 + performance * 0.25) * 100,
-  );
-  const score = Math.round(
-    reachability * 30 +
-      httpSuccess * 25 +
-      performance * 20 +
-      (securityConfidence.score ?? 0) * 0.15 +
-      structure * 10,
-  );
+  const availabilityScore =
+    availabilityChecks.length === 0
+      ? null
+      : Math.round((reachability * 0.4 + httpSuccess * 0.35 + performance * 0.25) * 100);
+  const score =
+    operationChecks.length === 0
+      ? null
+      : Math.round(
+          reachability * 30 +
+            httpSuccess * 25 +
+            performance * 20 +
+            (securityConfidence.score ?? 0) * 0.15 +
+            structure * 10,
+        );
   const overallSampleCap =
     liveChecks.length < 2 ? 60 : liveChecks.length < 3 ? 70 : liveChecks.length < 5 ? 80 : liveChecks.length < 10 ? 90 : 95;
   return {
-    score: Math.min(score, overallSampleCap),
+    score: score === null ? null : Math.min(score, overallSampleCap),
     availabilityScore,
     securityConfidence,
     metrics,
     explanation:
-      `Trennung aus ${liveChecks.length} echten Prüfungen: Verfügbarkeit ${availabilityScore} %, ` +
+      `Trennung aus ${liveChecks.length} gespeicherten Live-Prüfungen: ` +
+      `Verfügbarkeit ${availabilityScore === null ? "nicht bewertet" : `${availabilityScore} %`}, ` +
       `Security Confidence ${securityConfidence.score ?? "unbekannt"} %, ` +
       `Gesamtvertrauen wegen begrenzter Samples maximal ${overallSampleCap} %. ` +
       "Keine Auffälligkeit gefunden ist keine Sicherheitsgarantie. " +
@@ -243,10 +289,22 @@ export async function saveOutcome(
         )[0]
       : undefined;
     const securitySignals = withHistoricalDrift(outcome.securitySignals, previousObservation, observation);
-    const { securityObservation: _securityObservation, ...checkOutcome } = outcome;
+     const {
+       securityObservation: _securityObservation,
+       securitySignals: _storedSecuritySignals,
+       classification,
+       availabilityImpact,
+       ...checkOutcome
+     } = outcome;
     const [check] = await tx
-      .insert(apiChecksTable)
-      .values({ id: crypto.randomUUID(), serviceId, checkType, ...checkOutcome, securitySignals })
+       .insert(apiChecksTable)
+       .values({
+         id: crypto.randomUUID(),
+         serviceId,
+         checkType,
+         ...checkOutcome,
+         securitySignals: { ...securitySignals, classification, availabilityImpact },
+       })
       .returning();
     if (observation) {
       await tx.insert(bond402SecurityObservationsTable).values({
