@@ -58,7 +58,7 @@ type ExecutionOperation = {
   knownCost: { amount: number; currency: string } | null;
 };
 
-type ExecutionInput = {
+export type ExecutionInput = {
   task?: string;
   serviceId?: string;
   operation?: {

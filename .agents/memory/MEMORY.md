@@ -21,3 +21,4 @@
 - [Public decision boundary](public-decision-boundary.md) — the public Decision API follows the VERIFIED_LOW_RISK catalog boundary, including first-live-check transitions.
 - [Execution gateway safety](execution-gateway-safety.md) — claim owner-bound plans before quota, bind service configuration, and cap/audit every provider execution.
 - [Large SQL test fixtures](large-sql-fixtures.md) — send large PostgreSQL fixture scripts through stdin instead of a `psql -c` argument.
+- [MCP transport boundary](mcp-transport-scopes.md) — keep MCP stateless and delegate every private tool to existing owner, plan, execution, quota and audit paths.

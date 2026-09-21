@@ -8,6 +8,24 @@ type RateBucket = { count: number; resetAt: number };
 const invalidKeyBuckets = new Map<string, RateBucket>();
 const lookupBuckets = new Map<string, RateBucket>();
 
+export const API_KEY_SCOPES = ["read", "plan", "execute", "audit"] as const;
+export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+export const DEFAULT_API_KEY_SCOPES: readonly ApiKeyScope[] = API_KEY_SCOPES;
+
+export function parseApiKeyScopes(value: string | null | undefined): ApiKeyScope[] {
+  const scopes = String(value ?? "")
+    .split(",")
+    .map((scope) => scope.trim())
+    .filter((scope): scope is ApiKeyScope =>
+      API_KEY_SCOPES.includes(scope as ApiKeyScope),
+    );
+  return [...new Set(scopes)];
+}
+
+export function serializeApiKeyScopes(scopes: readonly ApiKeyScope[]) {
+  return [...new Set(scopes)].join(",");
+}
+
 function authFeedback(status: "AUTH_REQUIRED" | "RATE_LIMITED", code: string, retryAfterSeconds: number | null = null) {
   return createAgentFeedback({
     status,
@@ -115,39 +133,33 @@ export async function consumePublicRateLimit(
   return consumeRateLimit(`public:${ip}`, scope, limit);
 }
 
-export async function authenticateApiKey(
+export type ApiKeyAuth = {
+  ownerId: string;
+  keyId: string;
+  scopes: ApiKeyScope[];
+};
+
+export type ApiKeyAuthFailure = {
+  status: 401 | 429;
+  code: "INVALID_API_KEY" | "RATE_LIMITED";
+  retryAfterSeconds: number | null;
+};
+
+export async function authenticateApiKeyQuiet(
   req: Request,
-  res: Response,
   scope: "read" | "check",
-): Promise<{ ownerId: string; keyId: string } | null> {
+): Promise<{ auth: ApiKeyAuth } | { failure: ApiKeyAuthFailure }> {
   const authorization = req.get("authorization") ?? "";
   const sourceIp = req.ip ?? "unknown";
   if (!allowLookupAttempt(sourceIp)) {
-    res.set("Retry-After", "60");
-    res.status(429).json({
-      error: "Zu viele API-Anfragen. Bitte warten Sie kurz.",
-      code: "RATE_LIMITED",
-      feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", 60),
-    });
-    return null;
+    return { failure: { status: 429, code: "RATE_LIMITED", retryAfterSeconds: 60 } };
   }
   const match = authorization.match(/^Bearer\s+(b402_[A-Za-z0-9_-]{40,})$/);
   if (!match) {
     if (!allowInvalidKeyAttempt(sourceIp)) {
-      res.set("Retry-After", "60");
-      res.status(429).json({
-        error: "Zu viele ungültige Anmeldeversuche. Bitte warten Sie kurz.",
-        code: "RATE_LIMITED",
-        feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", 60),
-      });
-      return null;
+      return { failure: { status: 429, code: "RATE_LIMITED", retryAfterSeconds: 60 } };
     }
-    res.status(401).json({
-      error: "API-Schlüssel fehlt oder ist ungültig.",
-      code: "INVALID_API_KEY",
-      feedback: authFeedback("AUTH_REQUIRED", "INVALID_API_KEY"),
-    });
-    return null;
+    return { failure: { status: 401, code: "INVALID_API_KEY", retryAfterSeconds: null } };
   }
 
   const [key] = await db
@@ -161,20 +173,9 @@ export async function authenticateApiKey(
     );
   if (!key) {
     if (!allowInvalidKeyAttempt(sourceIp)) {
-      res.set("Retry-After", "60");
-      res.status(429).json({
-        error: "Zu viele ungültige Anmeldeversuche. Bitte warten Sie kurz.",
-        code: "RATE_LIMITED",
-        feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", 60),
-      });
-      return null;
+      return { failure: { status: 429, code: "RATE_LIMITED", retryAfterSeconds: 60 } };
     }
-    res.status(401).json({
-      error: "API-Schlüssel fehlt oder ist ungültig.",
-      code: "INVALID_API_KEY",
-      feedback: authFeedback("AUTH_REQUIRED", "INVALID_API_KEY"),
-    });
-    return null;
+    return { failure: { status: 401, code: "INVALID_API_KEY", retryAfterSeconds: null } };
   }
 
   const keyLimit = scope === "check" ? 10 : 60;
@@ -184,18 +185,42 @@ export async function authenticateApiKey(
     consumeRateLimit(`owner:${key.ownerId}`, scope, ownerLimit),
   ]);
   if (!keyRate.allowed || !ownerRate.allowed) {
-    res.set("Retry-After", String(Math.max(keyRate.retryAfter, ownerRate.retryAfter)));
-    res.status(429).json({
-      error: "Zu viele Anfragen. Bitte warten Sie kurz und versuchen Sie es erneut.",
-      code: "RATE_LIMITED",
-      feedback: authFeedback("RATE_LIMITED", "RATE_LIMITED", Math.max(keyRate.retryAfter, ownerRate.retryAfter)),
-    });
-    return null;
+    return {
+      failure: {
+        status: 429,
+        code: "RATE_LIMITED",
+        retryAfterSeconds: Math.max(keyRate.retryAfter, ownerRate.retryAfter),
+      },
+    };
   }
 
   await db
     .update(apiKeysTable)
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeysTable.id, key.id));
-  return { ownerId: key.ownerId, keyId: key.id };
+  return { auth: { ownerId: key.ownerId, keyId: key.id, scopes: parseApiKeyScopes(key.scopes) } };
+}
+
+export async function authenticateApiKey(
+  req: Request,
+  res: Response,
+  scope: "read" | "check",
+): Promise<ApiKeyAuth | null> {
+  const result = await authenticateApiKeyQuiet(req, scope);
+  if ("auth" in result) return result.auth;
+  if (result.failure.retryAfterSeconds !== null) {
+    res.set("Retry-After", String(result.failure.retryAfterSeconds));
+  }
+  res.status(result.failure.status).json({
+    error:
+      result.failure.code === "RATE_LIMITED"
+        ? "Zu viele Anfragen. Bitte warten Sie kurz und versuchen Sie es erneut."
+        : "API-Schlüssel fehlt oder ist ungültig.",
+    code: result.failure.code,
+    feedback:
+      result.failure.code === "RATE_LIMITED"
+        ? authFeedback("RATE_LIMITED", result.failure.code, result.failure.retryAfterSeconds)
+        : authFeedback("AUTH_REQUIRED", result.failure.code),
+  });
+  return null;
 }

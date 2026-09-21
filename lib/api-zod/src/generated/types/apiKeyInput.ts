@@ -15,4 +15,5 @@ export interface ApiKeyInput {
      * @maxLength 80
      */
   name: string;
+  scopes?: Array<'read' | 'plan' | 'execute' | 'audit'>;
 }

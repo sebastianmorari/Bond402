@@ -236,12 +236,14 @@ export interface ApiKeyInput {
      * @maxLength 80
      */
   name: string;
+  scopes?: Array<'read' | 'plan' | 'execute' | 'audit'>;
 }
 
 export interface ApiKey {
   id: string;
   name: string;
   prefix: string;
+  scopes: Array<'read' | 'plan' | 'execute' | 'audit'>;
   createdAt: string;
   /** @nullable */
   lastUsedAt: string | null;

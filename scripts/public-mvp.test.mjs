@@ -852,16 +852,25 @@ test("öffentliche MVP-Sicherheits- und Kernflüsse", async () => {
      errorCode = null,
      probeRegion = "default",
      checkedAt = "NOW()",
-   ) => `
-    INSERT INTO bond402_api_checks
+    ) => {
+      const checkId = randomUUID();
+      const signals = status === "FAIL"
+        ? { classification: "NETWORK_UNAVAILABLE", availabilityImpact: "UNAVAILABLE" }
+        : { classification: "SUCCESS", availabilityImpact: "AVAILABLE" };
+      return `
+     INSERT INTO bond402_api_checks
       (id, service_id, checked_at, status, check_type, reachable, response_time_ms,
-        structure_match, http_status, error_code, summary, found_fields, missing_fields, probe_region)
+          structure_match, http_status, error_code, summary, found_fields, missing_fields, probe_region)
     VALUES
-       ('${randomUUID()}', '${serviceId}', ${checkedAt}, ${sqlLiteral(status)}, 'LIVE', ${reachable},
+        ('${checkId}', '${serviceId}', ${checkedAt}, ${sqlLiteral(status)}, 'LIVE', ${reachable},
        ${responseTimeMs}, ${structureMatch}, ${reachable ? 200 : "NULL"},
         ${errorCode ? sqlLiteral(errorCode) : "NULL"}, 'Testprüfung', '[]'::jsonb, '[]'::jsonb,
-        ${sqlLiteral(probeRegion)});
-  `;
+          ${sqlLiteral(probeRegion)});
+     UPDATE bond402_api_checks
+     SET security_signals = security_signals || ${sqlLiteral(JSON.stringify(signals))}::jsonb
+     WHERE id = '${checkId}';
+   `;
+    };
   runSql(checkSql("PASS", true, 120, true));
   const allowDecision = await request(`/api/developer/services/${serviceId}/pre-action-check`, {
     method: "POST",

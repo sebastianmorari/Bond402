@@ -13,6 +13,7 @@ export interface ApiKey {
   id: string;
   name: string;
   prefix: string;
+  scopes: Array<'read' | 'plan' | 'execute' | 'audit'>;
   createdAt: Date;
   /** @nullable */
   lastUsedAt: Date | null;

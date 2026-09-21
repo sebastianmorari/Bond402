@@ -8,7 +8,13 @@ import {
   ListApiKeysResponse,
   RevokeApiKeyParams,
 } from "@workspace/api-zod";
-import { consumeOwnerRateLimit, hashApiKey } from "../lib/api-key-auth";
+import {
+  API_KEY_SCOPES,
+  DEFAULT_API_KEY_SCOPES,
+  consumeOwnerRateLimit,
+  hashApiKey,
+  serializeApiKeyScopes,
+} from "../lib/api-key-auth";
 import { requireUserId } from "../lib/auth";
 import { createAgentFeedback, feedbackForHttpError } from "../lib/agent-feedback";
 
@@ -21,6 +27,9 @@ function toResponse(key: typeof apiKeysTable.$inferSelect) {
     id: key.id,
     name: key.name,
     prefix: key.prefix,
+    scopes: key.scopes.split(",").filter((scope): scope is (typeof API_KEY_SCOPES)[number] =>
+      API_KEY_SCOPES.includes(scope as (typeof API_KEY_SCOPES)[number]),
+    ),
     createdAt: key.createdAt.toISOString(),
     lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
     revokedAt: key.revokedAt?.toISOString() ?? null,
@@ -93,6 +102,7 @@ router.post("/api-keys", async (req, res): Promise<void> => {
     });
     return;
   }
+  const scopes = body.data.scopes ?? [...DEFAULT_API_KEY_SCOPES];
 
   const secret = `b402_${randomBytes(32).toString("base64url")}`;
   await pruneRevokedKeys(ownerId);
@@ -111,6 +121,7 @@ router.post("/api-keys", async (req, res): Promise<void> => {
         name,
         keyHash: hashApiKey(secret),
         prefix: `${secret.slice(0, 13)}…`,
+        scopes: serializeApiKeyScopes(scopes),
       })
       .returning();
     return created;

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -36,6 +37,7 @@ export function Developer() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyScopes, setNewKeyScopes] = useState<Array<"read" | "plan" | "execute" | "audit">>(["read", "plan", "execute", "audit"]);
   const [newSecretData, setNewSecretData] = useState<{ secret: string, name: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -52,10 +54,15 @@ export function Developer() {
       return;
     }
     
-    createMutateRef.current({ data: { name: newKeyName.trim() } }, {
+    if (newKeyScopes.length === 0) {
+      toast({ title: "Mindestens ein Scope erforderlich", description: "Wählen Sie mindestens eine Berechtigung aus.", variant: "destructive" });
+      return;
+    }
+    createMutateRef.current({ data: { name: newKeyName.trim(), scopes: newKeyScopes } }, {
       onSuccess: (data) => {
         setNewSecretData({ secret: data.secret, name: data.name });
         setNewKeyName("");
+        setNewKeyScopes(["read", "plan", "execute", "audit"]);
         setIsCreateOpen(false);
         queryClient.invalidateQueries({ queryKey: getListApiKeysQueryKey() });
         toast({ title: "Schlüssel erstellt", description: "Der API-Schlüssel wurde erfolgreich generiert." });
@@ -64,7 +71,7 @@ export function Developer() {
         toast({ title: "Fehler", description: "Der Schlüssel konnte nicht erstellt werden.", variant: "destructive" });
       }
     });
-  }, [newKeyName, toast, queryClient]);
+  }, [newKeyName, newKeyScopes, toast, queryClient]);
 
   const handleRevoke = useCallback((id: string) => {
     revokeMutateRef.current({ id }, {
@@ -203,6 +210,33 @@ export function Developer() {
                           }
                         }}
                       />
+                      <div className="mt-5 space-y-3">
+                        <div>
+                          <p className="text-sm font-medium">Berechtigungen</p>
+                          <p className="text-xs text-muted-foreground">Für MCP-Clients nur die kleinste nötige Auswahl aktivieren.</p>
+                        </div>
+                        {([
+                          ["read", "Lesen", "Eigene Service- und Trust-Details lesen"],
+                          ["plan", "Planen", "PLAN-Phase ohne Provider-Aufruf"],
+                          ["execute", "Ausführen", "READY-Pläne einmalig ausführen"],
+                          ["audit", "Audit", "Owner-gebundene Ausführungsstatus lesen"],
+                        ] as const).map(([scope, label, description]) => (
+                          <label key={scope} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 p-3">
+                            <Checkbox
+                              checked={newKeyScopes.includes(scope)}
+                              onCheckedChange={(checked) => {
+                                setNewKeyScopes((current) => checked
+                                  ? [...new Set([...current, scope])]
+                                  : current.filter((item) => item !== scope));
+                              }}
+                            />
+                            <span className="space-y-0.5">
+                              <span className="block text-sm font-medium">{label} <code className="text-xs text-muted-foreground">{scope}</code></span>
+                              <span className="block text-xs text-muted-foreground">{description}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Abbrechen</Button>
@@ -255,6 +289,11 @@ export function Developer() {
                                 {format(new Date(key.lastUsedAt), "dd.MM.yyyy", { locale: de })}
                               </span>
                             )}
+                          </div>
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {key.scopes.map((scope) => (
+                              <span key={scope} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{scope}</span>
+                            ))}
                           </div>
                         </div>
                         {!key.revokedAt && (

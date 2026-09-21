@@ -1430,6 +1430,7 @@ export const ListApiKeysResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "prefix": zod.string(),
+  "scopes": zod.array(zod.enum(['read', 'plan', 'execute', 'audit'])),
   "createdAt": zod.coerce.date(),
   "lastUsedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable()
@@ -1446,13 +1447,15 @@ export const createApiKeyBodyNameMax = 80;
 
 
 export const CreateApiKeyBody = zod.object({
-  "name": zod.string().min(createApiKeyBodyNameMin).max(createApiKeyBodyNameMax)
+  "name": zod.string().min(createApiKeyBodyNameMin).max(createApiKeyBodyNameMax),
+  "scopes": zod.array(zod.enum(['read', 'plan', 'execute', 'audit'])).min(1).max(4).optional()
 })
 
 export const CreateApiKeyResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "prefix": zod.string(),
+  "scopes": zod.array(zod.enum(['read', 'plan', 'execute', 'audit'])),
   "createdAt": zod.coerce.date(),
   "lastUsedAt": zod.coerce.date().nullable(),
   "revokedAt": zod.coerce.date().nullable()
