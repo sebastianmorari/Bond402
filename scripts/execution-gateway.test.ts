@@ -271,9 +271,63 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
   const jar = new CookieJar();
   const login = await request("/api/auth/login", { jar, body: { email: userEmail, password } });
   assert.equal(login.response.status, 200);
-  const key = await request("/api/api-keys", { jar, body: { name: `Execution Key ${runId}` } });
+  const key = await request("/api/api-keys", {
+    jar,
+    body: { name: `Execution Key ${runId}`, scopes: ["read", "plan", "execute", "audit"] },
+  });
   assert.equal(key.response.status, 201);
+  assert.deepEqual(key.data.scopes, ["read", "plan", "execute", "audit"]);
   const secret = key.data.secret;
+  const keyList = await request("/api/api-keys", { jar, method: "GET" });
+  assert.equal(keyList.response.status, 200);
+  assert.ok(keyList.data.some((item: { id: string; scopes: string[] }) => item.id === key.data.id));
+  assert.ok(keyList.data.every((item: Record<string, unknown>) => !("secret" in item)));
+
+  const legacyKey = await request("/api/api-keys", {
+    jar,
+    body: { name: `Legacy Key ${runId}` },
+  });
+  assert.equal(legacyKey.response.status, 201);
+  assert.deepEqual(legacyKey.data.scopes, ["read", "plan", "execute", "audit"]);
+
+  const readOnlyKey = await request("/api/api-keys", {
+    jar,
+    body: { name: `Read Only Key ${runId}`, scopes: ["read"] },
+  });
+  assert.equal(readOnlyKey.response.status, 201);
+  assert.deepEqual(readOnlyKey.data.scopes, ["read"]);
+
+  for (const invalidScopes of [[], ["unknown"]]) {
+    const invalid = await request("/api/api-keys", {
+      jar,
+      body: { name: `Invalid Scope ${runId}`, scopes: invalidScopes },
+    });
+    assert.equal(invalid.response.status, 400);
+    assert.equal(invalid.data.code, "INVALID_INPUT");
+    assert.doesNotMatch(JSON.stringify(invalid.data), /stack|postgres|column/i);
+  }
+
+  const revokeKey = await request("/api/api-keys", {
+    jar,
+    body: { name: `Revoke Key ${runId}`, scopes: ["read"] },
+  });
+  assert.equal(revokeKey.response.status, 201);
+  const revoked = await request(`/api/api-keys/${revokeKey.data.id}`, { jar, method: "DELETE" });
+  assert.equal(revoked.response.status, 204);
+  const afterRevoke = await request("/api/api-keys", { jar, method: "GET" });
+  assert.equal(afterRevoke.response.status, 200);
+  assert.equal(
+    afterRevoke.data.find((item: { id: string }) => item.id === revokeKey.data.id).revokedAt !== null,
+    true,
+  );
+
+  const readOnlyPlan = await request("/api/developer/execution/plan", {
+    body: { serviceId: "00000000-0000-0000-0000-000000000000" },
+    headers: { Authorization: `Bearer ${readOnlyKey.data.secret}` },
+  });
+  assert.equal(readOnlyPlan.response.status, 403);
+  assert.equal(readOnlyPlan.data.code, "SCOPE_REQUIRED");
+  assert.equal(readOnlyPlan.data.requiredScope, "plan");
   const credentialCiphertext = encryptTargetSecret(providerSecret);
 
   const successId = randomUUID();
@@ -365,6 +419,14 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
   assert.equal(success.data.code, "EXECUTION_COMPLETED");
   assert.equal(success.data.data.token, "[REDACTED]");
   assert.doesNotMatch(JSON.stringify(success.data), new RegExp(providerSecret));
+
+  const readOnlyExecute = await request("/api/developer/execution/execute", {
+    body: { planId: successPlan.data.planId, parameters: {} },
+    headers: { Authorization: `Bearer ${readOnlyKey.data.secret}` },
+  });
+  assert.equal(readOnlyExecute.response.status, 403);
+  assert.equal(readOnlyExecute.data.code, "SCOPE_REQUIRED");
+  assert.equal(readOnlyExecute.data.requiredScope, "execute");
 
   const replay = await execute(successPlan.data.planId, {});
   assert.equal(replay.data.status, "BLOCKED");

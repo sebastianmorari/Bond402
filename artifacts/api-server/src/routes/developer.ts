@@ -8,7 +8,7 @@ import {
   DeveloperRunServiceCheckResponse,
   DeveloperPreActionCheckResponse,
 } from "@workspace/api-zod";
-import { authenticateApiKey } from "../lib/api-key-auth";
+import { authenticateApiKey, type ApiKeyScope } from "../lib/api-key-auth";
 import { normalizeResponseMode, runLiveVerification } from "../lib/api-verifier";
 import {
   calculateTrust,
@@ -54,9 +54,10 @@ async function authenticateAndFind(
   req: Request,
   res: Response,
   scope: "read" | "check",
+  requiredScope: ApiKeyScope,
   id: string,
 ) {
-  const auth = await authenticateApiKey(req, res, scope);
+  const auth = await authenticateApiKey(req, res, scope, requiredScope);
   if (!auth) return null;
   const service = await findOwnedService(id, auth.ownerId);
   if (!service) {
@@ -80,7 +81,7 @@ router.get("/developer/services/:id", async (req, res): Promise<void> => {
     });
     return;
   }
-  const found = await authenticateAndFind(req, res, "read", params.data.id);
+  const found = await authenticateAndFind(req, res, "read", "read", params.data.id);
   if (!found) return;
   const response = DeveloperGetServiceResponse.parse(await buildResponse(found.service));
   res.json({
@@ -110,7 +111,7 @@ router.post("/developer/services/:id/checks", async (req, res): Promise<void> =>
     });
     return;
   }
-  const found = await authenticateAndFind(req, res, "check", params.data.id);
+  const found = await authenticateAndFind(req, res, "check", "execute", params.data.id);
   if (!found) return;
   if (!(await requireCheckQuota(found.ownerId, res))) return;
   const service = found.service;
@@ -150,7 +151,7 @@ router.get("/developer/services/:id/checks/latest", async (req, res): Promise<vo
     });
     return;
   }
-  const found = await authenticateAndFind(req, res, "read", params.data.id);
+  const found = await authenticateAndFind(req, res, "read", "read", params.data.id);
   if (!found) return;
   const response = await buildResponse(found.service);
   if (!response.latestCheck) {
@@ -179,7 +180,7 @@ router.post("/developer/services/:id/pre-action-check", async (req, res): Promis
     });
     return;
   }
-  const found = await authenticateAndFind(req, res, "check", params.data.id);
+  const found = await authenticateAndFind(req, res, "read", "read", params.data.id);
   if (!found) return;
   if (!(await requireCheckQuota(found.ownerId, res))) return;
   const checks = await loadChecks(found.service.id);

@@ -22,3 +22,4 @@
 - [Execution gateway safety](execution-gateway-safety.md) — claim owner-bound plans before quota, bind service configuration, and cap/audit every provider execution.
 - [Large SQL test fixtures](large-sql-fixtures.md) — send large PostgreSQL fixture scripts through stdin instead of a `psql -c` argument.
 - [MCP transport boundary](mcp-transport-scopes.md) — keep MCP stateless and delegate every private tool to existing owner, plan, execution, quota and audit paths.
+- [Developer API scope enforcement](api-key-scope-enforcement.md) — rate-limit categories are not permissions; every protected REST/MCP action must enforce its required scope.

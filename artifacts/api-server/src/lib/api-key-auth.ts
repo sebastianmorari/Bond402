@@ -44,6 +44,18 @@ function authFeedback(status: "AUTH_REQUIRED" | "RATE_LIMITED", code: string, re
   });
 }
 
+function scopeFeedback(requiredScope: ApiKeyScope) {
+  return createAgentFeedback({
+    status: "BLOCKED",
+    code: "SCOPE_REQUIRED",
+    summary: `Dieser Developer-Key besitzt nicht den erforderlichen Scope "${requiredScope}".`,
+    nextAction: `Einen Key mit dem Scope "${requiredScope}" verwenden oder einen passenden Scoped-Key erstellen.`,
+    httpStatus: 403,
+    requiredAuth: true,
+    actionContext: requiredScope === "execute" ? "EXECUTE" : requiredScope.toUpperCase(),
+  });
+}
+
 export function hashApiKey(secret: string): string {
   return createHash("sha256").update(secret, "utf8").digest("hex");
 }
@@ -205,9 +217,21 @@ export async function authenticateApiKey(
   req: Request,
   res: Response,
   scope: "read" | "check",
+  requiredScope: ApiKeyScope = scope === "check" ? "execute" : "read",
 ): Promise<ApiKeyAuth | null> {
   const result = await authenticateApiKeyQuiet(req, scope);
-  if ("auth" in result) return result.auth;
+  if ("auth" in result) {
+    if (!result.auth.scopes.includes(requiredScope)) {
+      res.status(403).json({
+        error: `Der Developer-Key besitzt nicht den erforderlichen Scope "${requiredScope}".`,
+        code: "SCOPE_REQUIRED",
+        requiredScope,
+        feedback: scopeFeedback(requiredScope),
+      });
+      return null;
+    }
+    return result.auth;
+  }
   if (result.failure.retryAfterSeconds !== null) {
     res.set("Retry-After", String(result.failure.retryAfterSeconds));
   }

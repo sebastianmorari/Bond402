@@ -80,7 +80,7 @@ function httpStatusForExecution(response: ExecutionResponse) {
 }
 
 router.post("/developer/execution/plan", async (req, res): Promise<void> => {
-  const auth = await authenticateApiKey(req, res, "read");
+  const auth = await authenticateApiKey(req, res, "read", "plan");
   if (!auth) return;
   const input = parsePlanBody(req.body);
   if (!input) {
@@ -92,7 +92,7 @@ router.post("/developer/execution/plan", async (req, res): Promise<void> => {
 });
 
 router.post("/developer/execution/execute", async (req, res): Promise<void> => {
-  const auth = await authenticateApiKey(req, res, "check");
+  const auth = await authenticateApiKey(req, res, "check", "execute");
   if (!auth) return;
   const input = parseExecuteBody(req.body);
   if (!input) {
