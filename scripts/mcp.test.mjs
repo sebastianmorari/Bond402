@@ -105,13 +105,47 @@ test("MCP supports legacy initialize and initialized notification", async () => 
   assert.equal(notification.data, null);
 });
 
-test("MCP rejects invalid metadata, origins, unknown fields and GET transport", async () => {
-  const missingMetadata = await call(
-    { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
-    { "MCP-Protocol-Version": "2026-07-28", "MCP-Method": "tools/list" },
+test("MCP accepts standard current-version requests without custom metadata", async () => {
+  const currentInitialize = await call(
+    {
+      jsonrpc: "2.0",
+      id: "current-init",
+      method: "initialize",
+      params: {
+        protocolVersion: "2026-07-28",
+        capabilities: {},
+        clientInfo: { name: "standard-client", version: "1.0.0" },
+      },
+    },
+    { "MCP-Protocol-Version": "2026-07-28" },
   );
-  assert.equal(missingMetadata.response.status, 400);
-  assert.equal(missingMetadata.data.error.data.code, "MISSING_REQUEST_METADATA");
+  assert.equal(currentInitialize.response.status, 200);
+  assert.equal(currentInitialize.data.result.protocolVersion, "2026-07-28");
+
+  const currentTools = await call(
+    { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
+    { "MCP-Protocol-Version": "2026-07-28" },
+  );
+  assert.equal(currentTools.response.status, 200);
+  assert.deepEqual(
+    currentTools.data.result.tools.map((tool) => tool.name),
+    ["compare_or_decide", "search_services"],
+  );
+
+  const contradictoryMetadata = await call(
+    {
+      jsonrpc: "2.0",
+      id: "contradictory-metadata",
+      method: "tools/list",
+      params: { _meta: { "io.modelcontextprotocol/protocolVersion": "2025-06-18" } },
+    },
+    { "MCP-Protocol-Version": "2026-07-28" },
+  );
+  assert.equal(contradictoryMetadata.response.status, 400);
+  assert.equal(contradictoryMetadata.data.error.data.code, "HEADER_MISMATCH");
+});
+
+test("MCP rejects unknown fields, invalid origins and GET transport", async () => {
 
   const unknownField = await call({
     jsonrpc: "2.0",

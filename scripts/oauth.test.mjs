@@ -15,6 +15,7 @@ const sessionHash = createHash("sha256").update(sessionToken, "utf8").digest("he
 const redirectUri = `https://oauth-client-${testId}.example/callback`;
 let server;
 let clientId;
+const registeredClientIds = [];
 
 function sqlLiteral(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
@@ -35,7 +36,9 @@ function cleanup() {
     DELETE FROM bond402_oauth_access_tokens WHERE owner_id = ${sqlLiteral(userId)};
     DELETE FROM bond402_oauth_refresh_tokens WHERE owner_id = ${sqlLiteral(userId)};
     DELETE FROM bond402_oauth_authorization_codes WHERE owner_id = ${sqlLiteral(userId)};
-    ${clientId ? `DELETE FROM bond402_oauth_clients WHERE client_id = ${sqlLiteral(clientId)};` : ""}
+    ${registeredClientIds.length
+      ? `DELETE FROM bond402_oauth_clients WHERE client_id IN (${registeredClientIds.map(sqlLiteral).join(", ")});`
+      : ""}
     DELETE FROM bond402_sessions WHERE user_id = ${sqlLiteral(userId)};
     DELETE FROM bond402_users WHERE id = ${sqlLiteral(userId)};
   `);
@@ -87,13 +90,84 @@ function hiddenValue(html, name) {
   return match?.[1] ?? null;
 }
 
-function mcpHeaders(accessToken) {
+function mcpHeaders(accessToken, version = "2026-07-28") {
   return {
     Accept: "application/json, text/event-stream",
     "Content-Type": "application/json",
     Authorization: `Bearer ${accessToken}`,
-    "MCP-Protocol-Version": "2026-07-28",
-    "MCP-Method": "tools/list",
+    "MCP-Protocol-Version": version,
+  };
+}
+
+async function issueAccessToken(scopes, label) {
+  const redirect = `https://oauth-client-${testId}-${label}.example/callback`;
+  const registered = await request("/oauth/register", {
+    method: "POST",
+    body: {
+      client_name: `OAuth MCP ${label}`,
+      redirect_uris: [redirect],
+      token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      scope: scopes.join(" "),
+    },
+  });
+  assert.equal(registered.response.status, 201, registered.text);
+  const issuedClientId = registered.data.client_id;
+  registeredClientIds.push(issuedClientId);
+
+  const { verifier, challenge } = pkce();
+  const state = `state-${label}-${randomUUID()}`;
+  const authorize = new URL("/oauth/authorize", baseUrl);
+  authorize.search = new URLSearchParams({
+    response_type: "code",
+    client_id: issuedClientId,
+    redirect_uri: redirect,
+    scope: scopes.join(" "),
+    state,
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+    resource: `${baseUrl}/mcp`,
+  }).toString();
+  const consent = await request(`${authorize.pathname}${authorize.search}`, {
+    authenticated: true,
+    redirect: "manual",
+  });
+  assert.equal(consent.response.status, 200, consent.text);
+  const transaction = hiddenValue(consent.text, "transaction");
+  const csrfToken = hiddenValue(consent.text, "csrf_token");
+  assert.ok(transaction);
+  assert.ok(csrfToken);
+
+  const decision = await request("/oauth/authorize/decision", {
+    method: "POST",
+    authenticated: true,
+    form: true,
+    redirect: "manual",
+    body: { transaction, csrf_token: csrfToken, decision: "approve" },
+  });
+  assert.equal(decision.response.status, 302, decision.text);
+  const callback = new URL(decision.response.headers.get("location"));
+  const code = callback.searchParams.get("code");
+  assert.ok(code);
+
+  const exchanged = await request("/oauth/token", {
+    method: "POST",
+    form: true,
+    body: {
+      grant_type: "authorization_code",
+      client_id: issuedClientId,
+      code,
+      redirect_uri: redirect,
+      code_verifier: verifier,
+      resource: `${baseUrl}/mcp`,
+    },
+  });
+  assert.equal(exchanged.response.status, 200, exchanged.text);
+  return {
+    accessToken: exchanged.data.access_token,
+    clientId: issuedClientId,
+    resource: `${baseUrl}/mcp`,
   };
 }
 
@@ -189,6 +263,7 @@ test("OAuth metadata and safe dynamic client registration are exposed", async ()
   });
   assert.equal(registered.response.status, 201, registered.text);
   clientId = registered.data.client_id;
+  registeredClientIds.push(clientId);
   assert.match(clientId, /^b402_client_/);
   assert.equal(registered.data.client_secret, undefined);
 });
