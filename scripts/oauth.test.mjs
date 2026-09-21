@@ -112,6 +112,28 @@ async function waitForServer() {
 
 before(async () => {
   if (!databaseUrl) throw new Error("DATABASE_URL ist für die OAuth-Tests erforderlich.");
+  server = spawn("node", ["--enable-source-maps", "artifacts/api-server/dist/index.mjs"], {
+    env: { ...process.env, NODE_ENV: "test", PORT: String(port) },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  server.stderr.on("data", (chunk) => process.stderr.write(`[oauth-api] ${chunk}`));
+  await waitForServer();
+  assert.deepEqual(
+    runSql(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name LIKE 'bond402_oauth_%'
+      ORDER BY table_name
+    `).trim().split("\n"),
+    [
+      "bond402_oauth_access_tokens",
+      "bond402_oauth_authorization_codes",
+      "bond402_oauth_authorization_requests",
+      "bond402_oauth_clients",
+      "bond402_oauth_refresh_tokens",
+    ],
+  );
   cleanup();
   runSql(`
     INSERT INTO bond402_users (id, email, display_name, password_hash, email_verification_required)
@@ -119,12 +141,6 @@ before(async () => {
     INSERT INTO bond402_sessions (id, user_id, token_hash, expires_at)
     VALUES (${sqlLiteral(randomUUID())}, ${sqlLiteral(userId)}, ${sqlLiteral(sessionHash)}, NOW() + INTERVAL '1 hour');
   `);
-  server = spawn("node", ["--enable-source-maps", "artifacts/api-server/dist/index.mjs"], {
-    env: { ...process.env, NODE_ENV: "test", PORT: String(port) },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  server.stderr.on("data", (chunk) => process.stderr.write(`[oauth-api] ${chunk}`));
-  await waitForServer();
 });
 
 after(async () => {
@@ -163,6 +179,7 @@ test("OAuth metadata and safe dynamic client registration are exposed", async ()
     method: "POST",
     body: {
       client_name: "Deterministischer OAuth-Test",
+      client_uri: "https://chat.openai.com",
       redirect_uris: [redirectUri],
       token_endpoint_auth_method: "none",
       grant_types: ["authorization_code", "refresh_token"],

@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { pool } from "@workspace/db";
+import { ensureBond402OAuthSchema, pool } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
 
@@ -16,14 +16,23 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+let server: ReturnType<typeof app.listen>;
 
-  logger.info({ port }, "Server listening");
-});
+try {
+  await ensureBond402OAuthSchema();
+  server = app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+
+    logger.info({ port }, "Server listening");
+  });
+} catch (error) {
+  logger.error({ err: error }, "OAuth schema migration failed");
+  await pool.end();
+  process.exit(1);
+}
 
 let shuttingDown = false;
 
@@ -31,6 +40,13 @@ async function shutdown(signal: NodeJS.Signals) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info({ signal }, "Shutdown requested");
+
+  if (!server) {
+    await pool.end().catch((poolError) => {
+      logger.error({ err: poolError }, "Database pool failed to close during startup shutdown");
+    });
+    process.exit(0);
+  }
 
   const forceExit = setTimeout(() => {
     logger.error("Graceful shutdown timed out");

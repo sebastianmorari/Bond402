@@ -20,3 +20,9 @@ The security observation flow depends on two separate tables in addition to the 
 **Why:** Production had the service and check tables but neither security table, so a live check failed only when `saveOutcome` tried to read the previous observation.
 
 **How to apply:** Compare table existence as well as columns, primary-key indexes, and foreign keys; verify the full authenticated check path, not only catalog reads.
+
+For new production-critical tables used during API startup or authentication, the external Render/Neon path cannot rely on a development-only `drizzle-kit push`; use an idempotent, transactionally guarded additive migration in the production startup path or apply the exact reviewed migration before rollout.
+
+**Why:** The local OAuth schema existed while the production Neon database had the existing rate-limit table but none of the OAuth tables, so dynamic client registration reached the rate limiter and then failed with PostgreSQL `relation does not exist`, surfaced as HTTP 500.
+
+**How to apply:** Create missing tables and indexes with `IF NOT EXISTS`, serialize concurrent startup migrations with a transaction-scoped advisory lock, and verify the live DCR request after schema synchronization without deleting existing records.
