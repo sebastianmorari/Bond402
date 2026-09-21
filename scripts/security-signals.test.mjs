@@ -284,6 +284,7 @@ test("Auth- und Rate-Limit-Antworten werden nicht als Malware bewertet", async (
 test("HTTP-Fehler trennen Endpoint-Eignung, Auth, Rate-Limit und Provider-Ausfall", async () => {
   for (const [status, classification] of [
     [404, "CHECK_NOT_APPLICABLE"],
+    [405, "CHECK_NOT_APPLICABLE"],
     [410, "CHECK_NOT_APPLICABLE"],
   ]) {
     const result = await runLiveVerification(

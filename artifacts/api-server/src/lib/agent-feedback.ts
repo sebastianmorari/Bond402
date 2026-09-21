@@ -112,6 +112,59 @@ export function feedbackForDecision(
   });
 }
 
+export function feedbackForVerificationOutcome(input: {
+  classification: string;
+  status: "PASS" | "FAIL" | "REVIEW";
+  httpStatus: number | null;
+  errorCode: string | null;
+  summary: string;
+  retryAfterSeconds?: number | null;
+  serviceId?: string | null;
+  serviceName?: string | null;
+  provider?: string | null;
+  verification?: string | null;
+}) {
+  const status: AgentFeedbackStatus =
+    input.classification === "AUTH_REQUIRED"
+      ? "AUTH_REQUIRED"
+      : input.classification === "RATE_LIMITED"
+        ? "RATE_LIMITED"
+        : input.classification === "PROVIDER_ERROR" || input.classification === "NETWORK_UNAVAILABLE"
+          ? "PROVIDER_ERROR"
+          : input.classification === "SUCCESS" && input.status === "PASS"
+            ? "READY"
+            : "CAUTION";
+  const code =
+    input.classification === "SUCCESS"
+      ? input.status === "PASS" ? "LIVE_CHECK_READY" : "LIVE_CHECK_REVIEW"
+      : input.errorCode ?? `LIVE_${input.classification}`;
+  const nextAction =
+    status === "READY"
+      ? "Die gespeicherten Beobachtungen können für die nächste Trust- und Pre-Action-Bewertung verwendet werden."
+      : status === "AUTH_REQUIRED"
+        ? "Provider-Authentifizierung oder Berechtigung prüfen; keine Credentials in einer Agent-Antwort senden."
+        : status === "RATE_LIMITED"
+          ? "Retry-After beachten und den Check später erneut ausführen."
+          : status === "PROVIDER_ERROR"
+            ? "Provider-, Netzwerk- oder Timeout-Fehler prüfen und nur bei retryable=true erneut versuchen."
+            : "Endpoint, erwartete Antwortstruktur und registrierte Operation prüfen; keine Werte erfinden.";
+  return createAgentFeedback({
+    status,
+    code,
+    summary: input.summary,
+    nextAction,
+    serviceId: input.serviceId,
+    serviceName: input.serviceName,
+    provider: input.provider,
+    source: "BOND402_OWNER_CATALOG",
+    verification: input.verification ?? "BOND402_OBSERVED",
+    httpStatus: input.httpStatus,
+    retryAfterSeconds: input.retryAfterSeconds,
+    requiredAuth: status === "AUTH_REQUIRED",
+    actionContext: "READ",
+  });
+}
+
 export function feedbackForHttpError(
   status: number,
   code: string,

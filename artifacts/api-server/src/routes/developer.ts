@@ -20,7 +20,12 @@ import {
 } from "../lib/service-data";
 import { requireCheckQuota } from "../lib/quota";
 import { evaluatePreAction, type ActionContext } from "../lib/pre-action";
-import { createAgentFeedback, feedbackForDecision, feedbackForHttpError } from "../lib/agent-feedback";
+import {
+  createAgentFeedback,
+  feedbackForDecision,
+  feedbackForHttpError,
+  feedbackForVerificationOutcome,
+} from "../lib/agent-feedback";
 
 const router: IRouter = Router();
 
@@ -120,17 +125,17 @@ router.post("/developer/services/:id/checks", async (req, res): Promise<void> =>
   const response = DeveloperRunServiceCheckResponse.parse(await buildResponse(service));
   res.status(201).json({
     ...response,
-    feedback: createAgentFeedback({
-      status: "READY",
-      code: "LIVE_CHECK_COMPLETED",
-      summary: "Der owner-gebundene Live-Check wurde abgeschlossen.",
-      nextAction: "Die neue Beobachtung zusammen mit Trust-, Verfügbarkeits- und Security-Signalen bewerten.",
+    feedback: feedbackForVerificationOutcome({
+      classification: outcome.classification,
+      status: outcome.status,
+      httpStatus: outcome.httpStatus,
+      errorCode: outcome.errorCode,
+      summary: outcome.summary,
+      retryAfterSeconds: outcome.securitySignals.rateLimit.retryAfterSeconds,
       serviceId: service.id,
       serviceName: service.name,
       provider: new URL(service.url).hostname,
-      source: "BOND402_OWNER_CATALOG",
       verification: "BOND402_OBSERVED",
-      requiredAuth: true,
     }),
   });
 });

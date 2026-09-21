@@ -329,7 +329,7 @@ test("vollständiger headless Agent- und Developer-Onboarding-Flow", async () =>
   });
   assert.equal(liveCheck.response.status, 201);
   assert.equal(liveCheck.data.feedback.status, "READY");
-  assert.equal(liveCheck.data.feedback.code, "LIVE_CHECK_COMPLETED");
+  assert.equal(liveCheck.data.feedback.code, "LIVE_CHECK_READY");
   assert.ok(liveCheck.data.latestCheck);
 
   const usage = runSql(`

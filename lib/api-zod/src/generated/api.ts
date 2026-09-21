@@ -2345,7 +2345,7 @@ export const CreateDeveloperExecutionPlanBody = zod.union([zod.unknown(),zod.unk
 export const CreateDeveloperExecutionPlanResponse = zod.object({
   "planId": zod.uuid().nullable(),
   "expiresAt": zod.coerce.date().nullable(),
-  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'NETWORK_UNAVAILABLE', 'CHECK_NOT_APPLICABLE', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
+  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
   "canExecute": zod.boolean(),
   "service": zod.record(zod.string(), zod.unknown()),
   "operation": zod.record(zod.string(), zod.unknown()),
@@ -2398,7 +2398,7 @@ export const executeDeveloperAgentPlanResponseLatencyMsMin = 0;
 export const ExecuteDeveloperAgentPlanResponse = zod.object({
   "requestId": zod.string(),
   "planId": zod.uuid().nullable(),
-  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'NETWORK_UNAVAILABLE', 'CHECK_NOT_APPLICABLE', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
+  "status": zod.enum(['READY', 'AUTH_REQUIRED', 'PARAMETER_REQUIRED', 'PAYMENT_REQUIRED', 'RATE_LIMITED', 'PROVIDER_ERROR', 'UNVERIFIED_EXTERNAL', 'BLOCKED']),
   "code": zod.string(),
   "service": zod.record(zod.string(), zod.unknown()),
   "operation": zod.record(zod.string(), zod.unknown()),

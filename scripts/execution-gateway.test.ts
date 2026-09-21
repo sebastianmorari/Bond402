@@ -44,9 +44,10 @@ function sqlLiteral(value: string | null) {
 
 function runSql(sql: string) {
   if (!databaseUrl) throw new Error("DATABASE_URL ist für den Execution-Gateway-Test erforderlich.");
-  return execFileSync("psql", [databaseUrl, "-v", "ON_ERROR_STOP=1", "-At", "-c", sql], {
+  return execFileSync("psql", [databaseUrl, "-v", "ON_ERROR_STOP=1", "-At"], {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
+    input: sql,
+    stdio: ["pipe", "pipe", "pipe"],
   });
 }
 
@@ -102,6 +103,21 @@ async function request(path: string, options: RequestInit & { jar?: CookieJar; b
 }
 
 function responseForPath(path: string) {
+  if (path.endsWith("/unauthorized")) {
+    return { statusCode: 401, headers: { "content-type": "application/json", "www-authenticate": "Bearer" }, body: JSON.stringify({ error: "auth required" }) };
+  }
+  if (path.endsWith("/forbidden")) {
+    return { statusCode: 403, headers: { "content-type": "application/json" }, body: JSON.stringify({ error: "forbidden" }) };
+  }
+  if (path.endsWith("/missing")) {
+    return { statusCode: 404, headers: { "content-type": "application/json" }, body: JSON.stringify({ error: "not found" }) };
+  }
+  if (path.endsWith("/method")) {
+    return { statusCode: 405, headers: { "content-type": "application/json" }, body: JSON.stringify({ error: "method not allowed" }) };
+  }
+  if (path.endsWith("/gone")) {
+    return { statusCode: 410, headers: { "content-type": "application/json" }, body: JSON.stringify({ error: "gone" }) };
+  }
   if (path.endsWith("/rate-limit")) {
     return { statusCode: 429, headers: { "content-type": "application/json", "retry-after": "7" }, body: JSON.stringify({ error: "slow down" }) };
   }
@@ -270,6 +286,11 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
   const parameterId = randomUUID();
   const missingCredentialId = randomUUID();
   const privateId = randomUUID();
+  const unauthorizedId = randomUUID();
+  const forbiddenId = randomUUID();
+  const missingId = randomUUID();
+  const methodId = randomUUID();
+  const goneId = randomUUID();
   const metadata = JSON.stringify({
     execution: {
       operations: [{
@@ -292,6 +313,11 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
     ${createServiceSql(manyId, "Many Field Provider", `${serviceBase}/many`)}
     ${createServiceSql(parameterId, "Parameter Provider", `${serviceBase}/parameter`, null, metadata)}
     ${createServiceSql(missingCredentialId, "Missing Credential Provider", `${serviceBase}/missing-credential`, null)}
+    ${createServiceSql(unauthorizedId, "Unauthorized Provider", `${serviceBase}/unauthorized`)}
+    ${createServiceSql(forbiddenId, "Forbidden Provider", `${serviceBase}/forbidden`)}
+    ${createServiceSql(missingId, "Missing Endpoint Provider", `${serviceBase}/missing`)}
+    ${createServiceSql(methodId, "Method Endpoint Provider", `${serviceBase}/method`)}
+    ${createServiceSql(goneId, "Gone Endpoint Provider", `${serviceBase}/gone`)}
     UPDATE bond402_api_services
     SET target_auth_type = 'BEARER', auth_requirement = 'REQUIRED'
     WHERE id = ${sqlLiteral(missingCredentialId)};
@@ -301,6 +327,12 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
   async function plan(serviceId: string, parameters?: Record<string, unknown>) {
     return request("/api/developer/execution/plan", {
       body: { serviceId, parameters },
+      headers: { Authorization: `Bearer ${secret}` },
+    });
+  }
+  async function planTask(task: string, parameters?: Record<string, unknown>) {
+    return request("/api/developer/execution/plan", {
+      body: { task, parameters },
       headers: { Authorization: `Bearer ${secret}` },
     });
   }
@@ -319,6 +351,14 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
   assert.equal(successPlan.data.operation.method, "GET");
   assert.equal(successPlan.data.operation.path, `/bond402-execution-${runId}/success`);
   assert.equal(providerCalls.length, beforeSuccessCalls);
+  const naturalPlan = await planTask("Execution Success");
+  assert.equal(naturalPlan.data.status, "READY");
+  assert.equal(naturalPlan.data.candidate.id, successId);
+  assert.equal(naturalPlan.data.decision.intent.task, "Execution Success");
+  const natural = await execute(naturalPlan.data.planId, {});
+  assert.equal(natural.data.status, "READY");
+  assert.equal(natural.data.code, "EXECUTION_COMPLETED");
+  assert.equal(natural.data.data.token, "[REDACTED]");
   const success = await execute(successPlan.data.planId, {});
   assert.equal(success.response.status, 200);
   assert.equal(success.data.status, "READY");
@@ -365,35 +405,37 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
     SELECT used_checks FROM bond402_usage
     WHERE user_id = (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)})
   `).trim());
-  assert.equal(usedAfterConcurrent, 2);
+  assert.equal(usedAfterConcurrent, 3);
   runSql(`
     DELETE FROM bond402_api_rate_limits
-    WHERE identity IN (
-      'owner:' || (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)}),
-      'key:' || (SELECT id FROM bond402_api_keys WHERE owner_id = (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)}) ORDER BY created_at LIMIT 1)
+    WHERE identity = 'owner:' || (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)})
+      OR identity IN (
+      SELECT 'key:' || id
+      FROM bond402_api_keys
+      WHERE owner_id = (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)})
     );
   `);
 
   const missingParameter = await plan(parameterId);
   assert.equal(missingParameter.data.status, "PARAMETER_REQUIRED");
   assert.deepEqual(missingParameter.data.requiredParameters, ["location"]);
-  assert.equal(providerCalls.length, beforeSuccessCalls + 2);
+  assert.equal(providerCalls.length, beforeSuccessCalls + 3);
 
   const missingCredential = await plan(missingCredentialId);
   assert.equal(missingCredential.data.status, "AUTH_REQUIRED");
-  assert.equal(providerCalls.length, beforeSuccessCalls + 2);
+  assert.equal(providerCalls.length, beforeSuccessCalls + 3);
 
   const external = await request("/api/developer/execution/plan", {
     body: { serviceId: "external:fixture-unverified" },
     headers: { Authorization: `Bearer ${secret}` },
   });
   assert.equal(external.data.status, "UNVERIFIED_EXTERNAL");
-  assert.equal(providerCalls.length, beforeSuccessCalls + 2);
+  assert.equal(providerCalls.length, beforeSuccessCalls + 3);
 
   const privatePlan = await plan(privateId);
   assert.equal(privatePlan.data.status, "BLOCKED");
   assert.equal(privatePlan.data.feedback.code, "PRIVATE_ADDRESS");
-  assert.equal(providerCalls.length, beforeSuccessCalls + 2);
+  assert.equal(providerCalls.length, beforeSuccessCalls + 3);
 
   const redirectPlan = await plan(redirectId);
   assert.equal(redirectPlan.data.status, "READY");
@@ -411,9 +453,46 @@ test("headless PLAN/EXECUTE enforces owner binding, outbound safety, feedback an
     const response = await execute(providerPlan.data.planId, {});
     assert.equal(response.data.status, expectedStatus);
   }
+  runSql(`
+    UPDATE bond402_usage
+    SET used_checks = 0
+    WHERE user_id = (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)});
+  `);
+  for (const [id, expectedStatus, expectedCode, providerHttpStatus] of [
+    [unauthorizedId, "AUTH_REQUIRED", "PROVIDER_AUTH_REJECTED", 401],
+    [forbiddenId, "AUTH_REQUIRED", "PROVIDER_AUTH_REJECTED", 403],
+    [missingId, "BLOCKED", "OPERATION_NOT_APPLICABLE", 404],
+    [methodId, "BLOCKED", "OPERATION_NOT_APPLICABLE", 405],
+    [goneId, "BLOCKED", "OPERATION_NOT_APPLICABLE", 410],
+  ] as const) {
+    const providerPlan = await plan(id);
+    assert.equal(providerPlan.data.status, "READY");
+    const response = await execute(providerPlan.data.planId, {});
+    assert.equal(response.data.status, expectedStatus);
+    assert.equal(response.data.code, expectedCode);
+    assert.equal(response.data.providerHttpStatus, providerHttpStatus);
+    assert.equal(response.data.data, null);
+    assert.equal(response.data.feedback.status, expectedStatus);
+    assert.equal(response.data.retryable, false);
+  }
+  runSql(`
+    DELETE FROM bond402_api_rate_limits
+    WHERE identity = 'owner:' || (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)})
+      OR identity IN (
+        SELECT 'key:' || id
+        FROM bond402_api_keys
+        WHERE owner_id = (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)})
+      );
+  `);
+  runSql(`
+    UPDATE bond402_usage
+    SET used_checks = 0
+    WHERE user_id = (SELECT id FROM bond402_users WHERE email = ${sqlLiteral(userEmail)});
+  `);
   const timeoutPlan = await plan(timeoutId);
   const timeout = await execute(timeoutPlan.data.planId, {});
-  assert.equal(timeout.data.status, "NETWORK_UNAVAILABLE");
+  assert.equal(timeout.data.status, "PROVIDER_ERROR");
+  assert.equal(timeout.data.code, "TIMEOUT");
   assert.equal(timeout.data.retryable, true);
   const manyPlan = await plan(manyId);
   const many = await execute(manyPlan.data.planId, {});

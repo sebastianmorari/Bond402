@@ -20,3 +20,4 @@
 - [Headless agent onboarding](headless-agent-onboarding.md) — public discovery stays separate from verified owner bootstrap; direct OpenAPI detail is short-lived and unverified.
 - [Public decision boundary](public-decision-boundary.md) — the public Decision API follows the VERIFIED_LOW_RISK catalog boundary, including first-live-check transitions.
 - [Execution gateway safety](execution-gateway-safety.md) — claim owner-bound plans before quota, bind service configuration, and cap/audit every provider execution.
+- [Large SQL test fixtures](large-sql-fixtures.md) — send large PostgreSQL fixture scripts through stdin instead of a `psql -c` argument.
