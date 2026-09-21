@@ -12,6 +12,10 @@
       "destination": "https://bond402-api.onrender.com/api/:path*"
     },
     {
+      "source": "/mcp",
+      "destination": "https://bond402-api.onrender.com/mcp"
+    },
+    {
       "source": "/sitemap.xml",
       "destination": "https://bond402-api.onrender.com/sitemap.xml"
     },
