@@ -55,6 +55,7 @@ import {
   validateTargetAuthHeaderName,
   type TargetAuthType,
 } from "../lib/target-auth";
+import { normalizeExecutionMetadata } from "../lib/execution-metadata";
 
 const router: IRouter = Router();
 const SERVICE_HISTORY_TIMEOUT_MS = 3_000;
@@ -115,7 +116,7 @@ function normalizeDiscoveryMetadata(input: {
   sourceUrl?: string | null;
   authRequirement?: "REQUIRED" | "NOT_REQUIRED" | "NOT_DECLARED" | "UNKNOWN";
   discoveryMetadata?: Record<string, unknown> | null;
-}) {
+}, serviceUrl: string) {
   const sourceProvider = input.sourceProvider?.trim().slice(0, 200) || null;
   const sourceUrl = input.sourceUrl?.trim().slice(0, 2_048) || null;
   if (sourceUrl) {
@@ -126,12 +127,20 @@ function normalizeDiscoveryMetadata(input: {
   }
   const sourceType = input.sourceType === "EXTERNAL_DISCOVERY" ? "EXTERNAL_DISCOVERY" : "MANUAL";
   const authRequirement = input.authRequirement ?? "UNKNOWN";
+  const discoveryMetadata = normalizeExecutionMetadata(
+    input.discoveryMetadata,
+    serviceUrl,
+    {
+      requireOperations: sourceType === "EXTERNAL_DISCOVERY",
+      requireHttps: sourceType === "EXTERNAL_DISCOVERY",
+    },
+  );
   return {
     sourceType,
     sourceProvider,
     sourceUrl,
     authRequirement,
-    discoveryMetadata: input.discoveryMetadata ?? null,
+    discoveryMetadata,
   };
 }
 
@@ -453,15 +462,38 @@ router.post("/services", async (req, res): Promise<void> => {
   }
   let discoveryMetadata;
   try {
-    discoveryMetadata = normalizeDiscoveryMetadata(parsed.data);
-  } catch {
+    discoveryMetadata = normalizeDiscoveryMetadata(parsed.data, parsed.data.url);
+    if (
+      discoveryMetadata.sourceType === "EXTERNAL_DISCOVERY" &&
+      targetConfiguration.requestMethod !== "GET" &&
+      targetConfiguration.requestMethod !== "HEAD"
+    ) {
+      throw Object.assign(
+        new Error("Kontrollierte externe Services dürfen nur GET oder HEAD verwenden."),
+        { code: "UNSAFE_EXECUTION_METHOD" },
+      );
+    }
+    if (
+      discoveryMetadata.authRequirement === "REQUIRED" &&
+      targetConfiguration.targetAuthType === "NONE"
+    ) {
+      throw Object.assign(
+        new Error("Ein Service mit erforderlicher Authentifizierung braucht eine serverseitige Zielkonfiguration."),
+        { code: "TARGET_AUTH_CONFIGURATION" },
+      );
+    }
+  } catch (error) {
+    const code =
+      typeof error === "object" && error && "code" in error
+        ? String(error.code)
+        : "INVALID_SOURCE_METADATA";
     res.status(400).json({
-      error: "Die Quellen-Metadaten sind ungültig.",
-      code: "INVALID_SOURCE_METADATA",
+      error: error instanceof Error ? error.message : "Die Quellen-Metadaten sind ungültig.",
+      code,
       feedback: feedbackForHttpError(
         400,
-        "INVALID_SOURCE_METADATA",
-        "Die Discovery-Quellen-Metadaten sind ungültig.",
+        code,
+        error instanceof Error ? error.message : "Die Discovery-Quellen-Metadaten sind ungültig.",
         { nextAction: "Nur begrenzte, öffentliche Quellen-Metadaten ohne Secrets senden." },
       ),
     });
@@ -601,6 +633,57 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const nextUrl = body.data.url ?? existing.url;
+  let discoveryMetadata;
+  try {
+    discoveryMetadata = normalizeDiscoveryMetadata(
+      {
+        sourceType: body.data.sourceType ?? existing.sourceType as "MANUAL" | "EXTERNAL_DISCOVERY",
+        sourceProvider: body.data.sourceProvider !== undefined
+          ? body.data.sourceProvider
+          : existing.sourceProvider,
+        sourceUrl: body.data.sourceUrl !== undefined
+          ? body.data.sourceUrl
+          : existing.sourceUrl,
+        authRequirement: body.data.authRequirement ??
+          existing.authRequirement as "REQUIRED" | "NOT_REQUIRED" | "NOT_DECLARED" | "UNKNOWN",
+        discoveryMetadata: body.data.discoveryMetadata !== undefined
+          ? body.data.discoveryMetadata
+          : existing.discoveryMetadata,
+      },
+      nextUrl,
+    );
+    if (
+      discoveryMetadata.sourceType === "EXTERNAL_DISCOVERY" &&
+      targetConfiguration.requestMethod !== "GET" &&
+      targetConfiguration.requestMethod !== "HEAD"
+    ) {
+      throw Object.assign(
+        new Error("Kontrollierte externe Services dürfen nur GET oder HEAD verwenden."),
+        { code: "UNSAFE_EXECUTION_METHOD" },
+      );
+    }
+    if (
+      discoveryMetadata.authRequirement === "REQUIRED" &&
+      targetConfiguration.targetAuthType === "NONE"
+    ) {
+      throw Object.assign(
+        new Error("Ein Service mit erforderlicher Authentifizierung braucht eine serverseitige Zielkonfiguration."),
+        { code: "TARGET_AUTH_CONFIGURATION" },
+      );
+    }
+  } catch (error) {
+    const code =
+      typeof error === "object" && error && "code" in error
+        ? String(error.code)
+        : "INVALID_SOURCE_METADATA";
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "Die Quellen-Metadaten sind ungültig.",
+      code,
+    });
+    return;
+  }
+
   const responseMode = normalizeResponseMode(
     body.data.responseMode ?? existing.responseMode,
   );
@@ -615,6 +698,11 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
     expectedStructure,
     responseMode,
     ...(body.data.url !== undefined ? { url: body.data.url } : {}),
+    sourceType: discoveryMetadata.sourceType,
+    sourceProvider: discoveryMetadata.sourceProvider,
+    sourceUrl: discoveryMetadata.sourceUrl,
+    authRequirement: discoveryMetadata.authRequirement,
+    discoveryMetadata: discoveryMetadata.discoveryMetadata,
     ...(body.data.maxResponseTime !== undefined
       ? { maxResponseTime: body.data.maxResponseTime }
       : {}),

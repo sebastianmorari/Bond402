@@ -172,7 +172,10 @@ function verificationPriority(status: string) {
   return 0.25;
 }
 
-function blockersForCandidate(candidate: AgentCandidateInput) {
+function blockersForCandidate(
+  candidate: AgentCandidateInput,
+  providedParameters: ReadonlySet<string> = new Set(),
+) {
   const blockers: string[] = [];
   if (candidate.kind === "EXTERNAL_DISCOVERY" || normalize(candidate.verificationStatus) === "unverified_external") {
     blockers.push("UNVERIFIED_EXTERNAL");
@@ -180,7 +183,9 @@ function blockersForCandidate(candidate: AgentCandidateInput) {
   if (candidate.authRequirement === "REQUIRED" && candidate.providerCredentialsConfigured !== true) {
     blockers.push("AUTH_REQUIRED");
   }
-  if (candidate.requiredParameters.length > 0) blockers.push("REQUIRED_PARAMETERS");
+  if (candidate.requiredParameters.some((name) => !providedParameters.has(name))) {
+    blockers.push("REQUIRED_PARAMETERS");
+  }
   if (candidate.safeOperations.length === 0) blockers.push("NO_KNOWN_SAFE_OPERATION");
   if (candidate.preActionDecision && candidate.preActionDecision !== "ALLOW") {
     blockers.push(`PRE_ACTION_${candidate.preActionDecision}`);
@@ -287,6 +292,7 @@ function candidateSort(left: AgentDecisionCandidate, right: AgentDecisionCandida
 export function decideAgentTask(
   task: string,
   candidates: readonly AgentCandidateInput[],
+  providedParameters: readonly string[] = [],
 ): {
   contractVersion: typeof AGENT_DECISION_CONTRACT_VERSION;
   intent: AgentIntent;
@@ -302,6 +308,7 @@ export function decideAgentTask(
   feedback?: AgentFeedback;
 } {
   const intent = normalizeAgentTask(task);
+  const supplied = new Set(providedParameters);
   const scored = dedupeAgentCandidates(candidates)
     .filter((candidate) => candidate.name.trim() && candidate.url.trim())
     .map((candidate) => {
@@ -312,12 +319,13 @@ export function decideAgentTask(
           verificationPriority(candidate.verificationStatus) * 15 +
           Math.min(10, Math.max(0, candidate.trustScore ?? 0) / 10),
       );
-      const blockers = blockersForCandidate(candidate);
+      const blockers = blockersForCandidate(candidate, supplied);
+      const hardBlockers = blockers.filter((blocker) => blocker !== "PRE_ACTION_CAUTION");
       return {
         ...candidate,
         selectionScore,
         blockers,
-        canExecute: blockers.length === 0,
+        canExecute: hardBlockers.length === 0,
       };
     })
     .filter((candidate) => candidate.capabilityMatch > 0 || candidate.textMatch > 0)
@@ -335,7 +343,7 @@ export function decideAgentTask(
     if (bestCandidate.kind === "EXTERNAL_DISCOVERY") {
       why.push("Externe Quellen bleiben UNVERIFIED_EXTERNAL und werden niemals allein durch Ranking ausführbar.");
     }
-    if (bestCandidate.requiredParameters.length > 0) {
+    if (bestCandidate.requiredParameters.some((name) => !supplied.has(name))) {
       why.push("Die erforderlichen Parameter sind bekannt, aber noch nicht vollständig vorhanden.");
     }
     if (bestCandidate.authRequirement === "REQUIRED") {

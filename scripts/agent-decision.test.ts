@@ -148,3 +148,13 @@ test("Decision response exposes the complete machine-readable contract", () => {
   assert.equal(decision.bestCandidate?.canExecute, true);
   assert.deepEqual(decision.requiredParameters, []);
 });
+
+test("A read-only pre-action caution is surfaced without blocking verified owner execution", () => {
+  const decision = decideAgentTask("weather", [
+    candidate({ preActionDecision: "CAUTION" }),
+  ]);
+
+  assert.equal(decision.canExecute, true);
+  assert.equal(decision.bestCandidate?.canExecute, true);
+  assert.ok(decision.blockers.includes("PRE_ACTION_CAUTION"));
+});

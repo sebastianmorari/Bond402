@@ -21,6 +21,7 @@ import {
   getTargetRequestOptions,
   loadChecks,
 } from "./service-data";
+import { getRegisteredExecutionOperations } from "./execution-metadata";
 import { evaluatePreAction } from "./pre-action";
 import { consumeMonthlyCheck, toUsageResponse } from "./usage";
 import { createAgentFeedback, type AgentFeedbackStatus } from "./agent-feedback";
@@ -144,6 +145,31 @@ function stringValue(value: unknown) {
 }
 
 function parseExecutionOperations(service: ApiServiceRow): ExecutionOperation[] {
+  const registered = getRegisteredExecutionOperations(
+    service.url,
+    service.discoveryMetadata,
+    {
+      requireOperations: service.sourceType === "EXTERNAL_DISCOVERY",
+      defaultMethod: service.requestMethod === "HEAD" ? "HEAD" : "GET",
+    },
+  );
+  if (registered.length > 0) {
+    return registered.map((operation) => ({
+      method: operation.method,
+      path: operation.path,
+      parameters: operation.parameters,
+      knownCost: operation.cost ?? null,
+    }));
+  }
+
+  const metadata = service.discoveryMetadata;
+  const hasDeclaredExecution =
+    metadata &&
+    typeof metadata === "object" &&
+    !Array.isArray(metadata) &&
+    "execution" in metadata;
+  if (service.sourceType === "EXTERNAL_DISCOVERY" || hasDeclaredExecution) return [];
+
   const registeredUrl = new URL(service.url);
   const defaultOperation: ExecutionOperation = {
     method: service.requestMethod as ExecutionMethod,
@@ -151,67 +177,7 @@ function parseExecutionOperations(service: ApiServiceRow): ExecutionOperation[] 
     parameters: [],
     knownCost: null,
   };
-  const metadata = service.discoveryMetadata;
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return [defaultOperation];
-  }
-  const execution = (metadata as Record<string, unknown>).execution;
-  if (!execution || typeof execution !== "object" || Array.isArray(execution)) {
-    return [defaultOperation];
-  }
-  const operations = (execution as Record<string, unknown>).operations;
-  if (!Array.isArray(operations)) return [defaultOperation];
-
-  const parsed = operations.flatMap((raw): ExecutionOperation[] => {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
-    const value = raw as Record<string, unknown>;
-    const method = stringValue(value.method)?.toUpperCase();
-    const path = stringValue(value.path);
-    if (!method || !path || !EXECUTION_METHODS.includes(method as ExecutionMethod)) return [];
-    if (path !== (registeredUrl.pathname || "/")) return [];
-    const rawParameters = Array.isArray(value.parameters) ? value.parameters : [];
-    const parameters = rawParameters.flatMap((rawParameter): ExecutionParameterDefinition[] => {
-      if (!rawParameter || typeof rawParameter !== "object" || Array.isArray(rawParameter)) return [];
-      const parameter = rawParameter as Record<string, unknown>;
-      const name = stringValue(parameter.name);
-      const type = stringValue(parameter.type);
-      const location = stringValue(parameter.location) ?? "query";
-      if (
-        !name ||
-        !/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(name) ||
-        !["string", "number", "integer", "boolean"].includes(type ?? "") ||
-        location !== "query"
-      ) {
-        return [];
-      }
-      return [{
-        name,
-        type: type as ParameterType,
-        required: parameter.required === true,
-        location: "query",
-      }];
-    });
-    const rawCost = value.cost;
-    const knownCost =
-      rawCost &&
-      typeof rawCost === "object" &&
-      !Array.isArray(rawCost) &&
-      typeof (rawCost as Record<string, unknown>).amount === "number" &&
-      Number.isFinite((rawCost as Record<string, unknown>).amount) &&
-      typeof (rawCost as Record<string, unknown>).currency === "string"
-        ? {
-            amount: (rawCost as Record<string, unknown>).amount as number,
-            currency: ((rawCost as Record<string, unknown>).currency as string).slice(0, 16),
-          }
-        : null;
-    return [{
-      method: method as ExecutionMethod,
-      path,
-      parameters,
-      knownCost,
-    }];
-  });
-  return parsed.length > 0 ? parsed : [defaultOperation];
+  return [defaultOperation];
 }
 
 function executionOperation(service: ApiServiceRow, requested?: { method?: string; path?: string }) {
@@ -330,12 +296,18 @@ function buildExecutionUrl(
   return { url, status: "READY" as const, code: "READY", required: [], summary: "Die Parameter entsprechen der registrierten Query-Spezifikation." };
 }
 
-function statusForBlockers(candidate: AgentDecisionCandidate | null, extraStatus?: ExecutionStatus) {
+function statusForBlockers(
+  candidate: AgentDecisionCandidate | null,
+  extraStatus?: ExecutionStatus,
+  parametersReady = false,
+) {
   if (extraStatus) return extraStatus;
   if (!candidate) return "BLOCKED" as const;
   if (candidate.blockers.includes("UNVERIFIED_EXTERNAL")) return "UNVERIFIED_EXTERNAL" as const;
   if (candidate.blockers.includes("AUTH_REQUIRED")) return "AUTH_REQUIRED" as const;
-  if (candidate.blockers.includes("REQUIRED_PARAMETERS")) return "PARAMETER_REQUIRED" as const;
+  if (!parametersReady && candidate.blockers.includes("REQUIRED_PARAMETERS")) {
+    return "PARAMETER_REQUIRED" as const;
+  }
   return candidate.canExecute ? "READY" as const : "BLOCKED" as const;
 }
 
@@ -459,7 +431,11 @@ export async function buildExecutionPlan(
     candidates.push(serviceCandidate(candidateService, task || candidateService.name, operation, checks));
     if (service?.id === candidateService.id) selectedOperation = operation;
   }
-  const decision = decideAgentTask(task || service?.name || "", candidates);
+  const decision = decideAgentTask(
+    task || service?.name || "",
+    candidates,
+    Object.keys(parameters),
+  );
   const candidate = decision.bestCandidate;
   if (!candidate) {
     const feedback = feedbackForExecution(
@@ -528,7 +504,7 @@ export async function buildExecutionPlan(
     });
   }
 
-  const status = statusForBlockers(candidate);
+  const status = statusForBlockers(candidate, undefined, built.status === "READY");
   const feedback = feedbackForExecution(
     status,
     status === "READY" ? "EXECUTION_PLAN_READY" : candidate.blockers[0] ?? "EXECUTION_BLOCKED",

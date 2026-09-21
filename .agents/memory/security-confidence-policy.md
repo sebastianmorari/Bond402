@@ -7,4 +7,4 @@ Bond402 must present availability, Security Confidence, and overall Trust as sep
 
 **Why:** Reachability and historical uptime do not establish security, and a single successful response cannot justify a high-confidence safety claim.
 
-**How to apply:** Keep pre-action decisions conservative when the latest security confidence is unknown or warning-level; preserve explicit statements that observations are not a security guarantee; do not introduce reputation providers or external execution without a deliberate, separately reviewed decision.
+**How to apply:** Keep unknown or warning-level confidence visible and conservative. For an owner-bound, verified, non-mutating GET/HEAD flow, surface that state as CAUTION without treating it as a hard execution block; BLOCK, missing auth, missing parameters, and insufficient verification remain hard stops. Preserve explicit statements that observations are not a security guarantee.

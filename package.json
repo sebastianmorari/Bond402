@@ -10,6 +10,8 @@
     "test:public-mvp": "pnpm --filter @workspace/api-server run build && node --test scripts/public-mvp.test.mjs",
     "test:headless-agent-e2e": "pnpm --filter @workspace/scripts exec tsx --test headless-agent-e2e.test.ts",
     "test:execution-gateway": "pnpm --filter @workspace/scripts exec tsx --test execution-gateway.test.ts",
+    "test:execution-metadata": "node --experimental-strip-types --test scripts/execution-metadata.test.mjs",
+    "test:real-reference-flow": "pnpm --filter @workspace/api-server run build && BOND402_REAL_REFERENCE_TEST=1 node --test scripts/real-reference-flow.test.mjs",
     "test:public-external-discovery": "node --experimental-strip-types --test scripts/public-external-discovery.test.mjs",
     "test:public-external-detail": "pnpm --filter @workspace/scripts exec tsx --test public-external-detail.test.ts",
     "test:public-external-routes": "pnpm --filter @workspace/scripts exec tsx --test public-external-routes.test.ts",

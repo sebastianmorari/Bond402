@@ -149,11 +149,18 @@ test("Externe Discovery-Metadaten werden übernommen und doppelte Importe blocki
     sourceType: "EXTERNAL_DISCOVERY",
     sourceProvider: "example.test",
     sourceUrl,
-    authRequirement: "REQUIRED",
+    authRequirement: "NOT_REQUIRED",
     discoveryMetadata: {
       sourceRecordUrl: "https://api.apis.guru/v2/specs/example.test/1.0.0.json",
       specificationUrl: sourceUrl,
       authSchemes: [{ name: "oauth_2_0", type: "oauth2" }],
+      execution: {
+        operations: [{
+          method: "HEAD",
+          path: "/external-api",
+          parameters: [],
+        }],
+      },
     },
   };
   const created = await request("/api/services", {
@@ -164,7 +171,7 @@ test("Externe Discovery-Metadaten werden übernommen und doppelte Importe blocki
   assert.equal(created.response.status, 201, JSON.stringify(created.data));
   assert.equal(created.data.sourceType, "EXTERNAL_DISCOVERY");
   assert.equal(created.data.sourceProvider, "example.test");
-  assert.equal(created.data.authRequirement, "REQUIRED");
+  assert.equal(created.data.authRequirement, "NOT_REQUIRED");
   assert.equal(created.data.discoveryMetadata.authSchemes[0].type, "oauth2");
   assert.equal(created.data.targetAuthSecretConfigured, false);
 
