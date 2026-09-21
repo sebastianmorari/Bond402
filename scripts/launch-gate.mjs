@@ -23,6 +23,7 @@ const checks = [
   ["test:backup-restore", "Backup and restore"],
   ["test:secret-leak", "Secret leak scan"],
   ["test:service-routes", "Service routes"],
+  ["test:oauth", "OAuth and PKCE"],
   ["test:public-mvp", "Public MVP"],
   ["test:headless-agent-e2e", "Headless agent E2E"],
   ["test:execution-gateway", "Execution gateway"],

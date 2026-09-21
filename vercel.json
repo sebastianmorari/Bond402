@@ -16,6 +16,46 @@
       "destination": "https://bond402-api.onrender.com/mcp"
     },
     {
+      "source": "/mcp/",
+      "destination": "https://bond402-api.onrender.com/mcp/"
+    },
+    {
+      "source": "/oauth/authorize",
+      "destination": "https://bond402-api.onrender.com/oauth/authorize"
+    },
+    {
+      "source": "/oauth/authorize/decision",
+      "destination": "https://bond402-api.onrender.com/oauth/authorize/decision"
+    },
+    {
+      "source": "/oauth/token",
+      "destination": "https://bond402-api.onrender.com/oauth/token"
+    },
+    {
+      "source": "/oauth/register",
+      "destination": "https://bond402-api.onrender.com/oauth/register"
+    },
+    {
+      "source": "/oauth/revoke",
+      "destination": "https://bond402-api.onrender.com/oauth/revoke"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "destination": "https://bond402-api.onrender.com/.well-known/oauth-authorization-server"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "https://bond402-api.onrender.com/.well-known/oauth-protected-resource"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/mcp",
+      "destination": "https://bond402-api.onrender.com/.well-known/oauth-protected-resource/mcp"
+    },
+    {
+      "source": "/mcp/.well-known/oauth-protected-resource",
+      "destination": "https://bond402-api.onrender.com/mcp/.well-known/oauth-protected-resource"
+    },
+    {
       "source": "/sitemap.xml",
       "destination": "https://bond402-api.onrender.com/sitemap.xml"
     },

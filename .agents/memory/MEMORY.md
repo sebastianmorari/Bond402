@@ -23,3 +23,4 @@
 - [Large SQL test fixtures](large-sql-fixtures.md) — send large PostgreSQL fixture scripts through stdin instead of a `psql -c` argument.
 - [MCP transport boundary](mcp-transport-scopes.md) — keep MCP stateless and delegate every private tool to existing owner, plan, execution, quota and audit paths.
 - [Developer API scope enforcement](api-key-scope-enforcement.md) — rate-limit categories are not permissions; every protected REST/MCP action must enforce its required scope.
+- [OAuth resource and consent boundaries](oauth-resource-and-consent.md) — OAuth tokens stay bound to `/mcp`, and consent requires a short-lived server transaction plus CSRF proof.

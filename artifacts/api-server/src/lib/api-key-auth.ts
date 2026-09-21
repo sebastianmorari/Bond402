@@ -137,6 +137,23 @@ export async function consumeOwnerRateLimit(
   return consumeRateLimit(`owner:${ownerId}`, scope, limit);
 }
 
+export async function consumeMcpCredentialRateLimit(
+  keyId: string,
+  ownerId: string,
+  scope: "read" | "check",
+) {
+  const keyLimit = scope === "check" ? 10 : 60;
+  const ownerLimit = scope === "check" ? 20 : 120;
+  const [keyRate, ownerRate] = await Promise.all([
+    consumeRateLimit(`key:${keyId}`, scope, keyLimit),
+    consumeRateLimit(`owner:${ownerId}`, scope, ownerLimit),
+  ]);
+  return {
+    allowed: keyRate.allowed && ownerRate.allowed,
+    retryAfter: Math.max(keyRate.retryAfter, ownerRate.retryAfter),
+  };
+}
+
 export async function consumePublicRateLimit(
   ip: string,
   scope: string,
@@ -149,11 +166,12 @@ export type ApiKeyAuth = {
   ownerId: string;
   keyId: string;
   scopes: ApiKeyScope[];
+  credentialType: "developer_key";
 };
 
 export type ApiKeyAuthFailure = {
   status: 401 | 429;
-  code: "INVALID_API_KEY" | "RATE_LIMITED";
+  code: "INVALID_API_KEY" | "INVALID_OAUTH_TOKEN" | "RATE_LIMITED";
   retryAfterSeconds: number | null;
 };
 
@@ -210,7 +228,14 @@ export async function authenticateApiKeyQuiet(
     .update(apiKeysTable)
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeysTable.id, key.id));
-  return { auth: { ownerId: key.ownerId, keyId: key.id, scopes: parseApiKeyScopes(key.scopes) } };
+  return {
+    auth: {
+      ownerId: key.ownerId,
+      keyId: key.id,
+      scopes: parseApiKeyScopes(key.scopes),
+      credentialType: "developer_key",
+    },
+  };
 }
 
 export async function authenticateApiKey(

@@ -9,10 +9,14 @@ import {
 import { buildPublicAgentDecision } from "../lib/agent-decision-public";
 import {
   authenticateApiKeyQuiet,
+  consumeMcpCredentialRateLimit,
   consumePublicRateLimit,
   type ApiKeyAuth,
+  type ApiKeyAuthFailure,
   type ApiKeyScope,
 } from "../lib/api-key-auth";
+import { findOAuthAccessToken, type OAuthMcpAuth } from "../lib/oauth";
+import { publicBaseUrl } from "../lib/public-sitemap";
 import {
   buildExecutionPlan,
   executeAgentPlan,
@@ -65,6 +69,7 @@ type ScopeTool = {
   inputSchema: Record<string, unknown>;
   annotations: Record<string, boolean>;
 };
+type McpAuth = ApiKeyAuth | OAuthMcpAuth;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -347,7 +352,7 @@ function privateTools(scopes: readonly ApiKeyScope[]): ScopeTool[] {
   return all.filter((tool) => tool.scope && scopes.includes(tool.scope));
 }
 
-function visibleTools(auth: ApiKeyAuth | null) {
+function visibleTools(auth: McpAuth | null) {
   return [...publicTools(), ...privateTools(auth?.scopes ?? [])]
     .sort((left, right) => left.name.localeCompare(right.name));
 }
@@ -436,7 +441,7 @@ function logMcpCall(
   req: Request,
   tool: string,
   scope: ApiKeyScope | "public",
-  auth: ApiKeyAuth | null,
+  auth: McpAuth | null,
   status: string,
   startedAt: number,
   details: { serviceId?: string | null; planId?: string | null } = {},
@@ -445,7 +450,7 @@ function logMcpCall(
     requestId: requestId(req),
     mcpTool: tool,
     mcpScope: scope,
-    principal: auth ? "owner_api_key" : "anonymous",
+    principal: auth?.credentialType === "oauth" ? "owner_oauth" : auth ? "owner_api_key" : "anonymous",
     ownerId: auth?.ownerId ?? null,
     serviceId: details.serviceId ?? null,
     planId: details.planId ?? null,
@@ -454,9 +459,37 @@ function logMcpCall(
   }, "MCP tool call");
 }
 
-async function optionalAuth(req: Request): Promise<ApiKeyAuth | null> {
+function mcpResourceMetadataUrl(req: Request) {
+  return new URL("/.well-known/oauth-protected-resource", `${publicBaseUrl(req).replace(/\/+$/, "")}/`).toString();
+}
+
+function mcpResourceUrl(req: Request) {
+  return new URL("/mcp", `${publicBaseUrl(req).replace(/\/+$/, "")}/`).toString();
+}
+
+async function authenticateMcpCredentialQuiet(
+  req: Request,
+  scope: "read" | "check",
+): Promise<{ auth: McpAuth } | { failure: ApiKeyAuthFailure }> {
+  const authorization = req.get("authorization") ?? "";
+  const oauthMatch = authorization.match(/^Bearer\s+(b402_oauth_[A-Za-z0-9_-]{20,})$/);
+  if (oauthMatch) {
+    const oauth = await findOAuthAccessToken(oauthMatch[1], mcpResourceUrl(req));
+    if (!oauth) {
+      return { failure: { status: 401, code: "INVALID_OAUTH_TOKEN", retryAfterSeconds: null } };
+    }
+    const rate = await consumeMcpCredentialRateLimit(oauth.keyId, oauth.ownerId, scope);
+    if (!rate.allowed) {
+      return { failure: { status: 429, code: "RATE_LIMITED", retryAfterSeconds: rate.retryAfter } };
+    }
+    return { auth: oauth };
+  }
+  return authenticateApiKeyQuiet(req, scope);
+}
+
+async function optionalAuth(req: Request): Promise<McpAuth | null> {
   if (!req.get("authorization")) return null;
-  const result = await authenticateApiKeyQuiet(req, "read");
+  const result = await authenticateMcpCredentialQuiet(req, "read");
   return "auth" in result ? result.auth : null;
 }
 
@@ -466,18 +499,31 @@ async function requireScope(
   scope: ApiKeyScope,
 ) {
   const rateScope = scope === "execute" ? "check" : "read";
-  const result = await authenticateApiKeyQuiet(req, rateScope);
+  const result = await authenticateMcpCredentialQuiet(req, rateScope);
   if ("failure" in result) {
     if (result.failure.retryAfterSeconds !== null) res.set("Retry-After", String(result.failure.retryAfterSeconds));
-    if (result.failure.status === 401) res.set("WWW-Authenticate", 'Bearer realm="Bond402 MCP"');
+    if (result.failure.status === 401) {
+      res.set(
+        "WWW-Authenticate",
+        `Bearer realm="Bond402 MCP", resource_metadata="${mcpResourceMetadataUrl(req)}"`,
+      );
+    }
     res.status(result.failure.status).type("application/json").json({
-      error: result.failure.code === "RATE_LIMITED" ? "MCP-Anfragen sind rate-limited." : "Ein gültiger Bond402 Developer-Key ist erforderlich.",
+      error: result.failure.code === "RATE_LIMITED"
+        ? "MCP-Anfragen sind rate-limited."
+        : "Ein gültiger Bond402-Zugang ist erforderlich.",
       code: result.failure.code,
       requestId: requestId(req),
     });
     return null;
   }
   if (!result.auth.scopes.includes(scope)) {
+    if (result.auth.credentialType === "oauth") {
+      res.set(
+        "WWW-Authenticate",
+        `Bearer error="insufficient_scope", scope="${scope}", resource_metadata="${mcpResourceMetadataUrl(req)}"`,
+      );
+    }
     res.status(403).type("application/json").json({
       error: "Der Developer-Key besitzt den erforderlichen MCP-Scope nicht.",
       code: "SCOPE_REQUIRED",
@@ -494,7 +540,7 @@ async function callTool(
   res: Response,
   name: string,
   args: unknown,
-  auth: ApiKeyAuth | null,
+  auth: McpAuth | null,
 ) {
   const startedAt = performance.now();
   const fail = (scope: ApiKeyScope | "public", code: string, summary: string, nextAction: string, status = "BLOCKED") => {
@@ -706,6 +752,18 @@ router.post("/", async (req, res): Promise<void> => {
       return;
     }
     const auth = await optionalAuth(req);
+    if (
+      req.get("authorization")?.match(/^Bearer\s+b402_oauth_[A-Za-z0-9_-]{20,}$/) &&
+      !auth
+    ) {
+      res.set("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="${mcpResourceMetadataUrl(req)}"`);
+      res.status(401).type("application/json").json({
+        error: "Der OAuth-Zugang ist ungültig oder abgelaufen.",
+        code: "INVALID_OAUTH_TOKEN",
+        requestId: requestId(req),
+      });
+      return;
+    }
     const tools = visibleTools(auth);
     res.type("application/json").json(jsonRpcResponse(body.id, {
       resultType: "complete",

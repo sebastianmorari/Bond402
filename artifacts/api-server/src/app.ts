@@ -6,6 +6,7 @@ import sitemapRouter from "./routes/sitemap";
 import { logger } from "./lib/logger";
 import { createApiErrorHandler, requestIdMiddleware } from "./lib/api-errors";
 import mcpRouter from "./routes/mcp";
+import oauthRouter from "./routes/oauth";
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -54,6 +55,7 @@ app.use("/api", (_req, res, next) => {
 });
 
 app.use("/api", router);
+app.use(oauthRouter);
 app.use("/mcp", mcpRouter);
 
 app.use(createApiErrorHandler(logger));
