@@ -40,7 +40,6 @@ export const MCP_PROTOCOL_VERSIONS = [
   "2025-06-18",
   "2025-03-26",
 ] as const;
-const MCP_CURRENT_PROTOCOL_VERSION = MCP_PROTOCOL_VERSIONS[0];
 const MCP_LEGACY_PROTOCOL_VERSIONS = new Set<string>([
   "2025-11-25",
   "2025-06-18",
@@ -179,31 +178,10 @@ function protocolVersion(req: Request, body: JsonRpcRequest) {
     return { error: "UNSUPPORTED_PROTOCOL_VERSION", requested: header };
   }
   const version = header ?? "2025-03-26";
-  if (
-    version === MCP_CURRENT_PROTOCOL_VERSION &&
-    body.params &&
-    isRecord(body.params._meta) &&
-    body.params._meta["io.modelcontextprotocol/protocolVersion"] !== version
-  ) {
-    return { error: "HEADER_MISMATCH", requested: version };
-  }
   if (header && body.params && isRecord(body.params._meta)) {
     const metadataVersion = body.params._meta["io.modelcontextprotocol/protocolVersion"];
     if (metadataVersion !== undefined && metadataVersion !== header) {
       return { error: "HEADER_MISMATCH", requested: header };
-    }
-  }
-  if (version === MCP_CURRENT_PROTOCOL_VERSION) {
-    if (!body.params || !isRecord(body.params._meta)) return { error: "MISSING_REQUEST_METADATA", requested: version };
-    if (body.params._meta["io.modelcontextprotocol/protocolVersion"] !== version) {
-      return { error: "MISSING_REQUEST_METADATA", requested: version };
-    }
-    if (req.get("mcp-method") !== body.method) return { error: "HEADER_MISMATCH", requested: version };
-    if (
-      body.method === "tools/call" &&
-      req.get("mcp-name") !== body.params.name
-    ) {
-      return { error: "HEADER_MISMATCH", requested: version };
     }
   }
   return { version };
