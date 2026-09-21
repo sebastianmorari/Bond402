@@ -26,6 +26,29 @@ import { BondSandbox } from "@/components/bond-sandbox";
 import { MobileNav } from "@/components/mobile-nav";
 import { QuotaCard } from "@/components/quota-card";
 import { PreActionTester } from "@/components/pre-action-tester";
+import { McpAccessPanel } from "@/components/mcp-access-panel";
+import { getMcpEndpoint } from "@/lib/runtime-urls";
+
+type ApiScope = "read" | "plan" | "execute" | "audit";
+
+function safeApiKeyScopes(value: unknown): ApiScope[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (scope): scope is ApiScope =>
+      scope === "read" ||
+      scope === "plan" ||
+      scope === "execute" ||
+      scope === "audit",
+  );
+}
+
+function safeApiKeyDate(value: unknown): string {
+  if (typeof value !== "string") return "Datum unbekannt";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Datum unbekannt"
+    : format(date, "dd.MM.yyyy", { locale: de });
+}
 
 export function Developer() {
   const { data: apiKeys = [], isLoading: isLoadingKeys, isError: isKeysError } = useListApiKeys();
@@ -96,6 +119,7 @@ export function Developer() {
 
   const activeServiceId = services.find(s => s.id)?.id || "<IHRE_SERVICE_ID>";
   const baseUrl = window.location.origin;
+  const mcpEndpoint = getMcpEndpoint();
 
   return (
     <div className="mobile-content-safe min-h-[100dvh] bg-background text-foreground pb-28">
@@ -173,6 +197,10 @@ export function Developer() {
             </CardFooter>
           </Card>
         )}
+
+        <section className="my-8">
+          <McpAccessPanel mcpEndpoint={mcpEndpoint} />
+        </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           <section className="space-y-6">
@@ -281,17 +309,17 @@ export function Developer() {
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1.5">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3 opacity-70" /> 
-                              {format(new Date(key.createdAt), "dd.MM.yyyy", { locale: de })}
+                              {safeApiKeyDate(key.createdAt)}
                             </span>
                             {key.lastUsedAt && (
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3 opacity-70" />
-                                {format(new Date(key.lastUsedAt), "dd.MM.yyyy", { locale: de })}
+                                 {safeApiKeyDate(key.lastUsedAt)}
                               </span>
                             )}
                           </div>
                           <div className="flex flex-wrap gap-1 pt-1">
-                            {key.scopes.map((scope) => (
+                             {safeApiKeyScopes((key as { scopes?: unknown }).scopes).map((scope) => (
                               <span key={scope} className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{scope}</span>
                             ))}
                           </div>

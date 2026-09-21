@@ -202,6 +202,7 @@ test("lokaler Browser-Flow deckt Auth, Discovery, Import, Logout und responsive 
   let created = false;
   let registerPayload = null;
   let publicSearchRequests = 0;
+  let apiKeys = [];
 
   try {
     await waitForServer();
@@ -237,7 +238,30 @@ test("lokaler Browser-Flow deckt Auth, Discovery, Import, Logout und responsive 
         return route.fulfill({ status: 204, body: "" });
       }
       if (path === "/api/api-keys" && request.method() === "GET") {
-        return json(route, []);
+        return json(route, apiKeys);
+      }
+      if (path === "/api/api-keys" && request.method() === "POST") {
+        const payload = JSON.parse(request.postData() || "{}");
+        const id = `mcp-key-${apiKeys.length + 1}`;
+        const scopes = payload.scopes || ["read", "plan", "execute", "audit"];
+        const key = {
+          id,
+          name: payload.name,
+          prefix: "b402_e2e123…",
+          scopes,
+          createdAt: "2026-09-21T12:00:00.000Z",
+          lastUsedAt: null,
+          revokedAt: null,
+        };
+        apiKeys = [...apiKeys, key];
+        return json(route, { ...key, secret: "b402_e2e-secret-only-once" }, 201);
+      }
+      if (path.startsWith("/api/api-keys/") && request.method() === "DELETE") {
+        const id = path.split("/").pop();
+        apiKeys = apiKeys.map((key) => key.id === id
+          ? { ...key, revokedAt: "2026-09-21T12:05:00.000Z" }
+          : key);
+        return route.fulfill({ status: 204, body: "" });
       }
       if (path === "/api/demo-services" && request.method() === "GET") {
         return json(route, []);
@@ -319,6 +343,26 @@ test("lokaler Browser-Flow deckt Auth, Discovery, Import, Logout und responsive 
     await page.getByRole("heading", { name: "Trust Firewall for AI Agents" }).waitFor();
     await page.getByRole("heading", { name: "Interne Wetter API" }).first().waitFor();
 
+    await page.goto(`${baseUrl}/profile`);
+    await page.getByRole("link", { name: "API-Schlüssel verwalten" }).click();
+    await page.getByRole("heading", { name: "Agent & MCP Access" }).waitFor();
+    await page.getByTestId("text-mcp-endpoint").waitFor();
+    assert.match(await page.getByTestId("text-mcp-endpoint").textContent(), /\/mcp$/);
+    await page.getByTestId("button-create-mcp-access").click();
+    await page.getByTestId("input-mcp-access-name").fill("E2E MCP Read Plan");
+    await page.getByTestId("button-submit-mcp-access").click();
+    await page.getByTestId("input-new-mcp-secret").waitFor();
+    assert.equal(await page.getByTestId("input-new-mcp-secret").inputValue(), "b402_e2e-secret-only-once");
+    await page.getByTestId("checkbox-acknowledge-mcp-secret").check();
+    await page.getByTestId("button-dismiss-mcp-secret").click();
+    await page.reload();
+    await page.getByRole("heading", { name: "Agent & MCP Access" }).waitFor();
+    assert.equal(await page.getByTestId("input-new-mcp-secret").count(), 0);
+    assert.equal(await page.getByTestId("text-mcp-access-prefix-mcp-key-1").textContent(), "b402_e2e123…••••••••");
+    assert.equal(await page.getByTestId("scope-pill-execute").count(), 0);
+
+    await page.goto(`${baseUrl}/dashboard`);
+    await page.getByRole("heading", { name: "Trust Firewall for AI Agents" }).waitFor();
     const search = page.getByRole("textbox", { name: "Registrierte und öffentliche Dienste durchsuchen" });
     await search.fill("Externe Wetter API");
     await page.getByText("UNVERIFIED_EXTERNAL").waitFor();

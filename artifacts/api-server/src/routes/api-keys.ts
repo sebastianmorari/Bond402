@@ -23,16 +23,26 @@ const MAX_ACTIVE_KEYS = 10;
 const MAX_REVOKED_KEYS = 20;
 
 function toResponse(key: typeof apiKeysTable.$inferSelect) {
+  const createdAt = key.createdAt instanceof Date ? key.createdAt : new Date(key.createdAt);
+  if (Number.isNaN(createdAt.getTime())) return null;
+  const lastUsedAt = key.lastUsedAt
+    ? (key.lastUsedAt instanceof Date ? key.lastUsedAt : new Date(key.lastUsedAt))
+    : null;
+  const revokedAt = key.revokedAt
+    ? (key.revokedAt instanceof Date ? key.revokedAt : new Date(key.revokedAt))
+    : null;
+  const scopesValue = typeof key.scopes === "string" ? key.scopes : "";
+
   return {
     id: key.id,
     name: key.name,
     prefix: key.prefix,
-    scopes: key.scopes.split(",").filter((scope): scope is (typeof API_KEY_SCOPES)[number] =>
+    scopes: scopesValue.split(",").filter((scope): scope is (typeof API_KEY_SCOPES)[number] =>
       API_KEY_SCOPES.includes(scope as (typeof API_KEY_SCOPES)[number]),
     ),
-    createdAt: key.createdAt.toISOString(),
-    lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
-    revokedAt: key.revokedAt?.toISOString() ?? null,
+    createdAt: createdAt.toISOString(),
+    lastUsedAt: lastUsedAt && !Number.isNaN(lastUsedAt.getTime()) ? lastUsedAt.toISOString() : null,
+    revokedAt: revokedAt && !Number.isNaN(revokedAt.getTime()) ? revokedAt.toISOString() : null,
   };
 }
 
@@ -80,7 +90,15 @@ router.get("/api-keys", async (req, res): Promise<void> => {
     .where(eq(apiKeysTable.ownerId, ownerId))
     .orderBy(desc(apiKeysTable.createdAt))
     .limit(MAX_ACTIVE_KEYS + MAX_REVOKED_KEYS);
-  res.json(ListApiKeysResponse.parse(keys.map(toResponse)));
+  const responses = keys.flatMap((key) => {
+    try {
+      const response = toResponse(key);
+      return response ? [response] : [];
+    } catch {
+      return [];
+    }
+  });
+  res.json(ListApiKeysResponse.parse(responses));
 });
 
 router.post("/api-keys", async (req, res): Promise<void> => {
@@ -139,7 +157,15 @@ router.post("/api-keys", async (req, res): Promise<void> => {
     });
     return;
   }
-  const response = CreateApiKeyResponse.parse({ ...toResponse(key), secret });
+  const keyResponse = toResponse(key);
+  if (!keyResponse) {
+    res.status(500).json({
+      error: "Der API-Schlüssel konnte nicht sicher dargestellt werden.",
+      code: "KEY_RESPONSE_INVALID",
+    });
+    return;
+  }
+  const response = CreateApiKeyResponse.parse({ ...keyResponse, secret });
   res.status(201).json({
     ...response,
     feedback: createAgentFeedback({
