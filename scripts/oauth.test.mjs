@@ -7,7 +7,10 @@ import { test, before, after } from "node:test";
 const databaseUrl = process.env.DATABASE_URL;
 const port = Number(process.env.BOND402_OAUTH_TEST_PORT || 18129);
 const baseUrl = `http://127.0.0.1:${port}`;
+const publicBaseUrl = "https://bond402.vercel.app";
+const publicMcpResource = `${publicBaseUrl}/mcp`;
 const testId = randomUUID();
+let requestCount = 0;
 const userId = `oauth-test-user-${testId}`;
 const email = `${testId}@oauth.test`;
 const sessionToken = randomBytes(32).toString("base64url");
@@ -53,6 +56,7 @@ async function request(path, options = {}) {
     ...fetchOptions
   } = options;
   const headers = {
+    "X-Forwarded-For": `198.51.100.${(requestCount++ % 250) + 1}`,
     ...(body === undefined ? {} : {
       "Content-Type": form ? "application/x-www-form-urlencoded" : "application/json",
     }),
@@ -94,8 +98,8 @@ function mcpHeaders(accessToken, version = "2026-07-28") {
   return {
     Accept: "application/json, text/event-stream",
     "Content-Type": "application/json",
-    Authorization: `Bearer ${accessToken}`,
     "MCP-Protocol-Version": version,
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   };
 }
 
@@ -127,7 +131,7 @@ async function issueAccessToken(scopes, label) {
     state,
     code_challenge: challenge,
     code_challenge_method: "S256",
-    resource: `${baseUrl}/mcp`,
+    resource: publicMcpResource,
   }).toString();
   const consent = await request(`${authorize.pathname}${authorize.search}`, {
     authenticated: true,
@@ -160,14 +164,27 @@ async function issueAccessToken(scopes, label) {
       code,
       redirect_uri: redirect,
       code_verifier: verifier,
-      resource: `${baseUrl}/mcp`,
+      resource: publicMcpResource,
     },
   });
   assert.equal(exchanged.response.status, 200, exchanged.text);
   return {
     accessToken: exchanged.data.access_token,
     clientId: issuedClientId,
-    resource: `${baseUrl}/mcp`,
+    resource: publicMcpResource,
+  };
+}
+
+async function mcpCall(accessToken, method, params, id = randomUUID()) {
+  const response = await request("/mcp", {
+    method: "POST",
+    headers: mcpHeaders(accessToken),
+    body: { jsonrpc: "2.0", id, method, params },
+  });
+  const text = response.data?.result?.content?.find((item) => item.type === "text")?.text;
+  return {
+    ...response,
+    result: text ? JSON.parse(text) : null,
   };
 }
 
@@ -187,7 +204,12 @@ async function waitForServer() {
 before(async () => {
   if (!databaseUrl) throw new Error("DATABASE_URL ist für die OAuth-Tests erforderlich.");
   server = spawn("node", ["--enable-source-maps", "artifacts/api-server/dist/index.mjs"], {
-    env: { ...process.env, NODE_ENV: "test", PORT: String(port) },
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      PORT: String(port),
+      PUBLIC_BASE_URL: publicBaseUrl,
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
   server.stderr.on("data", (chunk) => process.stderr.write(`[oauth-api] ${chunk}`));
@@ -228,13 +250,13 @@ after(async () => {
 test("OAuth metadata and safe dynamic client registration are exposed", async () => {
   const resource = await request("/.well-known/oauth-protected-resource");
   assert.equal(resource.response.status, 200);
-  assert.equal(resource.data.resource, `${baseUrl}/mcp`);
+  assert.equal(resource.data.resource, publicMcpResource);
   assert.deepEqual(resource.data.bearer_methods_supported, ["header"]);
-  assert.ok(resource.data.authorization_servers.includes(baseUrl));
+  assert.ok(resource.data.authorization_servers.includes(publicBaseUrl));
 
   const authorizationServer = await request("/.well-known/oauth-authorization-server");
   assert.equal(authorizationServer.response.status, 200);
-  assert.equal(authorizationServer.data.authorization_endpoint, `${baseUrl}/oauth/authorize`);
+  assert.equal(authorizationServer.data.authorization_endpoint, `${publicBaseUrl}/oauth/authorize`);
   assert.deepEqual(authorizationServer.data.code_challenge_methods_supported, ["S256"]);
   assert.deepEqual(authorizationServer.data.token_endpoint_auth_methods_supported, ["none"]);
   assert.ok(authorizationServer.data.scopes_supported.includes("offline_access"));
@@ -272,7 +294,7 @@ test("OAuth PKCE authorization, replay protection, scope visibility, rotation an
   assert.ok(clientId, "client registration must run first");
   const { verifier, challenge } = pkce();
   const state = `state-${randomUUID()}`;
-  const resource = `${baseUrl}/mcp`;
+   const resource = publicMcpResource;
   const authorize = new URL("/oauth/authorize", baseUrl);
   authorize.search = new URLSearchParams({
     response_type: "code",
@@ -299,7 +321,7 @@ test("OAuth PKCE authorization, replay protection, scope visibility, rotation an
 
   const invalidResource = await request(`${authorize.pathname}?${new URLSearchParams({
     ...Object.fromEntries(authorize.searchParams),
-    resource: `${baseUrl}/other-resource`,
+     resource: `${baseUrl}/other-resource`,
   })}`, { authenticated: true, redirect: "manual" });
   assert.equal(invalidResource.response.status, 400);
 
@@ -464,4 +486,94 @@ test("OAuth PKCE authorization, replay protection, scope visibility, rotation an
   assert.equal(afterRevocation.response.status, 401);
   assert.equal(afterRevocation.data.code, "INVALID_OAUTH_TOKEN");
   assert.match(afterRevocation.response.headers.get("www-authenticate"), /invalid_token/);
+});
+
+test("OAuth scope matrix controls tools/list visibility", async () => {
+  const cases = [
+    ["read", ["read"], ["compare_or_decide", "get_service_details", "search_services"]],
+    ["plan", ["plan"], ["compare_or_decide", "plan_execution", "search_services"]],
+    ["execute", ["execute"], ["compare_or_decide", "execute_plan", "search_services"]],
+    ["audit", ["audit"], ["compare_or_decide", "get_execution_status", "search_services"]],
+    ["all", ["read", "plan", "execute", "audit"], ["compare_or_decide", "execute_plan", "get_execution_status", "get_service_details", "plan_execution", "search_services"]],
+  ];
+
+  for (const [label, scopes, expected] of cases) {
+    const token = await issueAccessToken(scopes, `matrix-${label}`);
+    const listed = await mcpCall(token.accessToken, "tools/list", {});
+    assert.equal(listed.response.status, 200, listed.text);
+    assert.deepEqual(listed.data.result.tools.map((tool) => tool.name), expected);
+  }
+});
+
+test("OAuth-authenticated tools/call enforces missing scopes", async () => {
+  const readToken = await issueAccessToken(["read"], "call-read");
+  const planToken = await issueAccessToken(["plan"], "call-plan");
+  const executeToken = await issueAccessToken(["execute"], "call-execute");
+  const auditToken = await issueAccessToken(["audit"], "call-audit");
+  const planId = randomUUID();
+
+  const readDetails = await mcpCall(readToken.accessToken, "tools/call", {
+    name: "get_service_details",
+    arguments: { serviceId: "missing-service" },
+  });
+  assert.equal(readDetails.response.status, 200);
+  assert.equal(readDetails.result.code, "NOT_FOUND");
+
+  const missingPlan = await mcpCall(readToken.accessToken, "tools/call", {
+    name: "plan_execution",
+    arguments: { serviceId: "external:unverified" },
+  });
+  assert.equal(missingPlan.response.status, 404);
+  assert.equal(missingPlan.data.error.data.code, "UNKNOWN_TOOL");
+
+  const missingExecute = await mcpCall(planToken.accessToken, "tools/call", {
+    name: "execute_plan",
+    arguments: { planId },
+  });
+  assert.equal(missingExecute.response.status, 404);
+  assert.equal(missingExecute.data.error.data.code, "UNKNOWN_TOOL");
+
+  const missingAudit = await mcpCall(executeToken.accessToken, "tools/call", {
+    name: "get_execution_status",
+    arguments: { planId },
+  });
+  assert.equal(missingAudit.response.status, 404);
+  assert.equal(missingAudit.data.error.data.code, "UNKNOWN_TOOL");
+
+  const auditLookup = await mcpCall(auditToken.accessToken, "tools/call", {
+    name: "get_execution_status",
+    arguments: { planId },
+  });
+  assert.equal(auditLookup.response.status, 200);
+  assert.equal(auditLookup.result.code, "NOT_FOUND");
+});
+
+test("OAuth MCP Search to Plan to Execute stays deterministic for unverified external fixtures", async () => {
+  const planToken = await issueAccessToken(["plan"], "flow-plan");
+  const executeToken = await issueAccessToken(["execute"], "flow-execute");
+  const task = "deterministic local fixture";
+
+  const search = await mcpCall(null, "tools/call", {
+    name: "search_services",
+    arguments: { task },
+  });
+  assert.equal(search.response.status, 200);
+  assert.ok(Array.isArray(search.result.candidates));
+  assert.equal(search.result.requestId !== undefined, true);
+
+  const plan = await mcpCall(planToken.accessToken, "tools/call", {
+    name: "plan_execution",
+    arguments: { serviceId: "external:local-fixture", task },
+  });
+  assert.equal(plan.response.status, 200);
+  assert.equal(plan.result.status, "UNVERIFIED_EXTERNAL");
+  assert.equal(plan.result.planId, null);
+
+  const execute = await mcpCall(executeToken.accessToken, "tools/call", {
+    name: "execute_plan",
+    arguments: { planId: randomUUID() },
+  });
+  assert.equal(execute.response.status, 200);
+  assert.notEqual(execute.result.status, "READY");
+  assert.equal(execute.result.code, "EXECUTION_PLAN_NOT_FOUND");
 });
