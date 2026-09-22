@@ -700,7 +700,7 @@ router.post("/", async (req, res): Promise<void> => {
     return;
   }
   if (body.method === "initialize") {
-    if (version.version === MCP_CURRENT_PROTOCOL_VERSION || !validateLegacyInitialize(body.params)) {
+    if (version.version !== MCP_PROTOCOL_VERSIONS[0] && !validateLegacyInitialize(body.params)) {
       sendJsonRpcError(res, body.id, 400, -32602, "Initialize parameters are invalid for this protocol version.", { requestId: requestId(req) });
       return;
     }
