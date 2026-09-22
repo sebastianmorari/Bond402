@@ -175,17 +175,18 @@ export type ApiKeyAuthFailure = {
   retryAfterSeconds: number | null;
 };
 
-export async function authenticateApiKeyQuiet(
+type ApiKeyRateScope = "read" | "check" | "oauth";
+
+async function authenticateApiKeySecretQuiet(
   req: Request,
-  scope: "read" | "check",
+  rawSecret: string,
+  scope: ApiKeyRateScope,
 ): Promise<{ auth: ApiKeyAuth } | { failure: ApiKeyAuthFailure }> {
-  const authorization = req.get("authorization") ?? "";
   const sourceIp = req.ip ?? "unknown";
   if (!allowLookupAttempt(sourceIp)) {
     return { failure: { status: 429, code: "RATE_LIMITED", retryAfterSeconds: 60 } };
   }
-  const match = authorization.match(/^Bearer\s+(b402_[A-Za-z0-9_-]{40,})$/);
-  if (!match) {
+  if (!/^b402_[A-Za-z0-9_-]{40,}$/.test(rawSecret)) {
     if (!allowInvalidKeyAttempt(sourceIp)) {
       return { failure: { status: 429, code: "RATE_LIMITED", retryAfterSeconds: 60 } };
     }
@@ -197,7 +198,7 @@ export async function authenticateApiKeyQuiet(
     .from(apiKeysTable)
     .where(
       and(
-        eq(apiKeysTable.keyHash, hashApiKey(match[1])),
+        eq(apiKeysTable.keyHash, hashApiKey(rawSecret)),
         isNull(apiKeysTable.revokedAt),
       ),
     );
@@ -208,8 +209,8 @@ export async function authenticateApiKeyQuiet(
     return { failure: { status: 401, code: "INVALID_API_KEY", retryAfterSeconds: null } };
   }
 
-  const keyLimit = scope === "check" ? 10 : 60;
-  const ownerLimit = scope === "check" ? 20 : 120;
+  const keyLimit = scope === "check" ? 10 : scope === "oauth" ? 20 : 60;
+  const ownerLimit = scope === "check" ? 20 : scope === "oauth" ? 40 : 120;
   const [keyRate, ownerRate] = await Promise.all([
     consumeRateLimit(`key:${key.id}`, scope, keyLimit),
     consumeRateLimit(`owner:${key.ownerId}`, scope, ownerLimit),
@@ -236,6 +237,22 @@ export async function authenticateApiKeyQuiet(
       credentialType: "developer_key",
     },
   };
+}
+
+export async function authenticateDeveloperKeyQuiet(
+  req: Request,
+  rawSecret: string,
+) {
+  return authenticateApiKeySecretQuiet(req, rawSecret, "oauth");
+}
+
+export async function authenticateApiKeyQuiet(
+  req: Request,
+  scope: "read" | "check",
+): Promise<{ auth: ApiKeyAuth } | { failure: ApiKeyAuthFailure }> {
+  const authorization = req.get("authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(b402_[A-Za-z0-9_-]{40,})$/);
+  return authenticateApiKeySecretQuiet(req, match?.[1] ?? "", scope);
 }
 
 export async function authenticateApiKey(

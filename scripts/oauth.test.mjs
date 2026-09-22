@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, scrypt as nodeScrypt } from "node:crypto";
 import { test, before, after } from "node:test";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -13,12 +13,30 @@ const testId = randomUUID();
 let requestCount = 0;
 const userId = `oauth-test-user-${testId}`;
 const email = `${testId}@oauth.test`;
+const password = `OAuth-Test-Password-402!`;
 const sessionToken = randomBytes(32).toString("base64url");
 const sessionHash = createHash("sha256").update(sessionToken, "utf8").digest("hex");
+const developerKey = `b402_${randomBytes(32).toString("base64url")}`;
+const developerKeyId = randomUUID();
+const developerKeyHash = createHash("sha256").update(developerKey, "utf8").digest("hex");
 const redirectUri = `https://oauth-client-${testId}.example/callback`;
 let server;
 let clientId;
 const registeredClientIds = [];
+
+class CookieJar {
+  value = "";
+
+  capture(response) {
+    const setCookie = response.headers.get("set-cookie");
+    const match = setCookie?.match(/bond402_session=([^;]*)/);
+    if (match) this.value = match[1];
+  }
+
+  header() {
+    return this.value ? `bond402_session=${this.value}` : "";
+  }
+}
 
 function sqlLiteral(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
@@ -42,6 +60,10 @@ function cleanup() {
     ${registeredClientIds.length
       ? `DELETE FROM bond402_oauth_clients WHERE client_id IN (${registeredClientIds.map(sqlLiteral).join(", ")});`
       : ""}
+    DELETE FROM bond402_api_rate_limits
+    WHERE identity IN (${sqlLiteral(`key:${developerKeyId}`)}, ${sqlLiteral(`owner:${userId}`)})
+       OR identity LIKE ${sqlLiteral(`key:${developerKeyId}%`)};
+    DELETE FROM bond402_api_keys WHERE id = ${sqlLiteral(developerKeyId)};
     DELETE FROM bond402_sessions WHERE user_id = ${sqlLiteral(userId)};
     DELETE FROM bond402_users WHERE id = ${sqlLiteral(userId)};
   `);
@@ -52,6 +74,7 @@ async function request(path, options = {}) {
     body,
     form = false,
     authenticated = false,
+    cookieJar,
     redirect = "follow",
     ...fetchOptions
   } = options;
@@ -61,6 +84,7 @@ async function request(path, options = {}) {
       "Content-Type": form ? "application/x-www-form-urlencoded" : "application/json",
     }),
     ...(authenticated ? { Cookie: `bond402_session=${sessionToken}` } : {}),
+    ...(cookieJar?.header() ? { Cookie: cookieJar.header() } : {}),
     ...(fetchOptions.headers || {}),
   };
   const response = await fetch(`${baseUrl}${path}`, {
@@ -73,6 +97,7 @@ async function request(path, options = {}) {
         ? new URLSearchParams(body)
         : JSON.stringify(body),
   });
+  cookieJar?.capture(response);
   const text = await response.text();
   let data = null;
   try {
@@ -81,6 +106,44 @@ async function request(path, options = {}) {
     data = text;
   }
   return { response, data, text };
+}
+
+function hashPassword(passwordValue) {
+  const salt = randomBytes(16);
+  return new Promise((resolve, reject) => {
+    nodeScrypt(
+      passwordValue,
+      salt,
+      64,
+      { N: 16_384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 },
+      (error, derivedKey) => {
+        if (error) reject(error);
+        else resolve(`${salt.toString("hex")}:${derivedKey.toString("hex")}`);
+      },
+    );
+  });
+}
+
+function authorizeUrl() {
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier, "ascii").digest("base64url");
+  const state = `state-flow-${randomUUID()}`;
+  const authorize = new URL("/oauth/authorize", baseUrl);
+  authorize.search = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: "read plan execute audit offline_access",
+    state,
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+    resource: publicMcpResource,
+  }).toString();
+  return { authorize, verifier, state };
+}
+
+function requestPath(url) {
+  return `${url.pathname}${url.search}`;
 }
 
 function pkce() {
@@ -231,11 +294,21 @@ before(async () => {
     ],
   );
   cleanup();
+  const passwordHash = await hashPassword(password);
   runSql(`
     INSERT INTO bond402_users (id, email, display_name, password_hash, email_verification_required)
-    VALUES (${sqlLiteral(userId)}, ${sqlLiteral(email)}, 'OAuth Routentest', 'test-only', false);
+    VALUES (${sqlLiteral(userId)}, ${sqlLiteral(email)}, 'OAuth Routentest', ${sqlLiteral(passwordHash)}, false);
     INSERT INTO bond402_sessions (id, user_id, token_hash, expires_at)
     VALUES (${sqlLiteral(randomUUID())}, ${sqlLiteral(userId)}, ${sqlLiteral(sessionHash)}, NOW() + INTERVAL '1 hour');
+    INSERT INTO bond402_api_keys (id, owner_id, name, key_hash, prefix, scopes)
+    VALUES (
+      ${sqlLiteral(developerKeyId)},
+      ${sqlLiteral(userId)},
+      'OAuth developer-key fixture',
+      ${sqlLiteral(developerKeyHash)},
+      ${sqlLiteral(`${developerKey.slice(0, 13)}…`)},
+      'read,plan,execute,audit'
+    );
   `);
 });
 
@@ -503,6 +576,210 @@ test("OAuth scope matrix controls tools/list visibility", async () => {
     assert.equal(listed.response.status, 200, listed.text);
     assert.deepEqual(listed.data.result.tools.map((tool) => tool.name), expected);
   }
+});
+
+test("Unauthenticated authorize resumes after Bond402 login and binds the MCP token to that owner", async () => {
+  const { authorize, verifier, state } = authorizeUrl();
+  const anonymous = await request(requestPath(authorize), { redirect: "manual" });
+  assert.equal(anonymous.response.status, 302);
+  const loginLocation = new URL(anonymous.response.headers.get("location"));
+  assert.equal(loginLocation.pathname, "/sign-in");
+  const returnTo = loginLocation.searchParams.get("returnTo");
+  assert.ok(returnTo?.startsWith("/oauth/authorize?"));
+  assert.doesNotMatch(returnTo, new RegExp(password));
+  assert.doesNotMatch(returnTo, new RegExp(sessionToken));
+
+  const jar = new CookieJar();
+  const wrongLogin = await request("/api/auth/login", {
+    method: "POST",
+    cookieJar: jar,
+    body: { email, password: "Wrong-OAuth-Password-402!" },
+  });
+  assert.equal(wrongLogin.response.status, 401);
+  assert.equal(wrongLogin.data.code, "INVALID_CREDENTIALS");
+  assert.equal(jar.header(), "");
+
+  const login = await request("/api/auth/login", {
+    method: "POST",
+    cookieJar: jar,
+    body: { email, password },
+  });
+  assert.equal(login.response.status, 200, login.text);
+  assert.ok(jar.header());
+
+  const consent = await request(returnTo, { cookieJar: jar, redirect: "manual" });
+  assert.equal(consent.response.status, 200, consent.text);
+  const transaction = hiddenValue(consent.text, "transaction");
+  const csrfToken = hiddenValue(consent.text, "csrf_token");
+  assert.ok(transaction);
+  assert.ok(csrfToken);
+
+  const decision = await request("/oauth/authorize/decision", {
+    method: "POST",
+    cookieJar: jar,
+    form: true,
+    redirect: "manual",
+    body: { transaction, csrf_token: csrfToken, decision: "approve" },
+  });
+  assert.equal(decision.response.status, 302, decision.text);
+  const callback = new URL(decision.response.headers.get("location"));
+  assert.equal(callback.searchParams.get("state"), state);
+  const code = callback.searchParams.get("code");
+  assert.ok(code);
+
+  const exchanged = await request("/oauth/token", {
+    method: "POST",
+    form: true,
+    body: {
+      grant_type: "authorization_code",
+      client_id: clientId,
+      code,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+      resource: publicMcpResource,
+    },
+  });
+  assert.equal(exchanged.response.status, 200, exchanged.text);
+  const accessTokenHash = createHash("sha256").update(exchanged.data.access_token, "utf8").digest("hex");
+  assert.equal(
+    runSql(`SELECT owner_id FROM bond402_oauth_access_tokens WHERE token_hash = ${sqlLiteral(accessTokenHash)}`).trim(),
+    userId,
+  );
+
+  const listed = await request("/mcp", {
+    method: "POST",
+    headers: mcpHeaders(exchanged.data.access_token),
+    body: {
+      jsonrpc: "2.0",
+      id: "login-tools",
+      method: "tools/list",
+      params: {},
+    },
+  });
+  assert.equal(listed.response.status, 200);
+  assert.deepEqual(
+    listed.data.result.tools.map((tool) => tool.name),
+    ["compare_or_decide", "execute_plan", "get_execution_status", "get_service_details", "plan_execution", "search_services"],
+  );
+
+  const logout = await request("/api/auth/logout", {
+    method: "POST",
+    cookieJar: jar,
+  });
+  assert.equal(logout.response.status, 204);
+  assert.equal(jar.header(), "");
+  const afterLogout = await request(requestPath(authorizeUrl().authorize), {
+    cookieJar: jar,
+    redirect: "manual",
+  });
+  assert.equal(afterLogout.response.status, 302);
+  assert.equal(new URL(afterLogout.response.headers.get("location")).pathname, "/sign-in");
+
+  const loginAgain = await request("/api/auth/login", {
+    method: "POST",
+    cookieJar: jar,
+    body: { email, password },
+  });
+  assert.equal(loginAgain.response.status, 200);
+  const expiredCookieHash = createHash("sha256")
+    .update(jar.value, "utf8")
+    .digest("hex");
+  runSql(`
+    UPDATE bond402_sessions
+    SET expires_at = NOW() - INTERVAL '1 minute'
+    WHERE token_hash = ${sqlLiteral(expiredCookieHash)}
+  `);
+  const afterExpiry = await request(requestPath(authorizeUrl().authorize), {
+    cookieJar: jar,
+    redirect: "manual",
+  });
+  assert.equal(afterExpiry.response.status, 302);
+  assert.equal(new URL(afterExpiry.response.headers.get("location")).pathname, "/sign-in");
+});
+
+test("Developer-Key verification creates a short-lived owner session and continues to consent", async () => {
+  const { authorize, verifier, state } = authorizeUrl();
+  const anonymous = await request(requestPath(authorize), { redirect: "manual" });
+  assert.equal(anonymous.response.status, 302);
+  const loginLocation = new URL(anonymous.response.headers.get("location"));
+  const returnTo = loginLocation.searchParams.get("returnTo");
+  const transaction = new URL(returnTo, baseUrl).searchParams.get("transaction");
+  assert.ok(transaction);
+
+  const wrongKey = `b402_${randomBytes(32).toString("base64url")}`;
+  const rejected = await request("/oauth/authorize/developer-key", {
+    method: "POST",
+    body: { transaction, developer_key: wrongKey },
+  });
+  assert.equal(rejected.response.status, 401);
+  assert.equal(rejected.data.error, "access_denied");
+  assert.doesNotMatch(rejected.text, new RegExp(wrongKey));
+
+  const jar = new CookieJar();
+  const verified = await request("/oauth/authorize/developer-key", {
+    method: "POST",
+    cookieJar: jar,
+    body: { transaction, developer_key: developerKey },
+  });
+  assert.equal(verified.response.status, 200, verified.text);
+  assert.ok(jar.header());
+  assert.ok(verified.data.continueTo.startsWith("/oauth/authorize?"));
+  assert.doesNotMatch(verified.text, new RegExp(developerKey));
+  const developerSessionHash = createHash("sha256").update(jar.value, "utf8").digest("hex");
+  const sessionSeconds = Number(runSql(`
+    SELECT EXTRACT(EPOCH FROM (expires_at - created_at))
+    FROM bond402_sessions
+    WHERE token_hash = ${sqlLiteral(developerSessionHash)}
+  `).trim());
+  assert.ok(sessionSeconds > 0 && sessionSeconds <= 10 * 60 + 2);
+
+  const consent = await request(verified.data.continueTo, { cookieJar: jar, redirect: "manual" });
+  assert.equal(consent.response.status, 200, consent.text);
+  const csrfToken = hiddenValue(consent.text, "csrf_token");
+  assert.ok(csrfToken);
+  const decision = await request("/oauth/authorize/decision", {
+    method: "POST",
+    cookieJar: jar,
+    form: true,
+    redirect: "manual",
+    body: { transaction, csrf_token: csrfToken, decision: "approve" },
+  });
+  assert.equal(decision.response.status, 302, decision.text);
+  const callback = new URL(decision.response.headers.get("location"));
+  assert.equal(callback.searchParams.get("state"), state);
+  const code = callback.searchParams.get("code");
+  assert.ok(code);
+
+  const exchanged = await request("/oauth/token", {
+    method: "POST",
+    form: true,
+    body: {
+      grant_type: "authorization_code",
+      client_id: clientId,
+      code,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+      resource: publicMcpResource,
+    },
+  });
+  assert.equal(exchanged.response.status, 200, exchanged.text);
+  const accessTokenHash = createHash("sha256").update(exchanged.data.access_token, "utf8").digest("hex");
+  assert.equal(
+    runSql(`SELECT owner_id FROM bond402_oauth_access_tokens WHERE token_hash = ${sqlLiteral(accessTokenHash)}`).trim(),
+    userId,
+  );
+  const listed = await request("/mcp", {
+    method: "POST",
+    headers: mcpHeaders(exchanged.data.access_token),
+    body: {
+      jsonrpc: "2.0",
+      id: "developer-key-tools",
+      method: "tools/list",
+      params: {},
+    },
+  });
+  assert.equal(listed.response.status, 200);
+  assert.equal(listed.data.result.tools.some((tool) => tool.name === "execute_plan"), true);
 });
 
 test("OAuth-authenticated tools/call enforces missing scopes", async () => {

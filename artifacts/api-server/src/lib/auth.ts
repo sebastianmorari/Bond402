@@ -60,9 +60,18 @@ function deriveKey(password: string, salt: Buffer, keyLength: number) {
   });
 }
 
-export async function createSession(userId: string, res: Response) {
+type SessionOptions = {
+  durationMs?: number;
+};
+
+export async function createSession(
+  userId: string,
+  res: Response,
+  options: SessionOptions = {},
+) {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  const durationMs = options.durationMs ?? SESSION_DAYS * 24 * 60 * 60 * 1000;
+  const expiresAt = new Date(Date.now() + durationMs);
   await db.insert(bond402SessionsTable).values({
     id: crypto.randomUUID(),
     userId,
@@ -70,7 +79,7 @@ export async function createSession(userId: string, res: Response) {
     expiresAt,
     lastUsedAt: new Date(),
   });
-  res.cookie(SESSION_COOKIE, token, cookieOptions());
+  res.cookie(SESSION_COOKIE, token, { ...cookieOptions(), maxAge: durationMs });
 }
 
 type AuthOptions = {

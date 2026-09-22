@@ -15,11 +15,24 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
   const returnTo = requestedReturnTo && requestedReturnTo.startsWith("/") && !requestedReturnTo.startsWith("//")
     ? requestedReturnTo
     : null;
+  const oauthAuthorization = (() => {
+    if (!returnTo || !returnTo.startsWith("/oauth/authorize?")) return null;
+    try {
+      const parsed = new URL(returnTo, window.location.origin);
+      const transaction = parsed.searchParams.get("transaction");
+      return transaction ? { transaction } : null;
+    } catch {
+      return null;
+    }
+  })();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [developerKey, setDeveloperKey] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [developerKeyError, setDeveloperKeyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeveloperKeySubmitting, setIsDeveloperKeySubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,12 +44,43 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
         setLocation(returnTo ? `/verify-email?returnTo=${encodeURIComponent(returnTo)}` : "/verify-email");
       } else {
         await signIn(email, password);
-        setLocation(returnTo || "/dashboard");
+        if (returnTo?.startsWith("/oauth/authorize?")) {
+          window.location.assign(returnTo);
+        } else {
+          setLocation(returnTo || "/dashboard");
+        }
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Die Anmeldung ist fehlgeschlagen.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeveloperKey(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!oauthAuthorization) return;
+    setDeveloperKeyError(null);
+    setIsDeveloperKeySubmitting(true);
+    try {
+      const response = await fetch("/oauth/authorize/developer-key", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transaction: oauthAuthorization.transaction,
+          developer_key: developerKey,
+        }),
+      });
+      const body = await response.json().catch(() => null) as { continueTo?: string; error_description?: string };
+      if (!response.ok || !body?.continueTo || !body.continueTo.startsWith("/oauth/authorize?")) {
+        throw new Error(body?.error_description || "Der Developer-Key konnte nicht verifiziert werden.");
+      }
+      window.location.assign(body.continueTo);
+    } catch (submitError) {
+      setDeveloperKeyError(submitError instanceof Error ? submitError.message : "Die Developer-Key-Verifizierung ist fehlgeschlagen.");
+    } finally {
+      setIsDeveloperKeySubmitting(false);
     }
   }
 
@@ -103,6 +147,42 @@ export function AuthPage({ mode }: { mode: "signIn" | "signUp" }) {
               {!isSubmitting && <ArrowRight className="h-4 w-4" />}
             </Button>
           </form>
+
+          {!isSignUp && oauthAuthorization && (
+            <>
+              <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                <span>oder</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <form className="space-y-3" onSubmit={handleDeveloperKey}>
+                <div className="space-y-2">
+                  <Label htmlFor="oauth-developer-key">Mit Developer-Key verifizieren</Label>
+                  <Input
+                    id="oauth-developer-key"
+                    type="password"
+                    value={developerKey}
+                    onChange={(event) => setDeveloperKey(event.target.value)}
+                    required
+                    maxLength={512}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Der Key wird nur sicher an Bond402 gesendet und nicht an ChatGPT weitergegeben.
+                  </p>
+                </div>
+                {developerKeyError && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                    {developerKeyError}
+                  </div>
+                )}
+                <Button type="submit" variant="outline" className="w-full" disabled={isDeveloperKeySubmitting || !developerKey.trim()}>
+                  {isDeveloperKeySubmitting ? "Wird verifiziert …" : "Developer-Key prüfen"}
+                </Button>
+              </form>
+            </>
+          )}
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {isSignUp ? "Bereits ein Konto?" : "Noch kein Konto?"}{" "}

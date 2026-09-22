@@ -9,7 +9,7 @@ import {
   oauthClientsTable,
   oauthRefreshTokensTable,
 } from "@workspace/db";
-import { getCurrentUser } from "../lib/auth";
+import { createSession, getCurrentUser } from "../lib/auth";
 import {
   OAUTH_CODE_TTL_MS,
   OAUTH_ACCESS_TOKEN_TTL_MS,
@@ -23,7 +23,10 @@ import {
   serializeOAuthScopes,
   verifyPkce,
 } from "../lib/oauth";
-import { consumePublicRateLimit } from "../lib/api-key-auth";
+import {
+  authenticateDeveloperKeyQuiet,
+  consumePublicRateLimit,
+} from "../lib/api-key-auth";
 import { publicBaseUrl } from "../lib/public-sitemap";
 
 const router: IRouter = Router();
@@ -31,6 +34,7 @@ const OAUTH_ISSUER_PATH = "/";
 const MCP_RESOURCE_PATH = "/mcp";
 const DEFAULT_OAUTH_SCOPES = "read plan execute";
 const OAUTH_REQUEST_TTL_MS = 10 * 60_000;
+const OAUTH_AUTH_SESSION_TTL_MS = 10 * 60_000;
 
 class OAuthGrantError extends Error {
   constructor() {
@@ -225,6 +229,29 @@ function redirectWithOAuthError(
   target.searchParams.set("error", error);
   target.searchParams.set("state", state);
   res.redirect(302, target.toString());
+}
+
+function sameBond402Origin(req: Request) {
+  const suppliedOrigin = req.get("origin") || req.get("referer");
+  if (!suppliedOrigin) return true;
+  try {
+    return new URL(suppliedOrigin).origin === new URL(`${baseUrl(req)}/`).origin;
+  } catch {
+    return false;
+  }
+}
+
+function secureDeveloperKeyTransport(req: Request) {
+  if (req.secure) return true;
+  return process.env.NODE_ENV !== "production" &&
+    ["127.0.0.1", "localhost", "::1"].includes(req.hostname);
+}
+
+function authorizationContinuePath(
+  request: AuthorizeRequest,
+  transactionToken: string,
+) {
+  return `/oauth/authorize?${authorizeQuery(request)}&transaction=${encodeURIComponent(transactionToken)}`;
 }
 
 function renderConsentPage(
@@ -514,7 +541,7 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
   }
   if (!user) {
     const loginUrl = new URL("/sign-in", `${baseUrl(req)}/`);
-    loginUrl.searchParams.set("returnTo", `/oauth/authorize?${authorizeQuery(request)}&transaction=${encodeURIComponent(transactionToken)}`);
+    loginUrl.searchParams.set("returnTo", authorizationContinuePath(request, transactionToken));
     res.redirect(302, loginUrl.toString());
     return;
   }
@@ -525,19 +552,88 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
   renderConsentPage(req, res, request, client.clientName, transactionToken, csrfToken);
 });
 
-router.post("/oauth/authorize/decision", async (req, res): Promise<void> => {
-  const expectedOrigin = new URL(`${baseUrl(req)}/`).origin;
-  const suppliedOrigin = req.get("origin") || req.get("referer");
-  if (suppliedOrigin) {
-    try {
-      if (new URL(suppliedOrigin).origin !== expectedOrigin) {
-        jsonOAuthError(res, 403, "access_denied", "The authorization decision origin is not allowed.");
-        return;
-      }
-    } catch {
-      jsonOAuthError(res, 403, "access_denied", "The authorization decision origin is not allowed.");
-      return;
+router.post("/oauth/authorize/developer-key", async (req, res): Promise<void> => {
+  if (!secureDeveloperKeyTransport(req)) {
+    jsonOAuthError(res, 400, "invalid_request", "Developer-Key-Verifizierung ist nur über eine sichere Bond402-Verbindung erlaubt.");
+    return;
+  }
+  if (!sameBond402Origin(req)) {
+    jsonOAuthError(res, 403, "access_denied", "Die Developer-Key-Verifizierung muss von Bond402 selbst ausgehen.");
+    return;
+  }
+
+  const transactionToken = value(req.body?.transaction);
+  const rawDeveloperKey = value(req.body?.developer_key);
+  const transaction = transactionToken ? await findAuthorizationRequest(transactionToken) : null;
+  if (
+    !transaction ||
+    rawDeveloperKey.length > 512
+  ) {
+    jsonOAuthError(res, 400, "invalid_request", "Die OAuth-Autorisierung ist ungültig oder abgelaufen.");
+    return;
+  }
+
+  const currentUser = await getCurrentUser(req);
+  const keyResult = await authenticateDeveloperKeyQuiet(req, rawDeveloperKey);
+  if ("failure" in keyResult) {
+    if (keyResult.failure.retryAfterSeconds !== null) {
+      res.set("Retry-After", String(keyResult.failure.retryAfterSeconds));
     }
+    jsonOAuthError(
+      res,
+      keyResult.failure.status,
+      keyResult.failure.code === "RATE_LIMITED" ? "temporarily_unavailable" : "access_denied",
+      keyResult.failure.code === "RATE_LIMITED"
+        ? "Zu viele Developer-Key-Prüfungen. Bitte später erneut versuchen."
+        : "Der Developer-Key ist ungültig.",
+    );
+    return;
+  }
+
+  const ownerId = keyResult.auth.ownerId;
+  const requestedApiScopes = apiScopesFromOAuthScopes(parseOAuthScopes(transaction.scopes));
+  if (!requestedApiScopes.every((scope) => keyResult.auth.scopes.includes(scope))) {
+    jsonOAuthError(res, 403, "access_denied", "Der Developer-Key besitzt nicht alle angeforderten OAuth-Berechtigungen.");
+    return;
+  }
+  if (
+    (currentUser && currentUser.id !== ownerId) ||
+    (transaction.ownerId && transaction.ownerId !== ownerId)
+  ) {
+    jsonOAuthError(res, 403, "access_denied", "Die OAuth-Autorisierung gehört zu einem anderen Bond402-Owner.");
+    return;
+  }
+
+  if (!transaction.ownerId) {
+    await db.update(oauthAuthorizationRequestsTable)
+      .set({ ownerId })
+      .where(and(
+        eq(oauthAuthorizationRequestsTable.id, transaction.id),
+        isNull(oauthAuthorizationRequestsTable.ownerId),
+      ));
+  }
+  const boundTransaction = await findAuthorizationRequest(transactionToken);
+  if (!boundTransaction || boundTransaction.ownerId !== ownerId) {
+    jsonOAuthError(res, 403, "access_denied", "Die OAuth-Autorisierung konnte nicht sicher an den Owner gebunden werden.");
+    return;
+  }
+  const client = await findClient(boundTransaction.clientId);
+  if (!client || !clientRedirectUris(client).includes(boundTransaction.redirectUri)) {
+    jsonOAuthError(res, 400, "invalid_request", "Der OAuth-Client ist ungültig.");
+    return;
+  }
+
+  await createSession(ownerId, res, { durationMs: OAUTH_AUTH_SESSION_TTL_MS });
+  setNoStore(res);
+  res.json({
+    continueTo: authorizationContinuePath(requestFromStoredRow(boundTransaction), transactionToken),
+  });
+});
+
+router.post("/oauth/authorize/decision", async (req, res): Promise<void> => {
+  if (!sameBond402Origin(req)) {
+    jsonOAuthError(res, 403, "access_denied", "The authorization decision origin is not allowed.");
+    return;
   }
   const transactionToken = value(req.body?.transaction);
   const csrfToken = value(req.body?.csrf_token);
