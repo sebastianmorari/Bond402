@@ -24,6 +24,10 @@
       "destination": "https://bond402-api.onrender.com/oauth/authorize"
     },
     {
+      "source": "/oauth/authorize/developer-key",
+      "destination": "https://bond402-api.onrender.com/oauth/authorize/developer-key"
+    },
+    {
       "source": "/oauth/authorize/decision",
       "destination": "https://bond402-api.onrender.com/oauth/authorize/decision"
     },
