@@ -81,33 +81,61 @@ export async function findOAuthAccessToken(
   rawToken: string,
   expectedResource: string,
 ): Promise<OAuthMcpAuth | null> {
+  const inspected = await inspectOAuthAccessToken(rawToken, expectedResource);
+  return inspected.auth;
+}
+
+export async function inspectOAuthAccessToken(
+  rawToken: string,
+  expectedResource: string,
+): Promise<{
+  auth: OAuthMcpAuth | null;
+  clientId: string | null;
+  resourceMatch: boolean | null;
+  scopes: ApiKeyScope[];
+}> {
   const [row] = await db
     .select()
     .from(oauthAccessTokensTable)
     .innerJoin(oauthClientsTable, eq(oauthClientsTable.clientId, oauthAccessTokensTable.clientId))
-    .where(and(
-      eq(oauthAccessTokensTable.tokenHash, hashOAuthValue(rawToken)),
-      eq(oauthAccessTokensTable.resource, expectedResource),
-      isNull(oauthAccessTokensTable.revokedAt),
-      isNull(oauthClientsTable.revokedAt),
-      gt(oauthAccessTokensTable.expiresAt, new Date()),
-    ))
+    .where(eq(oauthAccessTokensTable.tokenHash, hashOAuthValue(rawToken)))
     .limit(1);
   const token = row?.bond402_oauth_access_tokens;
-  if (!token) return null;
+  const client = row?.bond402_oauth_clients;
+  const scopes = apiScopesFromOAuthScopes(parseOAuthScopes(token?.scopes));
+  const resourceMatch = token ? token.resource === expectedResource : null;
+  if (
+    !token ||
+    !client ||
+    !resourceMatch ||
+    token.revokedAt ||
+    client.revokedAt ||
+    token.expiresAt <= new Date()
+  ) {
+    return {
+      auth: null,
+      clientId: client?.clientId ?? token?.clientId ?? null,
+      resourceMatch,
+      scopes,
+    };
+  }
 
   await db
     .update(oauthAccessTokensTable)
     .set({ lastUsedAt: new Date() })
     .where(eq(oauthAccessTokensTable.id, token.id));
 
-  const scopes = apiScopesFromOAuthScopes(parseOAuthScopes(token.scopes));
   return {
-    ownerId: token.ownerId,
-    keyId: oauthPrincipalKeyId(token.clientId, token.ownerId),
-    scopes,
-    credentialType: "oauth",
+    auth: {
+      ownerId: token.ownerId,
+      keyId: oauthPrincipalKeyId(token.clientId, token.ownerId),
+      scopes,
+      credentialType: "oauth",
+      clientId: token.clientId,
+      accessTokenId: token.id,
+    },
     clientId: token.clientId,
-    accessTokenId: token.id,
+    resourceMatch: true,
+    scopes,
   };
 }

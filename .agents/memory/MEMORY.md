@@ -25,3 +25,4 @@
 - [Developer API scope enforcement](api-key-scope-enforcement.md) — rate-limit categories are not permissions; every protected REST/MCP action must enforce its required scope.
 - [OAuth resource and consent boundaries](oauth-resource-and-consent.md) — OAuth tokens stay bound to `/mcp`, and consent requires a short-lived server transaction plus CSRF proof.
 - [MCP protocol version negotiation](mcp-protocol-version-negotiation.md) — the first supported version is current; standard current initialize requests bypass legacy-only parameter validation.
+- [OAuth/MCP diagnostic safety](oauth-mcp-diagnostic-safety.md) — production troubleshooting uses hashed client fingerprints and boolean checks, never raw OAuth or developer credentials.

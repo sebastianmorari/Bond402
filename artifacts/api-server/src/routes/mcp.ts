@@ -15,7 +15,11 @@ import {
   type ApiKeyAuthFailure,
   type ApiKeyScope,
 } from "../lib/api-key-auth";
-import { findOAuthAccessToken, type OAuthMcpAuth } from "../lib/oauth";
+import {
+  hashOAuthValue,
+  inspectOAuthAccessToken,
+  type OAuthMcpAuth,
+} from "../lib/oauth";
 import { publicBaseUrl } from "../lib/public-sitemap";
 import {
   buildExecutionPlan,
@@ -445,6 +449,37 @@ function mcpResourceUrl(req: Request) {
   return new URL("/mcp", `${publicBaseUrl(req).replace(/\/+$/, "")}/`).toString();
 }
 
+function credentialFingerprint(value: string | null | undefined) {
+  return value ? hashOAuthValue(value).slice(0, 16) : null;
+}
+
+function logMcpDiagnostic(
+  req: Request,
+  fields: {
+    stage: "mcp_authentication" | "mcp_tools_discovery";
+    status: number;
+    errorCode?: string | null;
+    clientId?: string | null;
+    credentialId?: string | null;
+    resourceMatch?: boolean | null;
+    scopeNames?: readonly string[];
+    ownerBinding?: "matched" | "mismatched" | "not_checked";
+  },
+) {
+  req.log.info({
+    requestId: requestId(req),
+    mcpStage: fields.stage,
+    status: fields.status,
+    errorCode: fields.errorCode ?? null,
+    clientFingerprint: credentialFingerprint(fields.clientId ?? fields.credentialId),
+    redirectUriMatch: null,
+    pkceValid: null,
+    resourceMatch: fields.resourceMatch ?? null,
+    scopeNames: [...(fields.scopeNames ?? [])],
+    ownerBinding: fields.ownerBinding ?? "not_checked",
+  }, "MCP diagnostic");
+}
+
 async function authenticateMcpCredentialQuiet(
   req: Request,
   scope: "read" | "check",
@@ -452,17 +487,59 @@ async function authenticateMcpCredentialQuiet(
   const authorization = req.get("authorization") ?? "";
   const oauthMatch = authorization.match(/^Bearer\s+(b402_oauth_[A-Za-z0-9_-]{20,})$/);
   if (oauthMatch) {
-    const oauth = await findOAuthAccessToken(oauthMatch[1], mcpResourceUrl(req));
-    if (!oauth) {
+    const inspected = await inspectOAuthAccessToken(oauthMatch[1], mcpResourceUrl(req));
+    if (!inspected.auth) {
+      logMcpDiagnostic(req, {
+        stage: "mcp_authentication",
+        status: 401,
+        errorCode: "INVALID_OAUTH_TOKEN",
+        clientId: inspected.clientId,
+        resourceMatch: inspected.resourceMatch,
+        scopeNames: inspected.scopes,
+      });
       return { failure: { status: 401, code: "INVALID_OAUTH_TOKEN", retryAfterSeconds: null } };
     }
+    const oauth = inspected.auth;
     const rate = await consumeMcpCredentialRateLimit(oauth.keyId, oauth.ownerId, scope);
     if (!rate.allowed) {
+      logMcpDiagnostic(req, {
+        stage: "mcp_authentication",
+        status: 429,
+        errorCode: "RATE_LIMITED",
+        clientId: oauth.clientId,
+        resourceMatch: true,
+        scopeNames: oauth.scopes,
+        ownerBinding: "matched",
+      });
       return { failure: { status: 429, code: "RATE_LIMITED", retryAfterSeconds: rate.retryAfter } };
     }
+    logMcpDiagnostic(req, {
+      stage: "mcp_authentication",
+      status: 200,
+      clientId: oauth.clientId,
+      resourceMatch: true,
+      scopeNames: oauth.scopes,
+      ownerBinding: "matched",
+    });
     return { auth: oauth };
   }
-  return authenticateApiKeyQuiet(req, scope);
+  const result = await authenticateApiKeyQuiet(req, scope);
+  if ("failure" in result) {
+    logMcpDiagnostic(req, {
+      stage: "mcp_authentication",
+      status: result.failure.status,
+      errorCode: result.failure.code,
+    });
+  } else {
+    logMcpDiagnostic(req, {
+      stage: "mcp_authentication",
+      status: 200,
+      credentialId: result.auth.keyId,
+      scopeNames: result.auth.scopes,
+      ownerBinding: "matched",
+    });
+  }
+  return result;
 }
 
 async function optionalAuth(req: Request): Promise<McpAuth | null> {
@@ -722,18 +799,35 @@ router.post("/", async (req, res): Promise<void> => {
   }
   if (body.method === "tools/list") {
     if (body.params && !hasOnlyKeys(body.params, ["cursor", "_meta"])) {
+      logMcpDiagnostic(req, {
+        stage: "mcp_tools_discovery",
+        status: 400,
+        errorCode: "INVALID_ARGUMENTS",
+      });
       sendJsonRpcError(res, body.id, 400, -32602, "Unknown tools/list parameters.", { requestId: requestId(req) });
       return;
     }
     if (body.params?.cursor !== undefined && typeof body.params.cursor !== "string") {
+      logMcpDiagnostic(req, {
+        stage: "mcp_tools_discovery",
+        status: 400,
+        errorCode: "INVALID_ARGUMENTS",
+      });
       sendJsonRpcError(res, body.id, 400, -32602, "Invalid tools/list cursor.", { requestId: requestId(req) });
       return;
     }
     const auth = await optionalAuth(req);
+    const hasOAuthBearer = Boolean(req.get("authorization")?.match(/^Bearer\s+b402_oauth_[A-Za-z0-9_-]{20,}$/));
     if (
-      req.get("authorization")?.match(/^Bearer\s+b402_oauth_[A-Za-z0-9_-]{20,}$/) &&
+      hasOAuthBearer &&
       !auth
     ) {
+      logMcpDiagnostic(req, {
+        stage: "mcp_tools_discovery",
+        status: 401,
+        errorCode: "INVALID_OAUTH_TOKEN",
+        resourceMatch: false,
+      });
       res.set("WWW-Authenticate", `Bearer error="invalid_token", resource_metadata="${mcpResourceMetadataUrl(req)}"`);
       res.status(401).type("application/json").json({
         error: "Der OAuth-Zugang ist ungültig oder abgelaufen.",
@@ -743,6 +837,15 @@ router.post("/", async (req, res): Promise<void> => {
       return;
     }
     const tools = visibleTools(auth);
+    logMcpDiagnostic(req, {
+      stage: "mcp_tools_discovery",
+      status: 200,
+      clientId: auth?.credentialType === "oauth" ? auth.clientId : null,
+      credentialId: auth?.credentialType === "developer_key" ? auth.keyId : null,
+      resourceMatch: auth?.credentialType === "oauth" ? true : null,
+      scopeNames: auth?.scopes,
+      ownerBinding: auth ? "matched" : "not_checked",
+    });
     res.type("application/json").json(jsonRpcResponse(body.id, {
       resultType: "complete",
       tools,

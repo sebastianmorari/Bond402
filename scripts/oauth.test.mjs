@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
 import { createHash, randomBytes, randomUUID, scrypt as nodeScrypt } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { test, before, after } from "node:test";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -23,6 +24,13 @@ const redirectUri = `https://oauth-client-${testId}.example/callback`;
 let server;
 let clientId;
 const registeredClientIds = [];
+let serverLogs = "";
+const observedSensitiveValues = new Set([password, sessionToken, developerKey]);
+
+function rememberSensitive(value) {
+  if (typeof value === "string" && value.length >= 16) observedSensitiveValues.add(value);
+  return value;
+}
 
 class CookieJar {
   value = "";
@@ -128,6 +136,9 @@ function authorizeUrl() {
   const verifier = randomBytes(32).toString("base64url");
   const challenge = createHash("sha256").update(verifier, "ascii").digest("base64url");
   const state = `state-flow-${randomUUID()}`;
+  rememberSensitive(verifier);
+  rememberSensitive(challenge);
+  rememberSensitive(state);
   const authorize = new URL("/oauth/authorize", baseUrl);
   authorize.search = new URLSearchParams({
     response_type: "code",
@@ -149,12 +160,14 @@ function requestPath(url) {
 function pkce() {
   const verifier = randomBytes(32).toString("base64url");
   const challenge = createHash("sha256").update(verifier, "ascii").digest("base64url");
+  rememberSensitive(verifier);
+  rememberSensitive(challenge);
   return { verifier, challenge };
 }
 
 function hiddenValue(html, name) {
   const match = html.match(new RegExp(`<input type="hidden" name="${name}" value="([^"]+)"`));
-  return match?.[1] ?? null;
+  return match ? rememberSensitive(match[1]) : null;
 }
 
 function mcpHeaders(accessToken, version = "2026-07-28") {
@@ -231,6 +244,8 @@ async function issueAccessToken(scopes, label) {
     },
   });
   assert.equal(exchanged.response.status, 200, exchanged.text);
+  rememberSensitive(exchanged.data.access_token);
+  rememberSensitive(exchanged.data.refresh_token);
   return {
     accessToken: exchanged.data.access_token,
     clientId: issuedClientId,
@@ -275,7 +290,13 @@ before(async () => {
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
-  server.stderr.on("data", (chunk) => process.stderr.write(`[oauth-api] ${chunk}`));
+  server.stdout.on("data", (chunk) => {
+    serverLogs += chunk.toString();
+  });
+  server.stderr.on("data", (chunk) => {
+    serverLogs += chunk.toString();
+    process.stderr.write(`[oauth-api] ${chunk}`);
+  });
   await waitForServer();
   assert.deepEqual(
     runSql(`
@@ -321,6 +342,16 @@ after(async () => {
 });
 
 test("OAuth metadata and safe dynamic client registration are exposed", async () => {
+  const vercel = JSON.parse(readFileSync("vercel.json", "utf8"));
+  const developerKeyRewriteIndex = vercel.rewrites.findIndex(
+    (rewrite) => rewrite.source === "/oauth/authorize/developer-key",
+  );
+  assert.deepEqual(vercel.rewrites[developerKeyRewriteIndex], {
+    source: "/oauth/authorize/developer-key",
+    destination: "https://bond402-api.onrender.com/oauth/authorize/developer-key",
+  });
+  assert.ok(developerKeyRewriteIndex < vercel.rewrites.findIndex((rewrite) => rewrite.source === "/(.*)"));
+
   const resource = await request("/.well-known/oauth-protected-resource");
   assert.equal(resource.response.status, 200);
   assert.equal(resource.data.resource, publicMcpResource);
@@ -853,4 +884,25 @@ test("OAuth MCP Search to Plan to Execute stays deterministic for unverified ext
   assert.equal(execute.response.status, 200);
   assert.notEqual(execute.result.status, "READY");
   assert.equal(execute.result.code, "EXECUTION_PLAN_NOT_FOUND");
+});
+
+test("OAuth and MCP diagnostics are correlated without recording secrets", async () => {
+  const token = await issueAccessToken(["read"], "diagnostic-redaction");
+  const listed = await mcpCall(token.accessToken, "tools/list", {});
+  assert.equal(listed.response.status, 200);
+  rememberSensitive(token.accessToken);
+
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.match(serverLogs, /OAuth diagnostic/);
+  assert.match(serverLogs, /MCP diagnostic/);
+  assert.match(serverLogs, /clientFingerprint/);
+  assert.match(serverLogs, /redirectUriMatch/);
+  assert.match(serverLogs, /pkceValid/);
+  assert.match(serverLogs, /resourceMatch/);
+  assert.match(serverLogs, /scopeNames/);
+  assert.match(serverLogs, /ownerBinding/);
+  for (const secret of observedSensitiveValues) {
+    assert.doesNotMatch(serverLogs, new RegExp(secret.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+  assert.doesNotMatch(serverLogs, new RegExp(redirectUri.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 });

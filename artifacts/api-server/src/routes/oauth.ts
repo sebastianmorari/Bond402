@@ -91,6 +91,58 @@ function jsonOAuthError(res: Response, status: number, error: string, errorDescr
   });
 }
 
+type OwnerBindingResult = "matched" | "mismatched" | "bound" | "not_checked";
+
+function clientFingerprint(clientId: string | null | undefined) {
+  return clientId ? hashOAuthValue(clientId).slice(0, 16) : null;
+}
+
+function logOAuthDiagnostic(
+  req: Request,
+  fields: {
+    stage: string;
+    status: number;
+    errorCode?: string | null;
+    clientId?: string | null;
+    redirectUriMatch?: boolean | null;
+    pkceValid?: boolean | null;
+    resourceMatch?: boolean | null;
+    scopeNames?: readonly string[];
+    ownerBinding?: OwnerBindingResult;
+  },
+) {
+  req.log.info({
+    requestId: String((req as Request & { id?: string }).id ?? "unknown"),
+    oauthStage: fields.stage,
+    status: fields.status,
+    errorCode: fields.errorCode ?? null,
+    clientFingerprint: clientFingerprint(fields.clientId),
+    redirectUriMatch: fields.redirectUriMatch ?? null,
+    pkceValid: fields.pkceValid ?? null,
+    resourceMatch: fields.resourceMatch ?? null,
+    scopeNames: [...(fields.scopeNames ?? [])],
+    ownerBinding: fields.ownerBinding ?? "not_checked",
+  }, "OAuth diagnostic");
+}
+
+function oauthError(
+  req: Request,
+  res: Response,
+  status: number,
+  error: string,
+  description: string | undefined,
+  fields: Omit<Parameters<typeof logOAuthDiagnostic>[1], "stage" | "status" | "errorCode"> & { stage?: string } = {},
+) {
+  const { stage = "oauth", ...diagnosticFields } = fields;
+  logOAuthDiagnostic(req, {
+    ...diagnosticFields,
+    stage,
+    status,
+    errorCode: error,
+  });
+  jsonOAuthError(res, status, error, description);
+}
+
 function isAllowedRedirectUri(valueToCheck: string) {
   if (valueToCheck.length === 0 || valueToCheck.length > 2048) return false;
   try {
@@ -482,13 +534,28 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
   const clientId = value(req.query.client_id);
   const redirectUri = value(req.query.redirect_uri);
   const client = clientId ? await findClient(clientId) : null;
-  if (!client || !clientRedirectUris(client).includes(redirectUri)) {
-    jsonOAuthError(res, 400, "invalid_request", "The client_id and redirect_uri combination is invalid.");
+  const redirectUriMatch = Boolean(client && clientRedirectUris(client).includes(redirectUri));
+  const requestedResource = value(req.query.resource);
+  const resourceMatch = requestedResource ? requestedResource === expectedResource : true;
+  if (!client || !redirectUriMatch) {
+    oauthError(req, res, 400, "invalid_request", "The client_id and redirect_uri combination is invalid.", {
+      clientId,
+      redirectUriMatch,
+      resourceMatch,
+      scopeNames: parseOAuthScopes(value(req.query.scope)),
+    });
     return;
   }
   const request = parseAuthorizeRequest(req.query, expectedResource);
   if (!request) {
-    jsonOAuthError(res, 400, "invalid_request", "Authorization requires response_type=code, state and S256 PKCE.");
+    oauthError(req, res, 400, "invalid_request", "Authorization requires response_type=code, state and S256 PKCE.", {
+      clientId,
+      redirectUriMatch,
+      pkceValid: value(req.query.code_challenge_method) === "S256" &&
+        /^[A-Za-z0-9._~-]{43,128}$/.test(value(req.query.code_challenge)),
+      resourceMatch,
+      scopeNames: parseOAuthScopes(value(req.query.scope)),
+    });
     return;
   }
   if (
@@ -498,7 +565,13 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
     request.scope.length > 256 ||
     request.resource.length > 2048
   ) {
-    jsonOAuthError(res, 400, "invalid_request", "Authorization request parameters are too long.");
+    oauthError(req, res, 400, "invalid_request", "Authorization request parameters are too long.", {
+      clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: true,
+      scopeNames: parseOAuthScopes(request.scope),
+    });
     return;
   }
   const user = await getCurrentUser(req);
@@ -506,7 +579,13 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
   let transactionToken = transactionValue;
   let transaction = transactionValue ? await findAuthorizationRequest(transactionValue) : null;
   if (transactionValue && (!transaction || !matchesAuthorizationRequest(transaction, request))) {
-    jsonOAuthError(res, 400, "invalid_request", "The authorization transaction is invalid or expired.");
+    oauthError(req, res, 400, "invalid_request", "The authorization transaction is invalid or expired.", {
+      clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: true,
+      scopeNames: parseOAuthScopes(request.scope),
+    });
     return;
   }
   if (!transaction) {
@@ -526,11 +605,24 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
     }).returning())[0] ?? null;
   }
   if (!transaction) {
-    jsonOAuthError(res, 500, "temporarily_unavailable", "The authorization transaction could not be created.");
+    oauthError(req, res, 500, "temporarily_unavailable", "The authorization transaction could not be created.", {
+      clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: true,
+      scopeNames: parseOAuthScopes(request.scope),
+    });
     return;
   }
   if (user && transaction.ownerId && transaction.ownerId !== user.id) {
-    jsonOAuthError(res, 403, "access_denied", "The authorization transaction belongs to another owner session.");
+    oauthError(req, res, 403, "access_denied", "The authorization transaction belongs to another owner session.", {
+      clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: true,
+      scopeNames: parseOAuthScopes(request.scope),
+      ownerBinding: "mismatched",
+    });
     return;
   }
   if (user && !transaction.ownerId) {
@@ -542,6 +634,16 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
   if (!user) {
     const loginUrl = new URL("/sign-in", `${baseUrl(req)}/`);
     loginUrl.searchParams.set("returnTo", authorizationContinuePath(request, transactionToken));
+    logOAuthDiagnostic(req, {
+      stage: "authorization",
+      status: 302,
+      clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: true,
+      scopeNames: parseOAuthScopes(request.scope),
+      ownerBinding: transaction.ownerId ? "matched" : "not_checked",
+    });
     res.redirect(302, loginUrl.toString());
     return;
   }
@@ -549,16 +651,30 @@ router.get("/oauth/authorize", async (req, res): Promise<void> => {
   await db.update(oauthAuthorizationRequestsTable)
     .set({ csrfHash: hashOAuthValue(csrfToken) })
     .where(eq(oauthAuthorizationRequestsTable.id, transaction.id));
+  logOAuthDiagnostic(req, {
+    stage: "authorization",
+    status: 200,
+    clientId,
+    redirectUriMatch: true,
+    pkceValid: true,
+    resourceMatch: true,
+    scopeNames: parseOAuthScopes(request.scope),
+    ownerBinding: "matched",
+  });
   renderConsentPage(req, res, request, client.clientName, transactionToken, csrfToken);
 });
 
 router.post("/oauth/authorize/developer-key", async (req, res): Promise<void> => {
   if (!secureDeveloperKeyTransport(req)) {
-    jsonOAuthError(res, 400, "invalid_request", "Developer-Key-Verifizierung ist nur über eine sichere Bond402-Verbindung erlaubt.");
+    oauthError(req, res, 400, "invalid_request", "Developer-Key-Verifizierung ist nur über eine sichere Bond402-Verbindung erlaubt.", {
+      stage: "authorization_developer_key",
+    });
     return;
   }
   if (!sameBond402Origin(req)) {
-    jsonOAuthError(res, 403, "access_denied", "Die Developer-Key-Verifizierung muss von Bond402 selbst ausgehen.");
+    oauthError(req, res, 403, "access_denied", "Die Developer-Key-Verifizierung muss von Bond402 selbst ausgehen.", {
+      stage: "authorization_developer_key",
+    });
     return;
   }
 
@@ -569,7 +685,14 @@ router.post("/oauth/authorize/developer-key", async (req, res): Promise<void> =>
     !transaction ||
     rawDeveloperKey.length > 512
   ) {
-    jsonOAuthError(res, 400, "invalid_request", "Die OAuth-Autorisierung ist ungültig oder abgelaufen.");
+    oauthError(req, res, 400, "invalid_request", "Die OAuth-Autorisierung ist ungültig oder abgelaufen.", {
+      stage: "authorization_developer_key",
+      clientId: transaction?.clientId,
+      redirectUriMatch: transaction ? true : null,
+      pkceValid: transaction ? true : null,
+      resourceMatch: transaction ? transaction.resource === resourceUrl(req) : null,
+      scopeNames: parseOAuthScopes(transaction?.scopes),
+    });
     return;
   }
 
@@ -579,13 +702,22 @@ router.post("/oauth/authorize/developer-key", async (req, res): Promise<void> =>
     if (keyResult.failure.retryAfterSeconds !== null) {
       res.set("Retry-After", String(keyResult.failure.retryAfterSeconds));
     }
-    jsonOAuthError(
+    oauthError(
+      req,
       res,
       keyResult.failure.status,
       keyResult.failure.code === "RATE_LIMITED" ? "temporarily_unavailable" : "access_denied",
       keyResult.failure.code === "RATE_LIMITED"
         ? "Zu viele Developer-Key-Prüfungen. Bitte später erneut versuchen."
         : "Der Developer-Key ist ungültig.",
+      {
+        stage: "authorization_developer_key",
+        clientId: transaction.clientId,
+        redirectUriMatch: true,
+        pkceValid: true,
+        resourceMatch: transaction.resource === resourceUrl(req),
+        scopeNames: parseOAuthScopes(transaction.scopes),
+      },
     );
     return;
   }
@@ -593,14 +725,32 @@ router.post("/oauth/authorize/developer-key", async (req, res): Promise<void> =>
   const ownerId = keyResult.auth.ownerId;
   const requestedApiScopes = apiScopesFromOAuthScopes(parseOAuthScopes(transaction.scopes));
   if (!requestedApiScopes.every((scope) => keyResult.auth.scopes.includes(scope))) {
-    jsonOAuthError(res, 403, "access_denied", "Der Developer-Key besitzt nicht alle angeforderten OAuth-Berechtigungen.");
+    oauthError(req, res, 403, "access_denied", "Der Developer-Key besitzt nicht alle angeforderten OAuth-Berechtigungen.", {
+      stage: "authorization_developer_key",
+      clientId: transaction.clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: transaction.resource === resourceUrl(req),
+      scopeNames: parseOAuthScopes(transaction.scopes),
+    });
     return;
   }
-  if (
+  const ownerBindingMismatch = Boolean(
     (currentUser && currentUser.id !== ownerId) ||
-    (transaction.ownerId && transaction.ownerId !== ownerId)
+    (transaction.ownerId && transaction.ownerId !== ownerId),
+  );
+  if (
+    ownerBindingMismatch
   ) {
-    jsonOAuthError(res, 403, "access_denied", "Die OAuth-Autorisierung gehört zu einem anderen Bond402-Owner.");
+    oauthError(req, res, 403, "access_denied", "Die OAuth-Autorisierung gehört zu einem anderen Bond402-Owner.", {
+      stage: "authorization_developer_key",
+      clientId: transaction.clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: transaction.resource === resourceUrl(req),
+      scopeNames: parseOAuthScopes(transaction.scopes),
+      ownerBinding: "mismatched",
+    });
     return;
   }
 
@@ -614,17 +764,43 @@ router.post("/oauth/authorize/developer-key", async (req, res): Promise<void> =>
   }
   const boundTransaction = await findAuthorizationRequest(transactionToken);
   if (!boundTransaction || boundTransaction.ownerId !== ownerId) {
-    jsonOAuthError(res, 403, "access_denied", "Die OAuth-Autorisierung konnte nicht sicher an den Owner gebunden werden.");
+    oauthError(req, res, 403, "access_denied", "Die OAuth-Autorisierung konnte nicht sicher an den Owner gebunden werden.", {
+      stage: "authorization_developer_key",
+      clientId: transaction.clientId,
+      redirectUriMatch: true,
+      pkceValid: true,
+      resourceMatch: transaction.resource === resourceUrl(req),
+      scopeNames: parseOAuthScopes(transaction.scopes),
+      ownerBinding: "mismatched",
+    });
     return;
   }
   const client = await findClient(boundTransaction.clientId);
   if (!client || !clientRedirectUris(client).includes(boundTransaction.redirectUri)) {
-    jsonOAuthError(res, 400, "invalid_request", "Der OAuth-Client ist ungültig.");
+    oauthError(req, res, 400, "invalid_request", "Der OAuth-Client ist ungültig.", {
+      stage: "authorization_developer_key",
+      clientId: boundTransaction.clientId,
+      redirectUriMatch: false,
+      pkceValid: true,
+      resourceMatch: boundTransaction.resource === resourceUrl(req),
+      scopeNames: parseOAuthScopes(boundTransaction.scopes),
+      ownerBinding: "matched",
+    });
     return;
   }
 
   await createSession(ownerId, res, { durationMs: OAUTH_AUTH_SESSION_TTL_MS });
   setNoStore(res);
+  logOAuthDiagnostic(req, {
+    stage: "authorization_developer_key",
+    status: 200,
+    clientId: boundTransaction.clientId,
+    redirectUriMatch: true,
+    pkceValid: true,
+    resourceMatch: boundTransaction.resource === resourceUrl(req),
+    scopeNames: parseOAuthScopes(boundTransaction.scopes),
+    ownerBinding: "bound",
+  });
   res.json({
     continueTo: authorizationContinuePath(requestFromStoredRow(boundTransaction), transactionToken),
   });
@@ -632,7 +808,9 @@ router.post("/oauth/authorize/developer-key", async (req, res): Promise<void> =>
 
 router.post("/oauth/authorize/decision", async (req, res): Promise<void> => {
   if (!sameBond402Origin(req)) {
-    jsonOAuthError(res, 403, "access_denied", "The authorization decision origin is not allowed.");
+    oauthError(req, res, 403, "access_denied", "The authorization decision origin is not allowed.", {
+      stage: "authorization_decision",
+    });
     return;
   }
   const transactionToken = value(req.body?.transaction);
@@ -641,12 +819,28 @@ router.post("/oauth/authorize/decision", async (req, res): Promise<void> => {
   const user = await getCurrentUser(req);
   if (!transaction || !user || transaction.ownerId !== user.id || !transaction.csrfHash ||
       hashOAuthValue(csrfToken) !== transaction.csrfHash) {
-    jsonOAuthError(res, 400, "invalid_request", "The authorization transaction or CSRF proof is invalid.");
+    oauthError(req, res, 400, "invalid_request", "The authorization transaction or CSRF proof is invalid.", {
+      stage: "authorization_decision",
+      clientId: transaction?.clientId,
+      redirectUriMatch: transaction ? true : null,
+      pkceValid: transaction ? true : null,
+      resourceMatch: transaction ? transaction.resource === resourceUrl(req) : null,
+      scopeNames: parseOAuthScopes(transaction?.scopes),
+      ownerBinding: transaction && user && transaction.ownerId === user.id ? "matched" : "mismatched",
+    });
     return;
   }
   const client = await findClient(transaction.clientId);
   if (!client || !clientRedirectUris(client).includes(transaction.redirectUri)) {
-    jsonOAuthError(res, 400, "invalid_request", "The authorization client is invalid.");
+    oauthError(req, res, 400, "invalid_request", "The authorization client is invalid.", {
+      stage: "authorization_decision",
+      clientId: transaction.clientId,
+      redirectUriMatch: false,
+      pkceValid: true,
+      resourceMatch: transaction.resource === resourceUrl(req),
+      scopeNames: parseOAuthScopes(transaction.scopes),
+      ownerBinding: "matched",
+    });
     return;
   }
   const request = requestFromStoredRow(transaction);
@@ -654,6 +848,17 @@ router.post("/oauth/authorize/decision", async (req, res): Promise<void> => {
     await db.update(oauthAuthorizationRequestsTable)
       .set({ consumedAt: new Date() })
       .where(and(eq(oauthAuthorizationRequestsTable.id, transaction.id), isNull(oauthAuthorizationRequestsTable.consumedAt)));
+     logOAuthDiagnostic(req, {
+       stage: "authorization_decision",
+       status: 302,
+       errorCode: "access_denied",
+       clientId: transaction.clientId,
+       redirectUriMatch: true,
+       pkceValid: true,
+       resourceMatch: transaction.resource === resourceUrl(req),
+       scopeNames: parseOAuthScopes(transaction.scopes),
+       ownerBinding: "matched",
+     });
     redirectWithOAuthError(res, request.redirectUri, "access_denied", request.state);
     return;
   }
@@ -680,7 +885,15 @@ router.post("/oauth/authorize/decision", async (req, res): Promise<void> => {
     });
   } catch (error) {
     if (error instanceof OAuthGrantError) {
-      jsonOAuthError(res, 400, "invalid_request", "The authorization transaction was already used.");
+      oauthError(req, res, 400, "invalid_request", "The authorization transaction was already used.", {
+        stage: "authorization_decision",
+        clientId: transaction.clientId,
+        redirectUriMatch: true,
+        pkceValid: true,
+        resourceMatch: transaction.resource === resourceUrl(req),
+        scopeNames: parseOAuthScopes(transaction.scopes),
+        ownerBinding: "matched",
+      });
       return;
     }
     throw error;
@@ -688,6 +901,16 @@ router.post("/oauth/authorize/decision", async (req, res): Promise<void> => {
   const callback = new URL(request.redirectUri);
   callback.searchParams.set("code", code);
   callback.searchParams.set("state", request.state);
+  logOAuthDiagnostic(req, {
+    stage: "authorization_decision",
+    status: 302,
+    clientId: transaction.clientId,
+    redirectUriMatch: true,
+    pkceValid: true,
+    resourceMatch: transaction.resource === resourceUrl(req),
+    scopeNames: parseOAuthScopes(transaction.scopes),
+    ownerBinding: "matched",
+  });
   res.redirect(302, callback.toString());
 });
 
@@ -696,11 +919,17 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
   const clientId = value(req.body?.client_id);
   const client = clientId ? await findClient(clientId) : null;
   if (!client || client.tokenEndpointAuthMethod !== "none") {
-    jsonOAuthError(res, 401, "invalid_client");
+    oauthError(req, res, 401, "invalid_client", undefined, {
+      stage: "token_exchange",
+      clientId,
+    });
     return;
   }
   if (!client.grantTypes.split(",").includes(grantType)) {
-    jsonOAuthError(res, 400, "unauthorized_client");
+    oauthError(req, res, 400, "unauthorized_client", undefined, {
+      stage: "token_exchange",
+      clientId,
+    });
     return;
   }
   if (grantType === "authorization_code") {
@@ -708,6 +937,10 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
     const redirectUri = value(req.body?.redirect_uri);
     const codeVerifier = value(req.body?.code_verifier);
     const resource = value(req.body?.resource) || resourceUrl(req);
+    let redirectUriMatch: boolean | null = null;
+    let pkceValid: boolean | null = null;
+    let resourceMatch: boolean | null = null;
+    let scopeNames: string[] = [];
     let pair: Awaited<ReturnType<typeof issueTokenPair>>;
     try {
       pair = await db.transaction(async (tx) => {
@@ -721,12 +954,19 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
             gt(oauthAuthorizationCodesTable.expiresAt, new Date()),
           ))
           .limit(1);
+        redirectUriMatch = Boolean(code && code.redirectUri === redirectUri);
+        resourceMatch = Boolean(code && code.resource === resource);
+        pkceValid = Boolean(
+          code &&
+          /^[A-Za-z0-9._~-]{43,128}$/.test(codeVerifier) &&
+          verifyPkce(codeVerifier, code.codeChallenge),
+        );
+        scopeNames = parseOAuthScopes(code?.scopes);
         if (
           !code ||
-          code.redirectUri !== redirectUri ||
-          code.resource !== resource ||
-          !/^[A-Za-z0-9._~-]{43,128}$/.test(codeVerifier) ||
-          !verifyPkce(codeVerifier, code.codeChallenge)
+          !redirectUriMatch ||
+          !resourceMatch ||
+          !pkceValid
         ) {
           throw new OAuthGrantError();
         }
@@ -748,19 +988,38 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
       });
     } catch (error) {
       if (error instanceof OAuthGrantError) {
-        jsonOAuthError(res, 400, "invalid_grant", "The authorization code, redirect URI, resource or PKCE verifier is invalid.");
+        oauthError(req, res, 400, "invalid_grant", "The authorization code, redirect URI, resource or PKCE verifier is invalid.", {
+          stage: "token_exchange",
+          clientId,
+          redirectUriMatch,
+          pkceValid,
+          resourceMatch,
+          scopeNames,
+        });
         return;
       }
       throw error;
     }
     await db.update(oauthClientsTable).set({ lastUsedAt: new Date() }).where(eq(oauthClientsTable.clientId, clientId));
     setNoStore(res);
+    logOAuthDiagnostic(req, {
+      stage: "token_exchange",
+      status: 200,
+      clientId,
+      redirectUriMatch,
+      pkceValid,
+      resourceMatch,
+      scopeNames,
+      ownerBinding: "matched",
+    });
     res.json(tokenResponse(pair));
     return;
   }
   if (grantType === "refresh_token") {
     const rawRefreshToken = value(req.body?.refresh_token);
     const resource = value(req.body?.resource) || resourceUrl(req);
+    let resourceMatch: boolean | null = null;
+    let scopeNames: string[] = [];
     let pair: Awaited<ReturnType<typeof issueTokenPair>>;
     try {
       pair = await db.transaction(async (tx) => {
@@ -769,10 +1028,12 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
           .from(oauthRefreshTokensTable)
           .where(eq(oauthRefreshTokensTable.tokenHash, hashOAuthValue(rawRefreshToken)))
           .limit(1);
+        resourceMatch = Boolean(refresh && refresh.resource === resource);
+        scopeNames = parseOAuthScopes(refresh?.scopes);
         if (
           !refresh ||
           refresh.clientId !== clientId ||
-          refresh.resource !== resource ||
+          !resourceMatch ||
           refresh.expiresAt <= new Date()
         ) {
           throw new OAuthGrantError();
@@ -808,16 +1069,32 @@ router.post("/oauth/token", async (req, res): Promise<void> => {
       });
     } catch (error) {
       if (error instanceof OAuthGrantError) {
-        jsonOAuthError(res, 400, "invalid_grant", "The refresh token is invalid, expired, revoked or was already used.");
+        oauthError(req, res, 400, "invalid_grant", "The refresh token is invalid, expired, revoked or was already used.", {
+          stage: "token_refresh",
+          clientId,
+          resourceMatch,
+          scopeNames,
+        });
         return;
       }
       throw error;
     }
     setNoStore(res);
+    logOAuthDiagnostic(req, {
+      stage: "token_refresh",
+      status: 200,
+      clientId,
+      resourceMatch,
+      scopeNames,
+      ownerBinding: "matched",
+    });
     res.json(tokenResponse(pair));
     return;
   }
-  jsonOAuthError(res, 400, "unsupported_grant_type");
+  oauthError(req, res, 400, "unsupported_grant_type", undefined, {
+    stage: "token_exchange",
+    clientId,
+  });
 });
 
 router.post("/oauth/revoke", async (req, res): Promise<void> => {
