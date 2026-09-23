@@ -203,8 +203,8 @@ function validateTransportHeaders(req: Request, body: JsonRpcRequest) {
 }
 
 function validateLegacyInitialize(params: Record<string, unknown> | undefined) {
-  if (!params || !hasOnlyKeys(params, ["protocolVersion", "capabilities", "clientInfo"])) return false;
   if (
+    !params ||
     typeof params.protocolVersion !== "string" ||
     !MCP_LEGACY_PROTOCOL_VERSIONS.has(params.protocolVersion) ||
     !isRecord(params.capabilities) ||
@@ -214,6 +214,7 @@ function validateLegacyInitialize(params: Record<string, unknown> | undefined) {
     params.clientInfo.name.length > 120 ||
     params.clientInfo.version.length > 80
   ) return false;
+  if ("_meta" in params && params._meta !== undefined && !isRecord(params._meta)) return false;
   return true;
 }
 
@@ -456,7 +457,7 @@ function credentialFingerprint(value: string | null | undefined) {
 function logMcpDiagnostic(
   req: Request,
   fields: {
-    stage: "mcp_authentication" | "mcp_tools_discovery";
+    stage: "mcp_authentication" | "mcp_tools_discovery" | "mcp_transport" | "mcp_initialize";
     status: number;
     errorCode?: string | null;
     clientId?: string | null;
@@ -749,21 +750,41 @@ async function callTool(
 router.post("/", async (req, res): Promise<void> => {
   res.set("Cache-Control", "no-store");
   if (!validateOrigin(req)) {
+    logMcpDiagnostic(req, {
+      stage: "mcp_transport",
+      status: 403,
+      errorCode: "INVALID_ORIGIN",
+    });
     res.status(403).type("application/json").json({ error: "Ungültiger MCP-Origin.", code: "INVALID_ORIGIN", requestId: requestId(req) });
     return;
   }
   const body = parseProtocolRequest(req.body);
   if (!body) {
+    logMcpDiagnostic(req, {
+      stage: "mcp_transport",
+      status: 400,
+      errorCode: "INVALID_REQUEST",
+    });
     sendJsonRpcError(res, null, 400, -32600, "Invalid Request", { requestId: requestId(req) });
     return;
   }
   const headerError = validateTransportHeaders(req, body);
   if (headerError) {
+    logMcpDiagnostic(req, {
+      stage: "mcp_transport",
+      status: 400,
+      errorCode: headerError,
+    });
     sendJsonRpcError(res, body.id, 400, -32600, "Invalid Request", { code: headerError, requestId: requestId(req) });
     return;
   }
   const version = protocolVersion(req, body);
   if ("error" in version) {
+    logMcpDiagnostic(req, {
+      stage: "mcp_transport",
+      status: 400,
+      errorCode: version.error,
+    });
     sendJsonRpcError(res, body.id, 400, -32022, version.error ?? "Unsupported protocol request", {
       code: version.error ?? "UNSUPPORTED_PROTOCOL_VERSION",
       requested: version.requested,
@@ -778,9 +799,18 @@ router.post("/", async (req, res): Promise<void> => {
   }
   if (body.method === "initialize") {
     if (version.version !== MCP_PROTOCOL_VERSIONS[0] && !validateLegacyInitialize(body.params)) {
+      logMcpDiagnostic(req, {
+        stage: "mcp_initialize",
+        status: 400,
+        errorCode: "INVALID_INITIALIZE",
+      });
       sendJsonRpcError(res, body.id, 400, -32602, "Initialize parameters are invalid for this protocol version.", { requestId: requestId(req) });
       return;
     }
+    logMcpDiagnostic(req, {
+      stage: "mcp_initialize",
+      status: 200,
+    });
     res.type("application/json").json(jsonRpcResponse(body.id, {
       protocolVersion: version.version,
       capabilities: { tools: { listChanged: false } },

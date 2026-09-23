@@ -609,6 +609,51 @@ test("OAuth scope matrix controls tools/list visibility", async () => {
   }
 });
 
+test("OAuth-authenticated legacy initialize with metadata reaches tools/list", async () => {
+  const token = await issueAccessToken(["read"], "legacy-initialize-metadata");
+  const legacyHeaders = mcpHeaders(token.accessToken, "2025-11-25");
+  const initialized = await request("/mcp", {
+    method: "POST",
+    headers: legacyHeaders,
+    body: {
+      jsonrpc: "2.0",
+      id: "oauth-legacy-init",
+      method: "initialize",
+      params: {
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: { name: "oauth-legacy-test", version: "1.0.0" },
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": "2025-11-25",
+        },
+        "com.example/forwardCompatibleExtension": { enabled: true },
+      },
+    },
+  });
+  assert.equal(initialized.response.status, 200, initialized.text);
+  assert.equal(initialized.data.result.protocolVersion, "2025-11-25");
+
+  const listed = await request("/mcp", {
+    method: "POST",
+    headers: legacyHeaders,
+    body: {
+      jsonrpc: "2.0",
+      id: "oauth-legacy-tools",
+      method: "tools/list",
+      params: {
+        _meta: {
+          "io.modelcontextprotocol/protocolVersion": "2025-11-25",
+        },
+      },
+    },
+  });
+  assert.equal(listed.response.status, 200, listed.text);
+  assert.deepEqual(
+    listed.data.result.tools.map((tool) => tool.name),
+    ["compare_or_decide", "get_service_details", "search_services"],
+  );
+});
+
 test("Unauthenticated authorize resumes after Bond402 login and binds the MCP token to that owner", async () => {
   const { authorize, verifier, state } = authorizeUrl();
   const anonymous = await request(requestPath(authorize), { redirect: "manual" });
